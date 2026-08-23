@@ -1,0 +1,19 @@
+[package]
+name = "pico-entity-store"
+version = "0.3.2"
+edition = "2024"
+description = "A tiny, fast entity-component store for Rust"
+license = "MIT"
+repository = "https://github.com/paulpeters144/pico-entity-store"
+readme = "README.md"
+keywords = ["ecs", "entity", "component", "store", "game"]
+categories = ["game-development", "data-structures"]
+
+[dependencies]
+parking_lot = { version = "0.12", features = ["hardware-lock-elision"] }
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "ecs_benchmarks"
+harness = false

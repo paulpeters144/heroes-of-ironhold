@@ -1,0 +1,97 @@
+use crate::Context;
+use di_container::{BuildContext, Injectable};
+use std::any::{Any, TypeId};
+use std::cell::RefCell;
+use std::future::Future;
+use std::pin::Pin;
+
+pub trait Update: Any + 'static {
+    fn update(&mut self, ctx: &mut Context);
+}
+
+pub trait Draw: Any + 'static {
+    fn draw(&self, ctx: &Context);
+}
+
+pub struct SystemAgg {
+    updates: RefCell<Vec<Box<dyn Update>>>,
+    draws: RefCell<Vec<Box<dyn Draw>>>,
+}
+
+impl SystemAgg {
+    pub fn new() -> Self {
+        SystemAgg {
+            updates: RefCell::new(Vec::new()),
+            draws: RefCell::new(Vec::new()),
+        }
+    }
+
+    pub fn add_update<T: Update>(&self, system: T) {
+        self.updates.borrow_mut().push(Box::new(system));
+    }
+
+    pub fn add_draw<T: Draw>(&self, system: T) {
+        self.draws.borrow_mut().push(Box::new(system));
+    }
+
+    pub fn remove_update<T: Update>(&self) -> bool {
+        let target = TypeId::of::<T>();
+        if let Some(index) = self
+            .updates
+            .borrow()
+            .iter()
+            .position(|s| (**s).type_id() == target)
+        {
+            self.updates.borrow_mut().remove(index);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn remove_draw<T: Draw>(&self) -> bool {
+        let target = TypeId::of::<T>();
+        if let Some(index) = self
+            .draws
+            .borrow()
+            .iter()
+            .position(|s| (**s).type_id() == target)
+        {
+            self.draws.borrow_mut().remove(index);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn clear(&self) {
+        self.updates.borrow_mut().clear();
+        self.draws.borrow_mut().clear();
+    }
+
+    pub fn update(&self, ctx: &mut Context) {
+        for system in self.updates.borrow_mut().iter_mut() {
+            system.update(ctx);
+        }
+    }
+
+    pub fn draw(&self, ctx: &Context) {
+        for system in self.draws.borrow().iter() {
+            system.draw(ctx);
+        }
+    }
+}
+
+impl Default for SystemAgg {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Injectable for SystemAgg {
+    fn inject(
+        _ctx: &BuildContext,
+    ) -> Pin<Box<dyn Future<Output = di_container::Result<Self>> + '_>> {
+        Box::pin(std::future::ready(Ok(SystemAgg::new())))
+    }
+}

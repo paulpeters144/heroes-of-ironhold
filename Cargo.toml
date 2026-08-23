@@ -1,0 +1,23 @@
+[workspace]
+members = [
+    "clients/desktop",
+    "clients/web",
+    "crates/di-container",
+    "crates/di-container/derive",
+    "crates/event-bus",
+    "crates/pico-entity-store",
+    "crates/tiled",
+]
+resolver = "2"
+
+[package]
+name = "heroes-of-ironhold-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+macroquad = { version = "0.4", features = ["audio"] }
+di-container = { path = "crates/di-container" }
+event-bus = { path = "crates/event-bus" }
+pico-entity-store = { path = "crates/pico-entity-store" }
+tiled = { path = "crates/tiled" }
