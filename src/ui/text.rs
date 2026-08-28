@@ -1,7 +1,7 @@
 use crate::GameFont;
 use macroquad::prelude::*;
 
-pub(super) fn wrap_text(font: GameFont, text: &str, max_width: f32) -> String {
+pub(super) fn wrap_text(font: &GameFont, text: &str, max_width: f32) -> String {
     if max_width <= 0.0 {
         return text.to_string();
     }
@@ -15,7 +15,7 @@ pub(super) fn wrap_text(font: GameFont, text: &str, max_width: f32) -> String {
             } else {
                 format!("{current} {word}")
             };
-            let dims = measure_text(&candidate, Some(font.font), font.size, 1.0);
+            let dims = measure_text(&candidate, Some(&font.font), font.size, 1.0);
             if dims.width > max_width && !current.is_empty() {
                 lines.push(std::mem::take(&mut current));
                 current = word.to_string();

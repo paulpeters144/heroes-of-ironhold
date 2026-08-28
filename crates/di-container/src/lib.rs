@@ -96,12 +96,12 @@ impl BuildContext {
 
 // ── Container ────────────────────────────────────────────────────────────
 
-static DUMMY: i32 = 0;
-
 pub struct Container {
     type_to_index: HashMap<TypeId, usize>,
     values: Vec<&'static dyn Any>,
     consumed: Vec<bool>,
+    transient_factories: HashMap<TypeId, AsyncErasedFactory>,
+    build_ctx: BuildContext,
 }
 
 impl Container {
@@ -128,12 +128,32 @@ impl Container {
                 type_name: type_name.to_string(),
             })
     }
+
+    pub async fn resolve_transient<T: 'static>(&self) -> Result<T> {
+        let type_id = TypeId::of::<T>();
+        let type_name = std::any::type_name::<T>();
+
+        let factory = self
+            .transient_factories
+            .get(&type_id)
+            .ok_or_else(|| Error::ServiceNotRegistered {
+                type_name: type_name.to_string(),
+            })?;
+
+        let boxed: Box<dyn Any> = factory(&self.build_ctx).await?;
+
+        boxed.downcast::<T>().map(|boxed| *boxed).map_err(|_| {
+            Error::ServiceNotRegistered {
+                type_name: type_name.to_string(),
+            }
+        })
+    }
 }
 
 // ── ContainerBuilder ─────────────────────────────────────────────────────
 
 type AsyncErasedFactory =
-    Box<dyn FnOnce(&BuildContext) -> Pin<Box<dyn Future<Output = Result<Box<dyn Any>>> + '_>>>;
+    Box<dyn Fn(&BuildContext) -> Pin<Box<dyn Future<Output = Result<Box<dyn Any>>> + '_>>>;
 
 struct DeferredSlot {
     type_ids: Vec<TypeId>,
@@ -214,13 +234,14 @@ impl ContainerBuilder {
         let mut type_to_index: HashMap<TypeId, usize> = HashMap::new();
         let mut values: Vec<&'static dyn Any> = Vec::with_capacity(slot_count);
         let mut consumed = Vec::with_capacity(slot_count);
+        let mut transient_factories: HashMap<TypeId, AsyncErasedFactory> = HashMap::new();
 
         for (idx, slot) in slots.into_iter().enumerate() {
             build_ctx.lifetimes[idx] = slot.lifetime;
 
-            let boxed: Box<dyn Any> = (slot.factory)(&build_ctx).await?;
-
             if slot.lifetime == Lifetime::Singleton {
+                let boxed: Box<dyn Any> = (slot.factory)(&build_ctx).await?;
+
                 let leaked: &'static dyn Any = Box::leak(boxed);
                 let data_ptr = leaked as *const dyn Any as *const u8;
                 build_ctx.singleton_ptrs.borrow_mut()[idx] = data_ptr;
@@ -231,13 +252,8 @@ impl ContainerBuilder {
                 values.push(leaked);
                 consumed.push(false);
             } else {
-                build_ctx.transient_values.borrow_mut()[idx] = Some(boxed);
-
-                for &tid in &slot.type_ids {
-                    type_to_index.insert(tid, values.len());
-                }
-                values.push(&DUMMY as &dyn Any);
-                consumed.push(true);
+                let tid = slot.type_ids[0];
+                transient_factories.insert(tid, slot.factory);
             }
         }
 
@@ -245,6 +261,8 @@ impl ContainerBuilder {
             type_to_index,
             values,
             consumed,
+            transient_factories,
+            build_ctx,
         });
         Ok(Box::leak(container))
     }

@@ -1,12 +1,8 @@
 use di_container::{BuildContext, Injectable};
-use pico_entity_store::refs::{Ref, RefMut};
 use pico_entity_store::store::{ChildSource, EntityStore as PicoEntityStore, IntoAdd};
 use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
-
-pub trait Component: 'static {}
-impl<T: 'static> Component for T {}
 
 pub struct EStore(PicoEntityStore);
 
@@ -29,27 +25,6 @@ impl EStore {
         children: &[ChildSource],
     ) {
         let _ = self.0.add(target, children);
-    }
-
-    pub fn get_child<Child: 'static>(
-        &self,
-        parent: &Ref<'_, impl Component>,
-    ) -> Option<Ref<'_, Child>> {
-        self.children(parent)
-            .into_iter()
-            .find_map(|child| self.get_by_id::<Child>(child.id()))
-    }
-
-    pub fn get_child_mut<Child: 'static>(
-        &self,
-        parent: Ref<'_, impl Component>,
-    ) -> Option<RefMut<'_, Child>> {
-        let child_id = self
-            .children(&parent)
-            .into_iter()
-            .find_map(|child| self.get_by_id::<Child>(child.id()).map(|_| child.id()))?;
-        drop(parent);
-        self.get_by_id_mut::<Child>(child_id)
     }
 }
 

@@ -17,8 +17,8 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             w_title: "Heroes of Ironhold".to_string(),
-            v_width: 640.0 * 0.75,
-            v_height: 360.0 * 0.75,
+            v_width: 640.0 * 0.9,
+            v_height: 360.0 * 0.9,
             win_w: 1280,
             win_h: 720,
             jitter_free: true,

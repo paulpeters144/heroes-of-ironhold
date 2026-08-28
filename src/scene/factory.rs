@@ -1,58 +1,37 @@
-use super::{FontShowcase, OpeningScene, Scene, SceneOne, UiShowcase};
-use crate::systems::SystemAgg;
-use crate::{Assets, Config, EStore, EventBus};
+use super::{AssetPreviewScene, Scene};
+use crate::{Assets, Config, EStore};
+use di_container::Container;
 
 #[derive(Clone, Copy)]
 pub enum SceneId {
-    UiShowcase,
-    Opening,
-    FontShowcase,
-    SceneOne,
+    AssetPreview,
 }
 
 #[derive(Clone, Copy)]
 pub struct SceneFactory {
-    bus: &'static EventBus,
     cfg: &'static Config,
-    assets: &'static Assets,
-    estore: &'static EStore,
-    system_agg: &'static SystemAgg,
+    container: &'static Container,
 }
 
 impl SceneFactory {
-    pub fn new(
-        bus: &'static EventBus,
-        cfg: &'static Config,
-        assets: &'static Assets,
-        estore: &'static EStore,
-        system_agg: &'static SystemAgg,
-    ) -> Self {
-        Self {
-            bus,
-            cfg,
-            assets,
-            estore,
-            system_agg,
-        }
+    pub fn new(cfg: &'static Config, container: &'static Container) -> Self {
+        Self { cfg, container }
     }
 
-    pub fn create(&self, id: SceneId) -> Box<dyn Scene> {
+    pub async fn create(&self, id: SceneId) -> Box<dyn Scene> {
         match id {
-            SceneId::UiShowcase => Box::new(UiShowcase::new(self.bus, self.cfg, self.assets)),
-            SceneId::Opening => Box::new(OpeningScene::new(
-                self.cfg,
-                self.assets,
-                self.estore,
-                self.system_agg,
-                self.bus,
-            )),
-            SceneId::FontShowcase => Box::new(FontShowcase::new(self.bus, self.cfg, self.assets)),
-            SceneId::SceneOne => Box::new(SceneOne::new(
-                self.cfg,
-                self.assets,
-                self.estore,
-                self.system_agg,
-            )),
+            SceneId::AssetPreview => {
+                let assets = self
+                    .container
+                    .resolve_transient::<Assets>()
+                    .await
+                    .expect("failed to resolve Assets");
+                let store = self
+                    .container
+                    .get::<EStore>()
+                    .expect("failed to resolve EStore");
+                Box::new(AssetPreviewScene::new(self.cfg, assets, store))
+            }
         }
     }
 }

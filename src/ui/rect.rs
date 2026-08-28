@@ -1,5 +1,10 @@
-use super::{cmd::Cmd, core::UI};
-use crate::Context;
+use super::{
+    cmd::Cmd,
+    core::UI,
+    params::{
+        CenteredOutlined, CenteredSolid, DefaultCenteredOutlined, DefaultOutlined, Outlined, Solid,
+    },
+};
 use macroquad::prelude::*;
 
 pub struct RectBuilder<'a> {
@@ -7,42 +12,39 @@ pub struct RectBuilder<'a> {
 }
 
 impl RectBuilder<'_> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn solid(
-        self,
-        _ctx: &Context,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        color: Color,
-        radius: f32,
-    ) {
-        self.ui
-            .cmds
-            .push(Cmd::Solid {
-                x,
-                y,
-                w,
-                h,
-                color,
-                radius,
-            });
+    pub fn solid(self, params: Solid<'_>) -> Rect {
+        let Solid {
+            x,
+            y,
+            w,
+            h,
+            color,
+            radius,
+            ..
+        } = params;
+        self.ui.cmds.push(Cmd::Solid {
+            x,
+            y,
+            w,
+            h,
+            color,
+            radius,
+        });
+        Rect::new(x, y, w, h)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn outlined(
-        self,
-        _ctx: &Context,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        fill: Color,
-        border: Color,
-        thickness: f32,
-        radius: f32,
-    ) {
+    pub fn outlined(self, params: Outlined<'_>) -> Rect {
+        let Outlined {
+            x,
+            y,
+            w,
+            h,
+            fill,
+            border,
+            thickness,
+            radius,
+            ..
+        } = params;
         self.ui.cmds.push(Cmd::Outlined {
             x,
             y,
@@ -53,9 +55,11 @@ impl RectBuilder<'_> {
             thickness,
             radius,
         });
+        Rect::new(x, y, w, h)
     }
 
-    pub fn centered_solid(self, _ctx: &Context, w: f32, h: f32, color: Color, radius: f32) {
+    pub fn centered_solid(self, params: CenteredSolid<'_>) -> Rect {
+        let CenteredSolid { w, h, color, radius, .. } = params;
         let x = (self.ui.v_width - w) * 0.5;
         let y = (self.ui.v_height - h) * 0.5;
         self.ui.cmds.push(Cmd::Solid {
@@ -66,19 +70,19 @@ impl RectBuilder<'_> {
             color,
             radius,
         });
+        Rect::new(x, y, w, h)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn centered_outlined(
-        self,
-        _ctx: &Context,
-        w: f32,
-        h: f32,
-        fill: Color,
-        border: Color,
-        thickness: f32,
-        radius: f32,
-    ) {
+    pub fn centered_outlined(self, params: CenteredOutlined<'_>) -> Rect {
+        let CenteredOutlined {
+            w,
+            h,
+            fill,
+            border,
+            thickness,
+            radius,
+            ..
+        } = params;
         let x = (self.ui.v_width - w) * 0.5;
         let y = (self.ui.v_height - h) * 0.5;
         self.ui.cmds.push(Cmd::Outlined {
@@ -91,9 +95,11 @@ impl RectBuilder<'_> {
             thickness,
             radius,
         });
+        Rect::new(x, y, w, h)
     }
 
-    pub fn default_outlined(self, _ctx: &Context, x: f32, y: f32, w: f32, h: f32) {
+    pub fn default_outlined(self, params: DefaultOutlined<'_>) -> Rect {
+        let DefaultOutlined { x, y, w, h, .. } = params;
         let fill = self.ui.style.fill;
         let border = self.ui.style.border;
         let thickness = self.ui.style.border_width;
@@ -108,9 +114,11 @@ impl RectBuilder<'_> {
             thickness,
             radius,
         });
+        Rect::new(x, y, w, h)
     }
 
-    pub fn default_centered_outlined(self, _ctx: &Context, w: f32, h: f32) {
+    pub fn default_centered_outlined(self, params: DefaultCenteredOutlined<'_>) -> Rect {
+        let DefaultCenteredOutlined { w, h, .. } = params;
         let fill = self.ui.style.fill;
         let border = self.ui.style.border;
         let thickness = self.ui.style.border_width;
@@ -127,5 +135,6 @@ impl RectBuilder<'_> {
             thickness,
             radius,
         });
+        Rect::new(x, y, w, h)
     }
 }

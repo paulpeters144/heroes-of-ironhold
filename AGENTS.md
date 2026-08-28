@@ -48,3 +48,5 @@ python3 clients/web/serve.py              # serve on port 3001
 - All systems start with sys_*.rs for example: sys_animation.rs
 - Never call `get_frame_time()`; read the frame delta time from `Context` (`ctx.dt`). `Manager` updates it once per frame.
 - Never call `Assets` accessors (`get_font`, `sound`, `texture`, etc.) in `update()` or `draw()` methods. Extract all needed assets during construction (e.g. `new()` or `factory()`) and store the results on the struct.
+- Never modify the `pico_entity_store` crate unless explicitly told to.
+- Never modify `src/util/estore.rs` unless explicitly told to.

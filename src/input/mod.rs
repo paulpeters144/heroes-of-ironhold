@@ -10,6 +10,7 @@ pub enum Input {
     Left,
     Right,
     Jump,
+    Attack,
 }
 
 #[derive(Default)]

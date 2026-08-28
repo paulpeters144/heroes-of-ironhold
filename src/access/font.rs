@@ -24,10 +24,10 @@ impl FontTag {
         }
     }
 
-    pub fn font_id(self) -> font::Id {
+    pub fn font_id(self) -> font::Font {
         match self {
-            Self::Tiny => font::Id::Tiny04b03,
-            _ => font::Id::Pixellari,
+            Self::Tiny => font::Font::Tiny04b03,
+            _ => font::Font::Pixellari,
         }
     }
 }
@@ -48,22 +48,20 @@ impl TextStyle {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct GameFont {
-    pub font: &'static Font,
+    pub font: Font,
     pub size: u16,
     pub color: Color,
 }
 
 impl Assets {
-    pub fn get_font(&self, style: &TextStyle) -> Option<GameFont> {
-        let font = self.font(style.tag.font_id())?;
-        // SAFETY: Assets is always &'static, so the Font inside is 'static
-        let font: &'static Font = unsafe { std::mem::transmute(font) };
-        Some(GameFont {
+    pub fn get_font(&self, style: &TextStyle) -> GameFont {
+        let font = self.font(style.tag.font_id());
+        GameFont {
             font,
             size: style.tag.size(),
             color: style.color,
-        })
+        }
     }
 }

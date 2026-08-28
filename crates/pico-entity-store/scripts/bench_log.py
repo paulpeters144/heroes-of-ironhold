@@ -133,7 +133,7 @@ def main() -> None:
                 "-v", f"{PROJECT_ROOT}:/app",
                 "-w", "/app",
                 DOCKER_IMAGE,
-                "nice", "-n", "-20", "cargo", "bench", "--bench", "ecs_benchmarks",
+                "nice", "-n", "-20", "cargo", "bench", "-p", "pico-entity-store", "--bench", "ecs_benchmarks",
             ],
             check=False,
         )

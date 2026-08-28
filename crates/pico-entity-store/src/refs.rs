@@ -3,41 +3,45 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 use crate::entity_ref::EntityRef;
-use crate::storage::TypedStorage;
 use crate::store::StoreInner;
-
-/// Resolves the slot coordinates held by a reference into the store's storage.
-#[inline]
-fn resolve<T: 'static>(store: &StoreInner, storage_idx: usize, slot: usize) -> &T {
-    let storage = store.storages[storage_idx]
-        .as_any()
-        .downcast_ref::<TypedStorage<T>>()
-        .expect("storage type mismatch");
-    &storage.data[slot]
-}
 
 /// A read guard for a component of type `T`.
 ///
-/// Holds a read lock on the underlying store for the lifetime of the reference.
-/// Derefs to `&T`.
-pub struct Ref<'a, T: 'static> {
+/// Derefs to `&T`. The guard type `G` defaults to an owned
+/// [`RwLockReadGuard`], which keeps the store read-locked for the lifetime of
+/// the reference; bulk iteration instead yields references that borrow the
+/// iterator's single guard (`G = &StoreInner`).
+pub struct Ref<'a, T: 'static, G = RwLockReadGuard<'a, StoreInner>> {
     pub(crate) id: usize,
-    pub(crate) slot: usize,
-    pub(crate) storage_idx: usize,
-    pub(crate) guard: RwLockReadGuard<'a, StoreInner>,
-    pub(crate) _phantom: PhantomData<T>,
+    pub(crate) data: *const T,
+    pub(crate) _guard: G,
+    pub(crate) _phantom: PhantomData<(&'a (), T)>,
 }
 
-impl<T: 'static> Deref for Ref<'_, T> {
+unsafe impl<'a, T: 'static, G> Send for Ref<'a, T, G>
+where
+    T: Send,
+    G: Send,
+{
+}
+
+unsafe impl<'a, T: 'static, G> Sync for Ref<'a, T, G>
+where
+    T: Sync,
+    G: Sync,
+{
+}
+
+impl<T: 'static, G: Deref<Target = StoreInner>> Deref for Ref<'_, T, G> {
     type Target = T;
 
     #[inline]
     fn deref(&self) -> &T {
-        resolve(&self.guard, self.storage_idx, self.slot)
+        unsafe { &*self.data }
     }
 }
 
-impl<T: 'static> Ref<'_, T> {
+impl<T: 'static, G> Ref<'_, T, G> {
     /// Returns the numeric entity id.
     pub fn id(&self) -> u64 {
         self.id as u64
@@ -54,37 +58,48 @@ impl<T: 'static> Ref<'_, T> {
 
 /// A write guard for a component of type `T`.
 ///
-/// Holds a write lock on the underlying store for the lifetime of the reference.
-/// Derefs to `&mut T`.
-pub struct RefMut<'a, T: 'static> {
+/// Derefs to `&mut T`. The guard type `G` defaults to an owned
+/// [`RwLockWriteGuard`], which keeps the store write-locked for the lifetime
+/// of the reference; bulk iteration instead yields references that borrow the
+/// iterator's single guard (`G = &mut StoreInner`).
+pub struct RefMut<'a, T: 'static, G = RwLockWriteGuard<'a, StoreInner>> {
     pub(crate) id: usize,
-    pub(crate) slot: usize,
-    pub(crate) storage_idx: usize,
-    pub(crate) guard: RwLockWriteGuard<'a, StoreInner>,
-    pub(crate) _phantom: PhantomData<T>,
+    pub(crate) data: *mut T,
+    pub(crate) _guard: G,
+    pub(crate) _phantom: PhantomData<(&'a (), T)>,
 }
 
-impl<T: 'static> Deref for RefMut<'_, T> {
+unsafe impl<'a, T: 'static, G> Send for RefMut<'a, T, G>
+where
+    T: Send,
+    G: Send,
+{
+}
+
+unsafe impl<'a, T: 'static, G> Sync for RefMut<'a, T, G>
+where
+    T: Sync,
+    G: Sync,
+{
+}
+
+impl<T: 'static, G: Deref<Target = StoreInner>> Deref for RefMut<'_, T, G> {
     type Target = T;
 
     #[inline]
     fn deref(&self) -> &T {
-        resolve(&self.guard, self.storage_idx, self.slot)
+        unsafe { &*self.data }
     }
 }
 
-impl<T: 'static> DerefMut for RefMut<'_, T> {
+impl<T: 'static, G: DerefMut<Target = StoreInner>> DerefMut for RefMut<'_, T, G> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
-        let storage = self.guard.storages[self.storage_idx]
-            .as_any_mut()
-            .downcast_mut::<TypedStorage<T>>()
-            .expect("storage type mismatch");
-        &mut storage.data[self.slot]
+        unsafe { &mut *self.data }
     }
 }
 
-impl<T: 'static> RefMut<'_, T> {
+impl<T: 'static, G> RefMut<'_, T, G> {
     /// Returns the numeric entity id.
     pub fn id(&self) -> u64 {
         self.id as u64
@@ -103,43 +118,54 @@ impl<T: 'static> RefMut<'_, T> {
 
 /// A contiguous read-only view of every component of type `T` in the store.
 ///
-/// Created by [`EntityStore::all`](crate::store::EntityStore::all).  Holds a
-/// shared read lock for its lifetime; yields `&T` directly with zero
-/// per-element overhead (a single pointer walk over a flat `Vec<T>`).
+/// Created by [`EntityStore::all`](crate::store::EntityStore::all). Holds a
+/// shared read lock for its lifetime; yields a [`Ref`] per component that
+/// carries the entity's identity and borrows the iterator's single guard.
 pub struct RefVec<'a, T: 'static> {
-    #[allow(dead_code)]
     guard: RwLockReadGuard<'a, StoreInner>,
-    ptr: *const T,
+    ids: *const u64,
+    data: *const T,
     remaining: usize,
+    index: usize,
     _phantom: PhantomData<T>,
 }
 
 impl<'a, T: 'static> RefVec<'a, T> {
     pub(crate) fn from_raw(
         guard: RwLockReadGuard<'a, StoreInner>,
-        ptr: *const T,
+        ids: *const u64,
+        data: *const T,
         len: usize,
     ) -> Self {
         Self {
             guard,
-            ptr,
+            ids,
+            data,
             remaining: len,
+            index: 0,
             _phantom: PhantomData,
         }
     }
 }
 
 impl<'a, T: 'static> Iterator for RefVec<'a, T> {
-    type Item = &'a T;
+    type Item = Ref<'a, T, &'a StoreInner>;
 
-    fn next(&mut self) -> Option<&'a T> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.remaining == 0 {
             return None;
         }
-        let r = unsafe { &*self.ptr };
-        self.ptr = unsafe { self.ptr.add(1) };
+        let slot = self.index;
+        let id = unsafe { *self.ids.add(slot) } as usize;
+        let store = unsafe { &*(&*self.guard as *const StoreInner) };
         self.remaining -= 1;
-        Some(r)
+        self.index += 1;
+        Some(Ref {
+            id,
+            data: unsafe { self.data.add(slot) },
+            _guard: store,
+            _phantom: PhantomData,
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -158,42 +184,54 @@ impl<'a, T: 'static> std::iter::ExactSizeIterator for RefVec<'a, T> {}
 /// A contiguous mutable view of every component of type `T` in the store.
 ///
 /// Created by [`EntityStore::all_mut`](crate::store::EntityStore::all_mut).
-/// Holds an exclusive write lock for its lifetime; yields `&mut T` directly
-/// with zero per-element overhead.
+/// Holds an exclusive write lock for its lifetime; yields a [`RefMut`] per
+/// component that carries the entity's identity and borrows the iterator's
+/// single guard.
 pub struct RefMutVec<'a, T: 'static> {
-    #[allow(dead_code)]
     guard: RwLockWriteGuard<'a, StoreInner>,
-    ptr: *mut T,
+    ids: *const u64,
+    data: *mut T,
     remaining: usize,
+    index: usize,
     _phantom: PhantomData<T>,
 }
 
 impl<'a, T: 'static> RefMutVec<'a, T> {
     pub(crate) fn from_raw(
         guard: RwLockWriteGuard<'a, StoreInner>,
-        ptr: *mut T,
+        ids: *const u64,
+        data: *mut T,
         len: usize,
     ) -> Self {
         Self {
             guard,
-            ptr,
+            ids,
+            data,
             remaining: len,
+            index: 0,
             _phantom: PhantomData,
         }
     }
 }
 
 impl<'a, T: 'static> Iterator for RefMutVec<'a, T> {
-    type Item = &'a mut T;
+    type Item = RefMut<'a, T, &'a mut StoreInner>;
 
-    fn next(&mut self) -> Option<&'a mut T> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.remaining == 0 {
             return None;
         }
-        let r = unsafe { &mut *self.ptr };
-        self.ptr = unsafe { self.ptr.add(1) };
+        let slot = self.index;
+        let id = unsafe { *self.ids.add(slot) } as usize;
+        let store = unsafe { &mut *(&mut *self.guard as *mut StoreInner) };
         self.remaining -= 1;
-        Some(r)
+        self.index += 1;
+        Some(RefMut {
+            id,
+            data: unsafe { self.data.add(slot) },
+            _guard: store,
+            _phantom: PhantomData,
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

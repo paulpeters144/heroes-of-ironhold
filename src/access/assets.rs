@@ -1,4 +1,4 @@
-use super::ids::{file, font, image, shader, sound, texture, AssetId};
+use super::ids::{AssetId, AssetKind};
 use di_container::{BuildContext, Injectable};
 use macroquad::audio::{load_sound, Sound};
 use macroquad::prelude::*;
@@ -21,6 +21,17 @@ impl Default for Assets {
     }
 }
 
+impl Drop for Assets {
+    fn drop(&mut self) {
+        self.textures.clear();
+        self.images.clear();
+        self.fonts.clear();
+        self.sounds.clear();
+        self.files.clear();
+        self.shaders.clear();
+    }
+}
+
 impl Assets {
     pub fn new() -> Self {
         Self {
@@ -33,121 +44,140 @@ impl Assets {
         }
     }
 
-    pub async fn load_all(&mut self) {
-        for (id, path) in texture::TEXTURES {
-            self.load_texture(*id, path).await;
-        }
-        for (id, path) in font::FONTS {
-            self.load_font(*id, path).await;
-        }
-        for (id, path) in sound::SOUNDS {
-            self.load_sound(*id, path).await;
-        }
-        for (id, path) in image::IMAGES {
-            self.load_image(*id, path).await;
-        }
-        for (id, path) in image::hero::scene_one::FILES {
-            self.load_image(*id, path).await;
-        }
-        for (id, path) in file::FILES {
-            self.load_file(*id, path).await;
-        }
-        for (id, path) in shader::SHADERS {
-            self.load_shader(*id, path).await;
-        }
-    }
-
-    pub async fn load_texture(&mut self, id: impl AssetId, path: &str) {
-        let key = id.id();
-        match load_texture(path).await {
-            Ok(texture) => {
-                texture.set_filter(FilterMode::Nearest);
-                self.textures.insert(key, texture);
+    pub async fn preload<T: AssetId>(&mut self, ids: &[T]) {
+        for id in ids {
+            let path = id.path();
+            match id.kind() {
+                AssetKind::Texture => {
+                    if self.textures.contains_key(&path) {
+                        continue;
+                    }
+                    match load_texture(&path).await {
+                        Ok(texture) => {
+                            texture.set_filter(FilterMode::Nearest);
+                            self.textures.insert(path, texture);
+                        }
+                        Err(err) => {
+                            warn!("failed to load texture '{}': {}", path, err);
+                        }
+                    }
+                }
+                AssetKind::Image => {
+                    if self.images.contains_key(&path) {
+                        continue;
+                    }
+                    match load_image(&path).await {
+                        Ok(image) => {
+                            self.images.insert(path, image);
+                        }
+                        Err(err) => {
+                            warn!("failed to load image '{}': {}", path, err);
+                        }
+                    }
+                }
+                AssetKind::Font => {
+                    if self.fonts.contains_key(&path) {
+                        continue;
+                    }
+                    match load_ttf_font(&path).await {
+                        Ok(mut font) => {
+                            font.set_filter(FilterMode::Nearest);
+                            self.fonts.insert(path, font);
+                        }
+                        Err(err) => {
+                            warn!("failed to load font '{}': {}", path, err);
+                        }
+                    }
+                }
+                AssetKind::Sound => {
+                    if self.sounds.contains_key(&path) {
+                        continue;
+                    }
+                    match load_sound(&path).await {
+                        Ok(sound) => {
+                            self.sounds.insert(path, sound);
+                        }
+                        Err(err) => {
+                            warn!("failed to load sound '{}': {}", path, err);
+                        }
+                    }
+                }
+                AssetKind::File => {
+                    if self.files.contains_key(&path) {
+                        continue;
+                    }
+                    match load_string(&path).await {
+                        Ok(contents) => {
+                            self.files.insert(path, contents);
+                        }
+                        Err(err) => {
+                            warn!("failed to load file '{}': {}", path, err);
+                        }
+                    }
+                }
+                AssetKind::Shader => {
+                    if self.shaders.contains_key(&path) {
+                        continue;
+                    }
+                    match load_string(&path).await {
+                        Ok(contents) => {
+                            self.shaders.insert(path, contents);
+                        }
+                        Err(err) => {
+                            warn!("failed to load shader '{}': {}", path, err);
+                        }
+                    }
+                }
             }
-            Err(err) => warn!("failed to load texture '{}' as '{}': {}", path, key, err),
         }
     }
 
-    pub async fn load_image(&mut self, id: impl AssetId, path: &str) {
-        let key = id.id();
-        match load_image(path).await {
-            Ok(image) => {
-                self.images.insert(key, image);
-            }
-            Err(err) => warn!("failed to load image '{}' as '{}': {}", path, key, err),
-        }
+    pub fn texture<T: AssetId>(&self, id: T) -> Texture2D {
+        let path = id.path();
+        self.textures
+            .get(&path)
+            .cloned()
+            .unwrap_or_else(|| panic!("texture '{}' was not preloaded", path))
     }
 
-    pub async fn load_font(&mut self, id: impl AssetId, path: &str) {
-        let key = id.id();
-        match load_ttf_font(path).await {
-            Ok(mut font) => {
-                font.set_filter(FilterMode::Nearest);
-                self.fonts.insert(key, font);
-            }
-            Err(err) => warn!("failed to load font '{}' as '{}': {}", path, key, err),
-        }
+    pub fn image<T: AssetId>(&self, id: T) -> Image {
+        let path = id.path();
+        self.images
+            .get(&path)
+            .cloned()
+            .unwrap_or_else(|| panic!("image '{}' was not preloaded", path))
     }
 
-    pub async fn load_sound(&mut self, id: impl AssetId, path: &str) {
-        let key = id.id();
-        match load_sound(path).await {
-            Ok(sound) => {
-                self.sounds.insert(key, sound);
-            }
-            Err(err) => warn!("failed to load sound '{}' as '{}': {}", path, key, err),
-        }
+    pub fn font<T: AssetId>(&self, id: T) -> Font {
+        let path = id.path();
+        self.fonts
+            .get(&path)
+            .cloned()
+            .unwrap_or_else(|| panic!("font '{}' was not preloaded", path))
     }
 
-    pub async fn load_file(&mut self, id: impl AssetId, path: &str) {
-        let key = id.id();
-        match load_string(path).await {
-            Ok(contents) => {
-                self.files.insert(key, contents);
-            }
-            Err(err) => warn!("failed to load file '{}' as '{}': {}", path, key, err),
-        }
+    pub fn sound<T: AssetId>(&self, id: T) -> Sound {
+        let path = id.path();
+        self.sounds
+            .get(&path)
+            .cloned()
+            .unwrap_or_else(|| panic!("sound '{}' was not preloaded", path))
     }
 
-    pub async fn load_shader(&mut self, id: impl AssetId, path: &str) {
-        let key = id.id();
-        match load_string(path).await {
-            Ok(contents) => {
-                self.shaders.insert(key, contents);
-            }
-            Err(err) => warn!("failed to load shader '{}' as '{}': {}", path, key, err),
-        }
+    pub fn file<T: AssetId>(&self, id: T) -> String {
+        let path = id.path();
+        self.files
+            .get(&path)
+            .cloned()
+            .unwrap_or_else(|| panic!("file '{}' was not preloaded", path))
     }
 
-    pub fn texture(&self, id: impl AssetId) -> Option<&Texture2D> {
-        self.textures.get(&id.id())
-    }
-
-    pub fn image(&self, id: impl AssetId) -> Option<&Image> {
-        self.images.get(&id.id())
-    }
-
-    pub fn texture_from_image(&self, id: impl AssetId) -> Option<Texture2D> {
-        let image = self.images.get(&id.id())?;
-        let texture = Texture2D::from_image(image);
-        texture.set_filter(FilterMode::Nearest);
-        Some(texture)
-    }
-
-    pub fn font(&self, id: impl AssetId) -> Option<&Font> {
-        self.fonts.get(&id.id())
-    }
-
-    pub fn sound(&self, id: impl AssetId) -> Option<&Sound> {
-        self.sounds.get(&id.id())
-    }
-
-    pub fn file(&self, id: impl AssetId) -> Option<&String> {
-        self.files.get(&id.id())
-    }
-
-    pub fn shader(&self, id: impl AssetId) -> Option<&String> {
-        self.shaders.get(&id.id())
+    pub fn shader<T: AssetId>(&self, id: T) -> String {
+        let path = id.path();
+        self.shaders
+            .get(&path)
+            .cloned()
+            .unwrap_or_else(|| panic!("shader '{}' was not preloaded", path))
     }
 }
 
@@ -155,10 +185,6 @@ impl Injectable for Assets {
     fn inject(
         _ctx: &BuildContext,
     ) -> Pin<Box<dyn Future<Output = di_container::Result<Self>> + '_>> {
-        Box::pin(async {
-            let mut assets = Assets::new();
-            assets.load_all().await;
-            Ok(assets)
-        })
+        Box::pin(std::future::ready(Ok(Assets::new())))
     }
 }

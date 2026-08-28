@@ -1,5 +1,5 @@
-use super::{cmd::Cmd, helpers, rect::RectBuilder, style::Style, text::wrap_text};
-use crate::{Config, Context, GameFont};
+use super::{cmd::Cmd, helpers, params::Label, rect::RectBuilder, style::Style, text::wrap_text};
+use crate::{Config, Context};
 use macroquad::prelude::*;
 
 pub struct UI {
@@ -37,22 +37,31 @@ impl UI {
         RectBuilder { ui: self }
     }
 
-    pub fn label(
-        &mut self,
-        _ctx: &Context,
-        font: GameFont,
-        text: &str,
-        x: f32,
-        y: f32,
-        max_width: f32,
-    ) {
-        let text = wrap_text(font, text, max_width);
+    pub fn label(&mut self, params: Label<'_>) -> Rect {
+        let Label {
+            font,
+            text,
+            x,
+            y,
+            max_width,
+            ..
+        } = params;
+        let text = wrap_text(&font, text, max_width);
+        let mut width = 0.0_f32;
+        let mut lines = 0u32;
+        for line in text.split('\n') {
+            let dims = measure_text(line, Some(&font.font), font.size, 1.0);
+            width = width.max(dims.width);
+            lines += 1;
+        }
+        let height = lines as f32 * font.size as f32;
         self.cmds.push(Cmd::Text { x, y, text, font });
+        Rect::new(x, y, width, height)
     }
 
     pub fn end(&self) {
         for cmd in &self.cmds {
-            match *cmd {
+            match cmd {
                 Cmd::Solid {
                     x,
                     y,
@@ -60,7 +69,7 @@ impl UI {
                     h,
                     color,
                     radius,
-                } => helpers::draw_rounded_rect(x, y, w, h, radius, color),
+                } => helpers::draw_rounded_rect(*x, *y, *w, *h, *radius, *color),
                 Cmd::Outlined {
                     x,
                     y,
@@ -71,8 +80,8 @@ impl UI {
                     thickness,
                     radius,
                 } => {
-                    helpers::draw_rounded_rect(x, y, w, h, radius, fill);
-                    helpers::draw_rounded_rect_lines(x, y, w, h, radius, thickness, border);
+                    helpers::draw_rounded_rect(*x, *y, *w, *h, *radius, *fill);
+                    helpers::draw_rounded_rect_lines(*x, *y, *w, *h, *radius, *thickness, *border);
                 }
                 Cmd::Text {
                     x,
@@ -80,15 +89,15 @@ impl UI {
                     ref text,
                     font,
                 } => {
-                    let mut line_y = y;
+                    let mut line_y = *y;
                     for line in text.split('\n') {
-                        let dims = measure_text(line, Some(font.font), font.size, 1.0);
+                        let dims = measure_text(line, Some(&font.font), font.size, 1.0);
                         draw_text_ex(
                             line,
-                            x,
+                            *x,
                             line_y + dims.offset_y,
                             TextParams {
-                                font: Some(font.font),
+                                font: Some(&font.font),
                                 font_size: font.size,
                                 font_scale: 1.0,
                                 color: font.color,

@@ -2,10 +2,18 @@ use parking_lot::RwLock;
 use std::any::TypeId;
 use std::collections::{HashMap, VecDeque};
 use std::marker::PhantomData;
+use std::ops::Deref;
 
 use crate::entity_ref::EntityRef;
 use crate::refs::{Ref, RefMut, RefMutVec, RefVec};
 use crate::storage::{Storage, TypedStorage};
+
+/// Marker trait for types that can be stored as components.
+///
+/// Blanket-implemented for every `'static` type; used to accept any component
+/// in a [`Ref`] without naming the concrete type.
+pub trait Component: 'static {}
+impl<T: 'static> Component for T {}
 
 /// Per-entity bookkeeping, kept in a single parallel array so one cache
 /// line covers everything the store needs to know about an entity.
@@ -30,7 +38,13 @@ impl Default for EntityMeta {
     }
 }
 
-pub(crate) struct StoreInner {
+/// The data guarded by the store's lock.
+///
+/// Public only so it can appear in the default guard type of
+/// [`Ref`](crate::refs::Ref) / [`RefMut`](crate::refs::RefMut); its fields are
+/// crate-private and must never be accessed directly.
+#[doc(hidden)]
+pub struct StoreInner {
     pub(crate) storages: Vec<Box<dyn Storage>>,
     pub(crate) storage_map: HashMap<TypeId, usize>,
 
@@ -226,14 +240,14 @@ impl<T: 'static + Clone + Send + Sync> IntoAdd<T> for T {
     }
 }
 
-impl<T: 'static> IntoAdd<T> for Ref<'_, T> {
+impl<T: 'static, G> IntoAdd<T> for Ref<'_, T, G> {
     #[inline]
     fn into_add_target(self) -> AddAction<T> {
         AddAction::Existing(self.id as u64)
     }
 }
 
-impl<T: 'static> IntoAdd<T> for RefMut<'_, T> {
+impl<T: 'static, G> IntoAdd<T> for RefMut<'_, T, G> {
     #[inline]
     fn into_add_target(self) -> AddAction<T> {
         AddAction::Existing(self.id as u64)
@@ -277,13 +291,13 @@ pub trait IntoChild {
     fn into_child(self) -> ChildSource;
 }
 
-impl<T: 'static> IntoChild for Ref<'_, T> {
+impl<T: 'static, G> IntoChild for Ref<'_, T, G> {
     fn into_child(self) -> ChildSource {
         ChildSource::Existing(self.entity_ref())
     }
 }
 
-impl<T: 'static> IntoChild for RefMut<'_, T> {
+impl<T: 'static, G> IntoChild for RefMut<'_, T, G> {
     fn into_child(self) -> ChildSource {
         ChildSource::Existing(self.entity_ref())
     }
@@ -519,11 +533,15 @@ impl EntityStore {
         let entity_id = guard.storages[storage_idx].first_entity_id()?;
         let id = entity_id as usize;
         let slot = guard.meta[id].slot;
+        let storage = guard.storages[storage_idx]
+            .as_any()
+            .downcast_ref::<TypedStorage<T>>()
+            .expect("storage type mismatch");
+        let data = unsafe { storage.data.as_ptr().add(slot) };
         Some(Ref {
             id,
-            slot,
-            storage_idx,
-            guard,
+            data,
+            _guard: guard,
             _phantom: PhantomData,
         })
     }
@@ -540,21 +558,26 @@ impl EntityStore {
         if !m.alive || m.type_id != TypeId::of::<T>() {
             return None;
         }
+        let storage = guard.storages[m.storage_idx]
+            .as_any()
+            .downcast_ref::<TypedStorage<T>>()
+            .expect("storage type mismatch");
+        let data = unsafe { storage.data.as_ptr().add(m.slot) };
         Some(Ref {
             id,
-            slot: m.slot,
-            storage_idx: m.storage_idx,
-            guard,
+            data,
+            _guard: guard,
             _phantom: PhantomData,
         })
     }
 
     /// Returns a view of every component of type `T` as a zero-overhead
-    /// iterator yielding `&T` directly.
+    /// iterator yielding a [`Ref`] per component.
     ///
     /// Components are stored contiguously in a flat `Vec<T>`, so iteration
     /// is a single pointer walk with no per-element allocation, reference
-    /// counting, or dynamic dispatch.
+    /// counting, or dynamic dispatch. Each yielded [`Ref`] carries the
+    /// entity's identity and can be passed to the hierarchy helpers.
     ///
     /// Holds a shared read lock for the returned iterator's lifetime.
     ///
@@ -576,51 +599,44 @@ impl EntityStore {
     /// ```
     pub fn all<T: 'static>(&self) -> RefVec<'_, T> {
         let guard = self.inner.read();
-        let (ptr, len) = match guard.storage_map.get(&TypeId::of::<T>()) {
+        let (ids, data, len) = match guard.storage_map.get(&TypeId::of::<T>()) {
             Some(&storage_idx) => {
                 let storage = guard.storages[storage_idx]
                     .as_any()
                     .downcast_ref::<TypedStorage<T>>()
                     .expect("storage type mismatch");
-                (storage.data.as_ptr(), storage.data.len())
+                (
+                    storage.entity_ids.as_ptr(),
+                    storage.data.as_ptr(),
+                    storage.entity_ids.len(),
+                )
             }
-            None => (std::ptr::null(), 0),
+            None => (std::ptr::null(), std::ptr::null(), 0),
         };
-        RefVec::from_raw(guard, ptr, len)
+        RefVec::from_raw(guard, ids, data, len)
     }
 
     /// Returns a view of every component of type `T` as a zero-overhead
-    /// iterator yielding `&mut T` directly.
+    /// iterator yielding a [`RefMut`] per component.
     ///
     /// Holds an exclusive write lock for the returned iterator's lifetime.
     pub fn all_mut<T: 'static>(&self) -> RefMutVec<'_, T> {
-        let guard = self.inner.write();
-        let (ptr, len) = match guard.storage_map.get(&TypeId::of::<T>()) {
+        let mut guard = self.inner.write();
+        let (ids, data, len) = match guard.storage_map.get(&TypeId::of::<T>()) {
             Some(&storage_idx) => {
                 let storage = guard.storages[storage_idx]
-                    .as_any()
-                    .downcast_ref::<TypedStorage<T>>()
+                    .as_any_mut()
+                    .downcast_mut::<TypedStorage<T>>()
                     .expect("storage type mismatch");
-                (storage.data.as_ptr() as *mut T, storage.data.len())
+                (
+                    storage.entity_ids.as_ptr(),
+                    storage.data.as_mut_ptr(),
+                    storage.entity_ids.len(),
+                )
             }
-            None => (std::ptr::null_mut(), 0),
+            None => (std::ptr::null(), std::ptr::null_mut(), 0),
         };
-        RefMutVec::from_raw(guard, ptr, len)
-    }
-
-    /// Returns the entity ids of every live component of type `T`.
-    pub fn ids<T: 'static>(&self) -> Vec<u64> {
-        let guard = self.inner.read();
-        match guard.storage_map.get(&TypeId::of::<T>()) {
-            Some(&storage_idx) => {
-                let storage = guard.storages[storage_idx]
-                    .as_any()
-                    .downcast_ref::<TypedStorage<T>>()
-                    .expect("storage type mismatch");
-                storage.entity_ids.clone()
-            }
-            None => Vec::new(),
-        }
+        RefMutVec::from_raw(guard, ids, data, len)
     }
 
     // ── Query (write) ─────────────────────────────────────────────────────
@@ -628,16 +644,20 @@ impl EntityStore {
     /// Returns a write guard to the first live entity of type `T`, or `None`.
     #[inline]
     pub fn first_mut<T: 'static>(&self) -> Option<RefMut<'_, T>> {
-        let guard = self.inner.write();
+        let mut guard = self.inner.write();
         let &storage_idx = guard.storage_map.get(&TypeId::of::<T>())?;
         let entity_id = guard.storages[storage_idx].first_entity_id()?;
         let id = entity_id as usize;
         let slot = guard.meta[id].slot;
+        let storage = guard.storages[storage_idx]
+            .as_any_mut()
+            .downcast_mut::<TypedStorage<T>>()
+            .expect("storage type mismatch");
+        let data = unsafe { storage.data.as_mut_ptr().add(slot) };
         Some(RefMut {
             id,
-            slot,
-            storage_idx,
-            guard,
+            data,
+            _guard: guard,
             _phantom: PhantomData,
         })
     }
@@ -645,7 +665,7 @@ impl EntityStore {
     /// Returns a write guard to the entity with the given numeric id, or `None`.
     #[inline]
     pub fn get_by_id_mut<T: 'static>(&self, entity_id: u64) -> Option<RefMut<'_, T>> {
-        let guard = self.inner.write();
+        let mut guard = self.inner.write();
         let id = entity_id as usize;
         if id >= guard.meta.len() {
             return None;
@@ -654,11 +674,15 @@ impl EntityStore {
         if !m.alive || m.type_id != TypeId::of::<T>() {
             return None;
         }
+        let storage = guard.storages[m.storage_idx]
+            .as_any_mut()
+            .downcast_mut::<TypedStorage<T>>()
+            .expect("storage type mismatch");
+        let data = unsafe { storage.data.as_mut_ptr().add(m.slot) };
         Some(RefMut {
             id,
-            slot: m.slot,
-            storage_idx: m.storage_idx,
-            guard,
+            data,
+            _guard: guard,
             _phantom: PhantomData,
         })
     }
@@ -689,7 +713,7 @@ impl EntityStore {
     // ── Hierarchy ─────────────────────────────────────────────────────────
 
     /// Returns the parent of the given entity, or `None`.
-    pub fn parent<T: 'static>(&self, entity: &Ref<T>) -> Option<EntityRef> {
+    pub fn parent<T: 'static, G>(&self, entity: &Ref<'_, T, G>) -> Option<EntityRef> {
         let guard = self.inner.read();
         let parent_id = guard.meta[entity.id].parent;
         if parent_id == u64::MAX {
@@ -706,7 +730,7 @@ impl EntityStore {
     }
 
     /// Returns the direct children of the given entity.
-    pub fn children<T: 'static>(&self, entity: &Ref<T>) -> Vec<EntityRef> {
+    pub fn children<T: 'static, G>(&self, entity: &Ref<'_, T, G>) -> Vec<EntityRef> {
         let guard = self.inner.read();
         guard.children[entity.id]
             .iter()
@@ -720,8 +744,70 @@ impl EntityStore {
             .collect()
     }
 
+    /// Returns the first direct child of `parent` whose component type is
+    /// `Child`, or `None` if no such child exists.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use pico_entity_store::prelude::*;
+    ///
+    /// #[derive(Clone)]
+    /// struct Node;
+    /// #[derive(Clone)]
+    /// struct Health(i32);
+    ///
+    /// let store = EntityStore::new();
+    /// store.add(Node, &children![Health(100)]).unwrap();
+    ///
+    /// let parent = store.first::<Node>().unwrap();
+    /// let child = store.get_child::<Health>(&parent).unwrap();
+    /// assert_eq!(child.0, 100);
+    /// ```
+    pub fn get_child<Child: 'static>(
+        &self,
+        parent: &Ref<'_, impl Component, impl Deref<Target = StoreInner>>,
+    ) -> Option<Ref<'_, Child>> {
+        self.children(parent)
+            .into_iter()
+            .find_map(|child| self.get_by_id::<Child>(child.id()))
+    }
+
+    /// Returns a mutable guard to the first direct child of `parent` whose
+    /// component type is `Child`, or `None` if no such child exists.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use pico_entity_store::prelude::*;
+    ///
+    /// #[derive(Clone)]
+    /// struct Node;
+    /// #[derive(Clone)]
+    /// struct Health(i32);
+    ///
+    /// let store = EntityStore::new();
+    /// store.add(Node, &children![Health(100)]).unwrap();
+    ///
+    /// let parent = store.first::<Node>().unwrap();
+    /// let mut child = store.get_child_mut::<Health>(parent).unwrap();
+    /// child.0 += 10;
+    /// assert_eq!(child.0, 110);
+    /// ```
+    pub fn get_child_mut<Child: 'static>(
+        &self,
+        parent: Ref<'_, impl Component, impl Deref<Target = StoreInner>>,
+    ) -> Option<RefMut<'_, Child>> {
+        let child_id = self
+            .children(&parent)
+            .into_iter()
+            .find_map(|child| self.get_by_id::<Child>(child.id()).map(|_| child.id()))?;
+        drop(parent);
+        self.get_by_id_mut::<Child>(child_id)
+    }
+
     /// Returns all descendants (breadth-first) of the given entity.
-    pub fn descendants<T: 'static>(&self, entity: &Ref<T>) -> Vec<EntityRef> {
+    pub fn descendants<T: 'static, G>(&self, entity: &Ref<'_, T, G>) -> Vec<EntityRef> {
         let guard = self.inner.read();
         let mut result = Vec::new();
         let mut queue: VecDeque<usize> = VecDeque::new();

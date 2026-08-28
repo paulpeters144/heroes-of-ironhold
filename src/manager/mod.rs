@@ -1,9 +1,8 @@
 use crate::scene::{
     ChangeSceneEvent, LoadingScene, SceneFactory, SceneFuture, SceneId, SceneState,
 };
-use crate::systems::SystemAgg;
 use crate::util::camera::GameCamera;
-use crate::{Assets, Config, Context, EStore, EventBus, SubCollection};
+use crate::{Config, Context, EventBus, SubCollection};
 use di_container::Container;
 use macroquad::prelude::*;
 use std::cell::Cell;
@@ -11,7 +10,6 @@ use std::rc::Rc;
 
 pub struct Manager {
     pub cfg: &'static Config,
-    pub assets: &'static Assets,
     pub camera: &'static GameCamera,
     scene_state: SceneState,
     pending_scene: Rc<Cell<Option<SceneId>>>,
@@ -32,20 +30,15 @@ impl Manager {
         });
 
         let cfg = container.get::<Config>().unwrap();
-        let bus = container.get::<EventBus>().unwrap();
-        let assets = container.get::<Assets>().unwrap();
-        let estore = container.get::<EStore>().unwrap();
-        let system_agg = container.get::<SystemAgg>().unwrap();
 
-        let scene_factory = SceneFactory::new(bus, cfg, assets, estore, system_agg);
-        bus.fire(&ChangeSceneEvent(SceneId::Opening));
+        let scene_factory = SceneFactory::new(cfg, container);
+        bus.fire(&ChangeSceneEvent(SceneId::AssetPreview));
 
         Manager {
             cfg,
-            assets,
             camera,
             scene_state: SceneState::Idle {
-                scene: Box::new(LoadingScene::new(cfg, assets)),
+                scene: Box::new(LoadingScene::new(cfg)),
             },
             pending_scene: pending,
             scene_factory,
@@ -60,7 +53,7 @@ impl Manager {
         if let Some(id) = self.pending_scene.take() {
             let factory = self.scene_factory;
             let loader = SceneFuture::new(Box::pin(async move {
-                let mut scene = factory.create(id);
+                let mut scene = factory.create(id).await;
                 scene.load().await;
                 scene
             }));
@@ -68,7 +61,7 @@ impl Manager {
             if let SceneState::Idle { scene } = &mut self.scene_state {
                 scene.dispose();
                 self.scene_state = SceneState::Transition {
-                    scene: Box::new(LoadingScene::new(self.cfg, self.assets)),
+                    scene: Box::new(LoadingScene::new(self.cfg)),
                     next_scene_loader: loader,
                     elapsed: 0.0,
                     min_wait: 0.3,
@@ -140,14 +133,19 @@ impl Manager {
             (screen_height() - self.cfg.v_height * scale) * 0.5,
         );
 
-        let mut cam =
-            Camera2D::from_display_rect(Rect::new(0.0, 0.0, self.cfg.v_width, self.cfg.v_height));
-        cam.viewport = Some((
-            offset.x as i32,
-            offset.y as i32,
-            (self.cfg.v_width * scale) as i32,
-            (self.cfg.v_height * scale) as i32,
-        ));
+        let cam = Camera2D {
+            target: vec2(self.cfg.v_width * 0.5, self.cfg.v_height * 0.5),
+            zoom: vec2(2.0 / self.cfg.v_width, 2.0 / self.cfg.v_height),
+            offset: vec2(0.0, 0.0),
+            rotation: 0.0,
+            render_target: None,
+            viewport: Some((
+                offset.x as i32,
+                offset.y as i32,
+                (self.cfg.v_width * scale) as i32,
+                (self.cfg.v_height * scale) as i32,
+            )),
+        };
         set_camera(&cam);
 
         match &self.scene_state {

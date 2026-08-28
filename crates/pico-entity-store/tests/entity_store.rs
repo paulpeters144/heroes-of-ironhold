@@ -109,15 +109,18 @@ fn each_mut_callback_mutates_all_entities() {
             &[],
         )
         .unwrap();
-    store.all_mut().for_each(|a: &mut Axe| {
+    store.all_mut::<Axe>().for_each(|mut a| {
         a.durability -= 1;
         a.damage += 5;
     });
-    let axes: Vec<_> = store.all::<Axe>().collect();
-    assert_eq!(axes[0].damage, 15);
-    assert_eq!(axes[0].durability, 49);
-    assert_eq!(axes[1].damage, 25);
-    assert_eq!(axes[1].durability, 59);
+    let axes: Vec<(u32, u32)> = store
+        .all::<Axe>()
+        .map(|a| (a.damage, a.durability))
+        .collect();
+    assert_eq!(axes[0].0, 15);
+    assert_eq!(axes[0].1, 49);
+    assert_eq!(axes[1].0, 25);
+    assert_eq!(axes[1].1, 59);
 }
 
 #[test]

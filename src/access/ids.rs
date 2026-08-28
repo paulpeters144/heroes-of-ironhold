@@ -1,179 +1,222 @@
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AssetKind {
+    Texture,
+    Image,
+    Font,
+    Sound,
+    File,
+    Shader,
+}
+
 pub trait AssetId: Copy {
-    fn id(&self) -> String;
+    fn path(&self) -> String;
+    fn kind(&self) -> AssetKind;
 }
 
 pub mod texture {
-    use crate::access::ids::AssetId;
+    use crate::access::ids::{AssetId, AssetKind};
 
     #[derive(Clone, Copy, Debug)]
-    pub enum Id {}
+    pub enum Texture {}
 
-    impl AssetId for Id {
-        fn id(&self) -> String {
+    impl AssetId for Texture {
+        fn path(&self) -> String {
+            match *self {}
+        }
+
+        fn kind(&self) -> AssetKind {
             match *self {}
         }
     }
-
-    pub const TEXTURES: &[(Id, &str)] = &[];
 }
 
 pub mod font {
-    use crate::access::ids::AssetId;
+    use crate::access::ids::{AssetId, AssetKind};
 
     #[derive(Clone, Copy, Debug)]
-    pub enum Id {
+    pub enum Font {
         Pixellari,
         Tiny04b03,
     }
 
-    impl AssetId for Id {
-        fn id(&self) -> String {
+    impl AssetId for Font {
+        fn path(&self) -> String {
             match self {
-                Self::Pixellari => "pixellari".to_string(),
-                Self::Tiny04b03 => "04b_03".to_string(),
+                Self::Pixellari => "fonts/Pixellari.ttf".to_string(),
+                Self::Tiny04b03 => "fonts/04b_03.ttf".to_string(),
             }
         }
-    }
 
-    pub const FONTS: &[(Id, &str)] = &[
-        (Id::Pixellari, "fonts/Pixellari.ttf"),
-        (Id::Tiny04b03, "fonts/04b_03.ttf"),
-    ];
+        fn kind(&self) -> AssetKind {
+            AssetKind::Font
+        }
+    }
 }
 
 pub mod sound {
-    use crate::access::ids::AssetId;
+    use crate::access::ids::{AssetId, AssetKind};
 
     #[derive(Clone, Copy, Debug)]
-    pub enum Id {
-        Blaster,
-        Jump,
-    }
+    pub enum Sound {}
 
-    impl AssetId for Id {
-        fn id(&self) -> String {
-            match self {
-                Self::Blaster => "blaster".to_string(),
-                Self::Jump => "jump".to_string(),
-            }
+    impl AssetId for Sound {
+        fn path(&self) -> String {
+            match *self {}
+        }
+
+        fn kind(&self) -> AssetKind {
+            match *self {}
         }
     }
-
-    pub const SOUNDS: &[(Id, &str)] = &[
-        (Id::Blaster, "audio/blaster.wav"),
-        (Id::Jump, "audio/jump.wav"),
-    ];
 }
 
 pub mod file {
-    use crate::access::ids::AssetId;
+    use crate::access::ids::{AssetId, AssetKind};
 
     #[derive(Clone, Copy, Debug)]
-    pub enum Id {
-        Scene1Tmx,
-        TileSetTsx,
-    }
+    pub enum File {}
 
-    impl AssetId for Id {
-        fn id(&self) -> String {
-            match self {
-                Self::Scene1Tmx => "scene_1_tmx".to_string(),
-                Self::TileSetTsx => "tile_set_tsx".to_string(),
-            }
+    impl AssetId for File {
+        fn path(&self) -> String {
+            match *self {}
+        }
+
+        fn kind(&self) -> AssetKind {
+            match *self {}
         }
     }
-
-    pub const FILES: &[(Id, &str)] = &[
-        (Id::Scene1Tmx, "tiled/scene-1.tmx"),
-        (Id::TileSetTsx, "tiled/tile-set.tsx"),
-    ];
 }
 
 pub mod shader {
-    use crate::access::ids::AssetId;
+    use crate::access::ids::{AssetId, AssetKind};
 
     #[derive(Clone, Copy, Debug)]
-    pub enum Id {
+    pub enum Shader {
         PixelSnapVert,
         PixelSnapFrag,
         JitterFreeVert,
         JitterFreeFrag,
     }
 
-    impl AssetId for Id {
-        fn id(&self) -> String {
+    impl AssetId for Shader {
+        fn path(&self) -> String {
             match self {
-                Self::PixelSnapVert => "pixel_snap_vert".to_string(),
-                Self::PixelSnapFrag => "pixel_snap_frag".to_string(),
-                Self::JitterFreeVert => "jitter_free_vert".to_string(),
-                Self::JitterFreeFrag => "jitter_free_frag".to_string(),
+                Self::PixelSnapVert => "shaders/pixel_snap.vert".to_string(),
+                Self::PixelSnapFrag => "shaders/pixel_snap.frag".to_string(),
+                Self::JitterFreeVert => "shaders/jitter_free.vert".to_string(),
+                Self::JitterFreeFrag => "shaders/jitter_free.frag".to_string(),
             }
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Shader
+        }
+    }
+}
+
+pub mod images {
+    use crate::access::ids::{AssetId, AssetKind};
+
+    #[derive(Clone, Copy, Debug)]
+    pub enum Knight {
+        Knight1,
+        Knight2,
+        Knight3,
+        Shield1,
+        Shield2,
+        Shield3,
+        Sword1,
+        Sword2,
+        Sword3,
+        ThrustGraphic,
+        SwipeGraphic,
+    }
+
+    impl AssetId for Knight {
+        fn path(&self) -> String {
+            match self {
+                Self::Knight1 => "images/knight/anim-knight-1.png".to_string(),
+                Self::Knight2 => "images/knight/anim-knight-2.png".to_string(),
+                Self::Knight3 => "images/knight/anim-knight-3.png".to_string(),
+                Self::Shield1 => "images/knight/anim-knight-shield-1.png".to_string(),
+                Self::Shield2 => "images/knight/anim-knight-shield-2.png".to_string(),
+                Self::Shield3 => "images/knight/anim-knight-shield-3.png".to_string(),
+                Self::Sword1 => "images/knight/anim-knight-sword-1.png".to_string(),
+                Self::Sword2 => "images/knight/anim-knight-sword-2.png".to_string(),
+                Self::Sword3 => "images/knight/anim-knight-sword-3.png".to_string(),
+                Self::ThrustGraphic => "images/knight/static-knight-thrust-graphic.png".to_string(),
+                Self::SwipeGraphic => "images/knight/static-knight-swipe-graphic.png".to_string(),
+            }
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
         }
     }
 
-    pub const SHADERS: &[(Id, &str)] = &[
-        (Id::PixelSnapVert, "shaders/pixel_snap.vert"),
-        (Id::PixelSnapFrag, "shaders/pixel_snap.frag"),
-        (Id::JitterFreeVert, "shaders/jitter_free.vert"),
-        (Id::JitterFreeFrag, "shaders/jitter_free.frag"),
-    ];
-}
-
-pub mod image {
-    use crate::access::ids::AssetId;
-
     #[derive(Clone, Copy, Debug)]
-    pub enum Id {
-        TileSet,
-        MbRun,
-        MbIdle,
-        MbJump,
-        MbHurt,
+    pub enum Enemy {
         E3,
     }
 
-    impl AssetId for Id {
-        fn id(&self) -> String {
+    impl AssetId for Enemy {
+        fn path(&self) -> String {
             match self {
-                Self::TileSet => "tile-set.png".to_string(),
-                Self::MbRun => "anim-mb-run.png".to_string(),
-                Self::MbIdle => "anim-mb-idle.png".to_string(),
-                Self::MbJump => "anim-mb-jump.png".to_string(),
-                Self::MbHurt => "anim-mb-hurt.png".to_string(),
-                Self::E3 => "e-3.png".to_string(),
+                Self::E3 => "images/enemy/e-3.png".to_string(),
             }
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
         }
     }
 
-    pub const IMAGES: &[(Id, &str)] = &[
-        (Id::TileSet, "images/tile-set.png"),
-        (Id::MbRun, "images/megabot/anim-mb-run.png"),
-        (Id::MbIdle, "images/megabot/anim-mb-idle.png"),
-        (Id::MbJump, "images/megabot/anim-mb-jump.png"),
-        (Id::MbHurt, "images/megabot/anim-mb-hurt.png"),
-        (Id::E3, "images/enemy/e-3.png"),
-    ];
+    #[derive(Clone, Copy, Debug)]
+    pub enum Megabot {
+        Idle,
+        Run,
+        Jump,
+        Hurt,
+    }
 
-    pub mod hero {
-        pub mod scene_one {
-            use crate::access::ids::AssetId;
-
-            #[derive(Clone, Copy, Debug)]
-            pub enum Id {
-                WalkAnim,
-                IdleAnim,
+    impl AssetId for Megabot {
+        fn path(&self) -> String {
+            match self {
+                Self::Idle => "images/megabot/anim-mb-idle.png".to_string(),
+                Self::Run => "images/megabot/anim-mb-run.png".to_string(),
+                Self::Jump => "images/megabot/anim-mb-jump.png".to_string(),
+                Self::Hurt => "images/megabot/anim-mb-hurt.png".to_string(),
             }
+        }
 
-            impl AssetId for Id {
-                fn id(&self) -> String {
-                    match self {
-                        Self::WalkAnim => "hero.scene_one.walk_anim".to_string(),
-                        Self::IdleAnim => "hero.scene_one.idle_anim".to_string(),
-                    }
-                }
-            }
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
+        }
+    }
 
-            pub const FILES: &[(Id, &str)] = &[];
+    #[derive(Clone, Copy, Debug)]
+    pub struct Pointer;
+
+    impl AssetId for Pointer {
+        fn path(&self) -> String {
+            "images/pointer.png".to_string()
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    pub struct TileSet;
+
+    impl AssetId for TileSet {
+        fn path(&self) -> String {
+            "images/tile-set.png".to_string()
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
         }
     }
 }
