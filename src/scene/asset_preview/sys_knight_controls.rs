@@ -1,53 +1,9 @@
-use crate::entity::knight::{Knight, IDLE_FRAME, SWIPE_FRAME, THRUST_FRAME, WALK_FRAMES};
+use crate::entity::knight::{AttackKind, AttackPhase, Knight, IDLE_FRAME, WALK_FRAMES};
+use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, WALK_FRAME_DURATION};
 use crate::input::{self, Input};
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
 use pico_entity_store::entity_ref::EntityRef;
-
-const MOVE_SPEED: f32 = 150.0;
-const MOVE_SPEED_VERTICAL: f32 = MOVE_SPEED * 0.75;
-const WALK_FRAME_DURATION: f32 = 0.14;
-
-#[derive(Clone, Copy, PartialEq)]
-enum AttackKind {
-    Thrust,
-    Swipe,
-}
-
-impl AttackKind {
-    fn frame(self) -> usize {
-        match self {
-            AttackKind::Thrust => THRUST_FRAME,
-            AttackKind::Swipe => SWIPE_FRAME,
-        }
-    }
-
-    fn windup(self) -> f32 {
-        match self {
-            AttackKind::Thrust => 0.01,
-            AttackKind::Swipe => 0.01,
-        }
-    }
-
-    fn strike(self) -> f32 {
-        match self {
-            AttackKind::Thrust => 0.2,
-            AttackKind::Swipe => 0.2,
-        }
-    }
-
-    fn recovery(self) -> f32 {
-        0.1
-    }
-}
-
-#[derive(Clone, Copy, PartialEq)]
-enum AttackPhase {
-    Idle,
-    Windup,
-    Strike,
-    Recovery,
-}
 
 pub struct KnightControlSystem {
     store: &'static EStore,
