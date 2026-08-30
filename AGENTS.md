@@ -40,6 +40,7 @@ python3 clients/web/serve.py              # serve on port 3001
 - [Drawing Graphics in macroquad](docs/macroquad-graphics.md) - shapes, outlines, and alpha
 - [Writing Shaders in macroquad](docs/macroquad-shaders.md) - shaders and materials
 - [macroquad Camera2D Zoom](docs/camera-scaling.md)
+- [Camera](docs/camera.md) - how the game camera pipeline and `cam_zoom`/`cam_target` work
 - [tiled crate](crates/tiled/README.md) - TMX map parser and renderer
 
 ## Rules

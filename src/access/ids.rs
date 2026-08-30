@@ -8,7 +8,7 @@ pub enum AssetKind {
     Shader,
 }
 
-pub trait AssetId: Copy {
+pub trait AssetId {
     fn path(&self) -> String;
     fn kind(&self) -> AssetKind;
 }
@@ -74,15 +74,23 @@ pub mod file {
     use crate::access::ids::{AssetId, AssetKind};
 
     #[derive(Clone, Copy, Debug)]
-    pub enum File {}
+    pub enum File {
+        TestTmx,
+        HoiBgTsx,
+        HoiCharsTsx,
+    }
 
     impl AssetId for File {
         fn path(&self) -> String {
-            match *self {}
+            match self {
+                Self::TestTmx => "tiled/test-scene/test.tmx".to_string(),
+                Self::HoiBgTsx => "tiled/test-scene/hoi-bg-pixelated.tsx".to_string(),
+                Self::HoiCharsTsx => "tiled/test-scene/hoi-chars.tsx".to_string(),
+            }
         }
 
         fn kind(&self) -> AssetKind {
-            match *self {}
+            AssetKind::File
         }
     }
 }
@@ -217,6 +225,25 @@ pub mod images {
 
         fn kind(&self) -> AssetKind {
             AssetKind::Texture
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    pub enum TilesetImage {
+        HoiBg,
+        HoiChars,
+    }
+
+    impl AssetId for TilesetImage {
+        fn path(&self) -> String {
+            match self {
+                Self::HoiBg => "tiled/test-scene/hoi-bg-pixelated.png".to_string(),
+                Self::HoiChars => "tiled/test-scene/hoi-chars.png".to_string(),
+            }
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Image
         }
     }
 }

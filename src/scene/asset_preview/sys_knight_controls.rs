@@ -1,12 +1,13 @@
-use crate::entity::knight::{AttackKind, AttackPhase, Knight, IDLE_FRAME, WALK_FRAMES};
+use crate::entity::knight::{AttackKind, AttackPhase, Facing, Knight, IDLE_FRAME, WALK_FRAMES};
 use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, WALK_FRAME_DURATION};
 use crate::input::{self, Input};
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
 use pico_entity_store::entity_ref::EntityRef;
+use std::rc::Rc;
 
 pub struct KnightControlSystem {
-    store: &'static EStore,
+    store: Rc<EStore>,
     walk_elapsed: f32,
     walk_step: usize,
     phase: AttackPhase,
@@ -16,7 +17,7 @@ pub struct KnightControlSystem {
 }
 
 impl KnightControlSystem {
-    pub fn new(store: &'static EStore) -> Self {
+    pub fn new(store: Rc<EStore>) -> Self {
         Self {
             store,
             walk_elapsed: 0.0,
@@ -72,6 +73,14 @@ impl Update for KnightControlSystem {
         } else {
             0.0
         };
+
+        if dir != 0.0 {
+            let facing = if dir < 0.0 { Facing::Left } else { Facing::Right };
+            let facing_ref = self.store.first::<Facing>().map(|f| f.entity_ref());
+            if let Some(f) = facing_ref {
+                self.store.update::<Facing, _>(&f, |f| *f = facing);
+            }
+        }
 
         let up = input::down(Input::Up);
         let down = input::down(Input::Down);
@@ -134,12 +143,7 @@ impl Update for KnightControlSystem {
                     self.walk_elapsed += ctx.dt;
                     if self.walk_elapsed >= WALK_FRAME_DURATION {
                         self.walk_elapsed = 0.0;
-                        if dir < 0.0 {
-                            self.walk_step =
-                                (self.walk_step + WALK_FRAMES.len() - 1) % WALK_FRAMES.len();
-                        } else {
-                            self.walk_step = (self.walk_step + 1) % WALK_FRAMES.len();
-                        }
+                        self.walk_step = (self.walk_step + 1) % WALK_FRAMES.len();
                     }
                     WALK_FRAMES[self.walk_step]
                 } else {
@@ -150,8 +154,8 @@ impl Update for KnightControlSystem {
         };
 
         self.store.update::<Animation, _>(&anim_ref, |animation| {
-            animation.position.x = new_pos_x;
-            animation.position.y = new_pos_y;
+            animation.position.x = new_pos_x.round();
+            animation.position.y = new_pos_y.round();
             animation.current_frame = new_frame;
         });
     }

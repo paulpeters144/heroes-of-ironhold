@@ -1,4 +1,5 @@
 mod access;
+mod di;
 pub mod entity;
 pub mod input;
 pub mod manager;
@@ -6,6 +7,7 @@ pub mod scene;
 pub mod systems;
 pub mod ui;
 pub mod util;
+pub use di::DiContainer;
 pub use event_bus::SubCollection;
 pub use util::config::Config;
 pub use util::estore::EStore;
@@ -14,15 +16,11 @@ pub use util::event_bus::EventBus;
 pub use access::assets::Assets;
 pub use access::font::{FontTag, GameFont, TextStyle};
 pub use access::ids::{file, font, images, shader, sound, texture};
-use di_container::ContainerBuilder;
 pub use entity::animation::Animation;
 pub use entity::factory_hero::{HeroFactory, KnightCfg, KnightParts};
-pub use entity::knight::{
-    Effect, EffectKind, FrameOffsets, Knight, Shield, Sword,
-};
+pub use entity::knight::{Effect, EffectKind, FrameOffsets, Knight, Shield, Sword};
 pub use entity::static_image::StaticImage;
 use manager::Manager;
-use systems::SystemAgg;
 pub use util::camera::GameCamera;
 
 pub fn window_conf() -> macroquad::prelude::Conf {
@@ -32,7 +30,7 @@ pub fn window_conf() -> macroquad::prelude::Conf {
 pub struct Context {
     pub dt: f32,
     pub cam_zoom: f32,
-    pub cam_pan: macroquad::prelude::Vec2,
+    pub cam_target: macroquad::prelude::Vec2,
 }
 
 pub struct Game {
@@ -42,28 +40,17 @@ pub struct Game {
 
 pub async fn init() -> Game {
     use macroquad::prelude::*;
-    use util::camera::GameRenderTarget;
 
     set_pc_assets_folder("assets");
 
-    let container = ContainerBuilder::new()
-        .singleton::<Config, Config>()
-        .singleton::<EventBus, EventBus>()
-        .transient::<Assets, Assets>()
-        .singleton::<EStore, EStore>()
-        .singleton::<SystemAgg, SystemAgg>()
-        .singleton::<GameRenderTarget, GameRenderTarget>()
-        .singleton::<GameCamera, GameCamera>()
-        .build_and_leak()
-        .await
-        .unwrap();
+    let di = std::rc::Rc::new(DiContainer::new());
 
     Game {
-        mgr: Manager::new(container),
+        mgr: Manager::new(di),
         ctx: Context {
             dt: 0.0,
             cam_zoom: 1.0,
-            cam_pan: macroquad::prelude::Vec2::ZERO,
+            cam_target: macroquad::prelude::Vec2::ZERO,
         },
     }
 }

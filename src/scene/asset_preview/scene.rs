@@ -5,7 +5,9 @@ use super::sys_offsets::OffsetUpdateSystem;
 use crate::entity::factory_hero::{
     HeroFactory, KnightCfg, FRAME_SIZE, SHIELD_SIZE, SWORD_FRAME_SIZE,
 };
-use crate::entity::knight::{Knight, Shield, Sword, IDLE_FRAME};
+use crate::entity::knight::{
+    Effect, EffectKind, Knight, Shield, Sword, IDLE_FRAME, SLASH_LIFETIME, THRUST_LIFETIME,
+};
 use crate::input::{self, Input};
 use crate::scene::Scene;
 use crate::systems::{DrawSystem, SystemAgg, Update};
@@ -15,6 +17,7 @@ use macroquad::prelude::*;
 use pico_entity_store::store::IntoChild;
 use std::future::Future;
 use std::pin::Pin;
+use std::rc::Rc;
 
 const BOX_COUNT: usize = 3;
 const OUTFITS: [images::Knight; 3] = [
@@ -40,11 +43,9 @@ enum FocusMode {
 }
 
 pub struct AssetPreviewScene {
-    cfg: &'static Config,
+    cfg: Rc<Config>,
     assets: Assets,
-    store: &'static EStore,
-    thrust_graphic: Texture2D,
-    swipe_graphic: Texture2D,
+    store: Rc<EStore>,
     outfit_texture: Texture2D,
     shield_texture: Texture2D,
     sword_texture: Texture2D,
@@ -58,19 +59,19 @@ pub struct AssetPreviewScene {
 }
 
 impl AssetPreviewScene {
-    pub fn new(cfg: &'static Config, assets: Assets, store: &'static EStore) -> Self {
+    pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>) -> Self {
         let agg = SystemAgg::new();
-        agg.add_update(AnimationUpdateSystem::new(store));
-        agg.add_update(OffsetUpdateSystem::new(store));
-        agg.add_update(AttackEffectSystem::new(store));
-        agg.add_draw(DrawSystem::new(store));
+        agg.add_update(AnimationUpdateSystem::new(store.clone()));
+        agg.add_update(OffsetUpdateSystem::new(store.clone()));
+        agg.add_update(AttackEffectSystem::new(store.clone()));
+        agg.add_draw(DrawSystem::new(store.clone()));
+
+        let knight_control = KnightControlSystem::new(store.clone());
 
         Self {
             cfg,
             assets,
             store,
-            thrust_graphic: Texture2D::empty(),
-            swipe_graphic: Texture2D::empty(),
             outfit_texture: Texture2D::empty(),
             shield_texture: Texture2D::empty(),
             sword_texture: Texture2D::empty(),
@@ -79,7 +80,7 @@ impl AssetPreviewScene {
             sword_variant: 0,
             focus: 0,
             focus_mode: FocusMode::Boxes,
-            knight_control: KnightControlSystem::new(store),
+            knight_control,
             agg,
         }
     }
@@ -103,15 +104,66 @@ impl AssetPreviewScene {
     fn spawn_knight(&self, cfg: KnightCfg) {
         let parts = HeroFactory::new(&self.assets).create_knight(cfg);
 
-        self.store.add(parts.shield, &[parts.shield_image.into_child()]);
-        self.store.add(parts.sword, &[parts.sword_animation.into_child()]);
+        self.store
+            .add(parts.shield, &[parts.shield_image.into_child()]);
+        self.store
+            .add(parts.sword, &[parts.sword_animation.into_child()]);
 
         let shield = self.store.first::<Shield>().expect("shield");
         let sword = self.store.first::<Sword>().expect("sword");
         self.store.add(
             Knight,
-            &[parts.body.into_child(), shield.into_child(), sword.into_child()],
+            &[
+                parts.body.into_child(),
+                shield.into_child(),
+                sword.into_child(),
+                parts.facing.into_child(),
+            ],
         );
+
+        self.spawn_effects();
+    }
+
+    fn spawn_effects(&self) {
+        let thrust_tex = self.assets.texture(images::Knight::ThrustGraphic);
+        let swipe_tex = self.assets.texture(images::Knight::SwipeGraphic);
+
+        let (thrust_offset, slash_offset) = {
+            let Some(sword) = self.store.first::<Sword>() else {
+                return;
+            };
+            let Some(sword_anim) = self.store.get_child::<Animation>(&sword) else {
+                return;
+            };
+            let rect = sword_anim.rect();
+            let x = rect.right() - sword_anim.position.x;
+            (
+                vec2(x, (rect.h - thrust_tex.height()) * 0.5),
+                vec2(x + 15.0, (rect.h - swipe_tex.height()) * 0.5),
+            )
+        };
+
+        let thrust = Effect {
+            kind: EffectKind::Thrust,
+            texture: thrust_tex,
+            offset: thrust_offset,
+            age: 0.0,
+            lifetime: THRUST_LIFETIME,
+            visible: false,
+        };
+        let slash = Effect {
+            kind: EffectKind::Slash,
+            texture: swipe_tex,
+            offset: slash_offset,
+            age: 0.0,
+            lifetime: SLASH_LIFETIME,
+            visible: false,
+        };
+
+        if let Some(sword) = self.store.first::<Sword>() {
+            self.store
+                .add(sword, &[thrust.into_child(), slash.into_child()]);
+        }
     }
 
     fn rebuild_knight(&self) {
@@ -175,31 +227,25 @@ impl Scene for AssetPreviewScene {
         Box::pin(async move {
             self.assets
                 .preload(&[
-                    images::Knight::Knight1,
-                    images::Knight::Knight2,
-                    images::Knight::Knight3,
-                    images::Knight::Shield1,
-                    images::Knight::Shield2,
-                    images::Knight::Shield3,
-                    images::Knight::Sword1,
-                    images::Knight::Sword2,
-                    images::Knight::Sword3,
-                    images::Knight::ThrustGraphic,
-                    images::Knight::SwipeGraphic,
+                    &images::Knight::Knight1,
+                    &images::Knight::Knight2,
+                    &images::Knight::Knight3,
+                    &images::Knight::Shield1,
+                    &images::Knight::Shield2,
+                    &images::Knight::Shield3,
+                    &images::Knight::Sword1,
+                    &images::Knight::Sword2,
+                    &images::Knight::Sword3,
+                    &images::Knight::ThrustGraphic,
+                    &images::Knight::SwipeGraphic,
                 ])
                 .await;
 
-            self.thrust_graphic = self.assets.texture(images::Knight::ThrustGraphic);
-            self.swipe_graphic = self.assets.texture(images::Knight::SwipeGraphic);
             self.outfit_texture = self.assets.texture(OUTFITS[0]);
             self.shield_texture = self.assets.texture(SHIELDS[0]);
             self.sword_texture = self.assets.texture(SWORDS[0]);
 
-            self.agg.add_draw(AttackEffectDrawSystem::new(
-                self.store,
-                self.thrust_graphic.clone(),
-                self.swipe_graphic.clone(),
-            ));
+            self.agg.add_draw(AttackEffectDrawSystem::new(self.store.clone()));
 
             self.spawn_knight(KnightCfg {
                 outfit: OUTFITS[0],
@@ -224,7 +270,7 @@ impl Scene for AssetPreviewScene {
 
     fn update(&mut self, ctx: &mut Context) {
         ctx.cam_zoom = 1.0;
-        ctx.cam_pan = Vec2::ZERO;
+        ctx.cam_target = vec2(self.cfg.v_width * 0.5, self.cfg.v_height * 0.5);
 
         if input::down_once(Input::Jump) {
             match self.focus_mode {
@@ -294,7 +340,7 @@ impl Scene for AssetPreviewScene {
     }
 
     fn draw_ui(&self, ctx: &Context) {
-        let mut ui = UI::new(self.cfg, Style::default());
+        let mut ui = UI::new(&self.cfg, Style::default());
         ui.begin(ctx);
 
         let w = 75.0;

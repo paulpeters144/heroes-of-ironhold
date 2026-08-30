@@ -1,6 +1,7 @@
 use crate::systems::Draw;
 use crate::{Animation, Context, EStore, StaticImage};
 use macroquad::prelude::*;
+use std::rc::Rc;
 
 enum DrawKind {
     Animation(Animation),
@@ -13,11 +14,11 @@ struct DrawCmd {
 }
 
 pub struct DrawSystem {
-    store: &'static EStore,
+    store: Rc<EStore>,
 }
 
 impl DrawSystem {
-    pub fn new(store: &'static EStore) -> Self {
+    pub fn new(store: Rc<EStore>) -> Self {
         Self { store }
     }
 
@@ -32,12 +33,12 @@ impl DrawSystem {
             vec2(animation.frame_width, animation.frame_height)
         } else {
             animation.dest_size
-        };
+        } * animation.scale;
 
         draw_texture_ex(
             &animation.source,
-            animation.position.x,
-            animation.position.y,
+            animation.position.x.round(),
+            animation.position.y.round(),
             animation.tint,
             DrawTextureParams {
                 dest_size: Some(dest_size),
@@ -51,11 +52,11 @@ impl DrawSystem {
     fn draw_static(image: &StaticImage) {
         draw_texture_ex(
             &image.source,
-            image.position.x,
-            image.position.y,
+            image.position.x.round(),
+            image.position.y.round(),
             image.tint,
             DrawTextureParams {
-                dest_size: Some(image.size),
+                dest_size: Some(image.size * image.scale),
                 flip_x: image.flip_x,
                 ..Default::default()
             },

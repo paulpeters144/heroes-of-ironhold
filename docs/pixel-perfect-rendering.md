@@ -26,16 +26,17 @@ The game never draws the scene directly to the screen. Instead it:
 
 1. Renders the scene into an offscreen render target at an **integer scale**.
 2. Blits that target to the screen with **nearest-neighbor filtering**.
-3. Applies zoom/pan as a **sub-rectangle sample** of the target, not by moving
-   the camera.
+3. Follows the scene by re-centering the scene `Camera2D` on a world-space
+   target and blitting a **fixed central sub-rectangle** of the target (rather
+   than panning the sample rect).
 
 ### 1. Integer (2x) overscan render target
 
 `src/util/config.rs` defines a logical view and an overscan factor:
 
 ```rust
-v_width: 320.0,
-v_height: 180.0,
+v_width: 576.0,   // 640.0 * 0.9
+v_height: 324.0,  // 360.0 * 0.9
 rt_overscan: 2.0,
 ```
 
@@ -43,7 +44,7 @@ The render target is `rt_overscan` times the logical view
 (`src/util/camera.rs`):
 
 ```rust
-let target = render_target(w, h); // 640 x 360
+let target = render_target(w, h); // 1152 x 648
 target.texture.set_filter(FilterMode::Nearest);
 ```
 
@@ -52,8 +53,8 @@ target texel. A fractional world position like `(100.5, 50.5)` lands on whole
 pixel `(201, 101)`. Sprites are therefore never rasterized at a sub-pixel
 boundary, which removes the source of jitter entirely.
 
-The camera's `display_rect` is centered so the logical 320x180 view sits in the
-middle of the 640x360 buffer:
+The camera's `display_rect` is centered so the logical 576x324 view sits in the
+middle of the 1152x648 buffer:
 
 ```rust
 let display_rect = Rect::new(
@@ -71,27 +72,25 @@ The render target texture is created with `FilterMode::Nearest`
 happens between texels, so edges stay hard and crisp even when the final screen
 scale is not an integer.
 
-### 3. Zoom and pan as a sub-rect blit
+### 3. Camera follow via a fixed central blit
 
-The scene camera itself never moves. `cam_zoom` and `cam_pan` are just numbers
-on `Context`, mutated by input (`src/scene/opening/scene.rs`):
+The scene `Camera2D` is re-centered on a world-space target each frame, and the
+blit always samples the central sub-rectangle of the buffer. The scene sets
+`Context.cam_target` to the point to follow (`src/scene/battle_test/sys_camera.rs`):
 
 ```rust
-ctx.cam_zoom *= 1.0 + ZOOM_SPEED * dt; // Q / E keys
-ctx.cam_pan.x += step;                  // arrow keys
+ctx.cam_target.x = clamp_axis(body.x.round(), map_w, view_w); // follow the knight
 ```
 
-They are only consumed in `Manager::blit_target` (`src/manager/mod.rs`), which
-computes a `source` rectangle into the already-rendered 2x buffer and draws it
-with `draw_texture_ex`:
+`Manager::begin_scene_pass` builds the camera centered on `cam_target`
+(`src/manager/mod.rs`), and `blit_target` blits the fixed central rect:
 
 ```rust
-let view = vec2(self.cfg.v_width / ctx.cam_zoom, self.cfg.v_height / ctx.cam_zoom);
 let src = Rect::new(
-    self.cfg.rt_width() * 0.5 + ctx.cam_pan.x - view.x * 0.5,
-    self.cfg.rt_height() * 0.5 + ctx.cam_pan.y - view.y * 0.5,
-    view.x,
-    view.y,
+    (self.cfg.rt_width() - self.cfg.v_width) * 0.5,
+    (self.cfg.rt_height() - self.cfg.v_height) * 0.5,
+    self.cfg.v_width,
+    self.cfg.v_height,
 );
 
 draw_texture_ex(&self.camera.render_target.texture, offset.x, offset.y, WHITE,
@@ -103,23 +102,18 @@ draw_texture_ex(&self.camera.render_target.texture, offset.x, offset.y, WHITE,
     });
 ```
 
-Since the pan samples a Nearest-filtered texture, it effectively snaps to whole
-texels (half-world-pixel steps at 2x), giving stable, jitter-free motion.
+Because the camera target (and sprite positions) are rounded to whole pixels, and
+the blit rect is fixed, sprites are rasterized at whole render-target texels,
+giving stable, jitter-free motion.
 
 ## The Role of the Overscan Margin
 
-The buffer is larger than the visible view (640x360 vs 320x180), leaving extra
-rendered pixels around the edge. That margin is what lets the `source` rect roam
-during pan and zoom without running off the rendered image.
-
-The min zoom is clamped so the view never grows past that margin
-(`src/scene/opening/scene.rs`):
-
-```rust
-ctx.cam_zoom = ctx.cam_zoom.clamp(1.0 / self.cfg.rt_overscan, 8.0);
-```
-
-`cam_pan` is likewise clamped so the source rect stays inside the buffer.
+The buffer is larger than the visible view (1152x648 vs 576x324), leaving extra
+rendered pixels around the edge. Because the camera is centered on the target, the
+buffer always captures `±576 x ±324` around it — far more than the visible view —
+so the fixed central `source` rect never runs off the rendered image. The only
+clamp needed is the map-edge clamp in `CameraSystem`, which keeps the view inside
+the map.
 
 ## Why the Shaders Were Redundant
 
@@ -140,7 +134,7 @@ are commented out) with no visual difference.
 
 - `src/util/config.rs` — `rt_overscan`, `rt_width`/`rt_height`
 - `src/util/camera.rs` — render target creation, `FilterMode::Nearest`,
-  centered `display_rect`
-- `src/manager/mod.rs` — `blit_target` sub-rect blit
-- `src/scene/opening/scene.rs` — `cam_zoom`/`cam_pan` input and clamping
-- `src/lib.rs` — `Context { cam_zoom, cam_pan }`
+  centered `display_rect`, `camera_at(target)`
+- `src/manager/mod.rs` — `begin_scene_pass` (moves the camera), `blit_target` (fixed central blit)
+- `src/scene/battle_test/sys_camera.rs` — `cam_target` follow + map-edge clamp
+- `src/lib.rs` — `Context { cam_zoom, cam_target }`

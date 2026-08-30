@@ -1,4 +1,4 @@
-use crate::entity::knight::{Shield, Sword};
+use crate::entity::knight::{Facing, Shield, Sword};
 use crate::{images, Animation, Assets, StaticImage};
 use macroquad::prelude::{Color, Vec2};
 
@@ -21,6 +21,7 @@ pub struct KnightParts {
     pub shield_image: StaticImage,
     pub sword: Sword,
     pub sword_animation: Animation,
+    pub facing: Facing,
 }
 
 pub struct HeroFactory<'a> {
@@ -44,6 +45,7 @@ impl<'a> HeroFactory<'a> {
             tint: Color::new(1.0, 1.0, 1.0, 1.0),
             flip_x: false,
             dest_size: Vec2::new(FRAME_SIZE, FRAME_SIZE),
+            scale: 1.0,
             visible: true,
             z_idx: 0,
         };
@@ -52,6 +54,7 @@ impl<'a> HeroFactory<'a> {
             source: self.assets.texture(cfg.shield),
             position: Vec2::ZERO,
             size: Vec2::new(SHIELD_SIZE, SHIELD_SIZE),
+            scale: 1.0,
             tint: Color::new(1.0, 1.0, 1.0, 1.0),
             flip_x: false,
             visible: true,
@@ -69,6 +72,7 @@ impl<'a> HeroFactory<'a> {
             tint: Color::new(1.0, 1.0, 1.0, 1.0),
             flip_x: false,
             dest_size: Vec2::new(SWORD_FRAME_SIZE, SWORD_FRAME_SIZE),
+            scale: 1.0,
             visible: true,
             z_idx: 2,
         };
@@ -79,6 +83,7 @@ impl<'a> HeroFactory<'a> {
             shield_image,
             sword: Sword,
             sword_animation,
+            facing: Facing::Right,
         }
     }
 }

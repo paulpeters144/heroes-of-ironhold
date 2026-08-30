@@ -1,10 +1,7 @@
 use super::ids::{AssetId, AssetKind};
-use di_container::{BuildContext, Injectable};
 use macroquad::audio::{load_sound, Sound};
 use macroquad::prelude::*;
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 
 pub struct Assets {
     pub textures: HashMap<String, Texture2D>,
@@ -44,7 +41,7 @@ impl Assets {
         }
     }
 
-    pub async fn preload<T: AssetId>(&mut self, ids: &[T]) {
+    pub async fn preload(&mut self, ids: &[&dyn AssetId]) {
         for id in ids {
             let path = id.path();
             match id.kind() {
@@ -178,13 +175,5 @@ impl Assets {
             .get(&path)
             .cloned()
             .unwrap_or_else(|| panic!("shader '{}' was not preloaded", path))
-    }
-}
-
-impl Injectable for Assets {
-    fn inject(
-        _ctx: &BuildContext,
-    ) -> Pin<Box<dyn Future<Output = di_container::Result<Self>> + '_>> {
-        Box::pin(std::future::ready(Ok(Assets::new())))
     }
 }

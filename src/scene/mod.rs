@@ -1,8 +1,10 @@
 mod asset_preview;
+mod battle_test;
 mod factory;
 mod traits;
 
 pub use asset_preview::AssetPreviewScene;
+pub use battle_test::BattleTestScene;
 pub use factory::{SceneFactory, SceneId};
 pub use traits::Scene;
 
@@ -11,16 +13,17 @@ use macroquad::prelude::*;
 use std::future::Future;
 use std::pin::Pin;
 use std::ptr;
+use std::rc::Rc;
 use std::task::{Context as TaskContext, Poll, RawWaker, RawWakerVTable, Waker};
 
 pub struct ChangeSceneEvent(pub SceneId);
 
 pub struct LoadingScene {
-    cfg: &'static Config,
+    cfg: Rc<Config>,
 }
 
 impl LoadingScene {
-    pub fn new(cfg: &'static Config) -> Self {
+    pub fn new(cfg: Rc<Config>) -> Self {
         Self { cfg }
     }
 }

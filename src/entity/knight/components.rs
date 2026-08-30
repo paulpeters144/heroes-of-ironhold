@@ -1,3 +1,9 @@
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Facing {
+    Left,
+    Right,
+}
+
 #[derive(Clone, Debug)]
 pub struct Knight;
 

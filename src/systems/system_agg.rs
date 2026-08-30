@@ -1,9 +1,6 @@
 use crate::Context;
-use di_container::{BuildContext, Injectable};
 use std::any::{Any, TypeId};
 use std::cell::RefCell;
-use std::future::Future;
-use std::pin::Pin;
 
 pub trait Update: Any + 'static {
     fn update(&mut self, ctx: &mut Context);
@@ -85,13 +82,5 @@ impl SystemAgg {
 impl Default for SystemAgg {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Injectable for SystemAgg {
-    fn inject(
-        _ctx: &BuildContext,
-    ) -> Pin<Box<dyn Future<Output = di_container::Result<Self>> + '_>> {
-        Box::pin(std::future::ready(Ok(SystemAgg::new())))
     }
 }

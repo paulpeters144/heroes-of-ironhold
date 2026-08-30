@@ -1,19 +1,20 @@
+use crate::entity::factory_hero::SWORD_FRAME_SIZE;
 use crate::entity::knight::{
-    Effect, EffectKind, Knight, Sword, GLOW_IN_FRACTION, HOLD_START, SLASH_LIFETIME,
-    SLASH_OFFSET_X, SLASH_OFFSET_Y, SWIPE_FRAME, THRUST_FRAME, THRUST_LIFETIME, THRUST_OFFSET_X,
+    Effect, EffectKind, Facing, Knight, Sword, GLOW_IN_FRACTION, HOLD_START, SWIPE_FRAME,
+    THRUST_FRAME,
 };
 use crate::systems::{Draw, Update};
 use crate::{Animation, Context, EStore};
 use macroquad::prelude::*;
-use pico_entity_store::entity_ref::EntityRef;
+use std::rc::Rc;
 
 pub struct AttackEffectSystem {
-    store: &'static EStore,
+    store: Rc<EStore>,
     prev_frame: Option<usize>,
 }
 
 impl AttackEffectSystem {
-    pub fn new(store: &'static EStore) -> Self {
+    pub fn new(store: Rc<EStore>) -> Self {
         Self {
             store,
             prev_frame: None,
@@ -28,36 +29,6 @@ impl AttackEffectSystem {
         }
         None
     }
-
-    fn locate_sword(&self) -> Option<(Vec2, Vec2)> {
-        for sword in self.store.all::<Sword>() {
-            if let Some(animation) = self.store.get_child::<Animation>(&sword) {
-                let size = if animation.dest_size == Vec2::ZERO {
-                    vec2(animation.frame_width, animation.frame_height)
-                } else {
-                    animation.dest_size
-                };
-                return Some((animation.position, size));
-            }
-        }
-        None
-    }
-
-    fn sword_tip(position: Vec2, size: Vec2) -> Vec2 {
-        position + vec2(size.x, size.y * 0.5)
-    }
-
-    fn spawn(&self, kind: EffectKind, origin: Vec2, lifetime: f32) {
-        self.store.add(
-            Effect {
-                kind,
-                age: 0.0,
-                lifetime,
-                origin,
-            },
-            &[],
-        );
-    }
 }
 
 impl Update for AttackEffectSystem {
@@ -66,54 +37,45 @@ impl Update for AttackEffectSystem {
             return;
         };
 
-        if self.prev_frame != Some(frame) {
+        let triggered = if self.prev_frame == Some(frame) {
+            None
+        } else {
             self.prev_frame = Some(frame);
             match frame {
-                THRUST_FRAME | SWIPE_FRAME => {
-                    if let Some((position, size)) = self.locate_sword() {
-                        let tip = Self::sword_tip(position, size);
-                        let (kind, lifetime) = match frame {
-                            THRUST_FRAME => (EffectKind::Thrust, THRUST_LIFETIME),
-                            SWIPE_FRAME => (EffectKind::Slash, SLASH_LIFETIME),
-                            _ => unreachable!(),
-                        };
-                        self.spawn(kind, tip, lifetime);
-                    }
-                }
-                _ => {}
+                THRUST_FRAME => Some(EffectKind::Thrust),
+                SWIPE_FRAME => Some(EffectKind::Slash),
+                _ => None,
             }
-        }
+        };
 
-        let mut expired: Vec<EntityRef> = Vec::new();
         for mut effect in self.store.all_mut::<Effect>() {
-            effect.age += ctx.dt;
-            if effect.age >= effect.lifetime {
-                expired.push(effect.entity_ref());
+            if triggered == Some(effect.kind) {
+                effect.visible = true;
+                effect.age = 0.0;
             }
-        }
-        if !expired.is_empty() {
-            self.store.remove(&expired);
+            if effect.visible {
+                effect.age += ctx.dt;
+                if effect.age >= effect.lifetime {
+                    effect.visible = false;
+                }
+            }
         }
     }
 }
 
 pub struct AttackEffectDrawSystem {
-    store: &'static EStore,
-    thrust_texture: Texture2D,
-    swipe_texture: Texture2D,
+    store: Rc<EStore>,
 }
 
 impl AttackEffectDrawSystem {
-    pub fn new(
-        store: &'static EStore,
-        thrust_texture: Texture2D,
-        swipe_texture: Texture2D,
-    ) -> Self {
-        Self {
-            store,
-            thrust_texture,
-            swipe_texture,
-        }
+    pub fn new(store: Rc<EStore>) -> Self {
+        Self { store }
+    }
+
+    fn sword_position(&self) -> Option<Vec2> {
+        let sword = self.store.first::<Sword>()?;
+        let animation = self.store.get_child::<Animation>(&sword)?;
+        Some(animation.position)
     }
 }
 
@@ -124,7 +86,7 @@ fn glow_envelope(t: f32) -> f32 {
     fade_in * fade_out
 }
 
-fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32) {
+fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32, flip_x: bool) {
     let w = texture.width();
     let h = texture.height();
     draw_texture_ex(
@@ -134,6 +96,7 @@ fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32) {
         WHITE.with_alpha(alpha),
         DrawTextureParams {
             dest_size: Some(vec2(w, h)),
+            flip_x,
             ..Default::default()
         },
     );
@@ -141,22 +104,29 @@ fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32) {
 
 impl Draw for AttackEffectDrawSystem {
     fn draw(&self, _ctx: &Context) {
+        let Some(sword_pos) = self.sword_position() else {
+            return;
+        };
+
+        let mirror = self
+            .store
+            .first::<Facing>()
+            .is_some_and(|f| *f == Facing::Left);
+
         for effect in self.store.all::<Effect>() {
+            if !effect.visible {
+                continue;
+            }
             let t = (effect.age / effect.lifetime).clamp(0.0, 1.0);
             let alpha = glow_envelope(t);
-
-            match effect.kind {
-                EffectKind::Thrust => {
-                    let x = effect.origin.x + THRUST_OFFSET_X;
-                    let y = effect.origin.y - self.thrust_texture.height() * 0.5;
-                    draw_texture(&self.thrust_texture, x, y, alpha);
-                }
-                EffectKind::Slash => {
-                    let x = effect.origin.x + SLASH_OFFSET_X - self.swipe_texture.width() * 0.5;
-                    let y = effect.origin.y + SLASH_OFFSET_Y - self.swipe_texture.height() * 0.5;
-                    draw_texture(&self.swipe_texture, x, y, alpha);
-                }
-            }
+            let (x, flip_x) = if mirror {
+                let w = effect.texture.width();
+                (sword_pos.x + SWORD_FRAME_SIZE - effect.offset.x - w, true)
+            } else {
+                (sword_pos.x + effect.offset.x, false)
+            };
+            let y = sword_pos.y + effect.offset.y;
+            draw_texture(&effect.texture, x, y, alpha, flip_x);
         }
     }
 }

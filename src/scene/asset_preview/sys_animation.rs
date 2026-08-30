@@ -1,15 +1,16 @@
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
+use std::rc::Rc;
 
 const FRAME_DURATION: f32 = 0.12;
 
 pub struct AnimationUpdateSystem {
-    store: &'static EStore,
+    store: Rc<EStore>,
     elapsed: f32,
 }
 
 impl AnimationUpdateSystem {
-    pub fn new(store: &'static EStore) -> Self {
+    pub fn new(store: Rc<EStore>) -> Self {
         Self {
             store,
             elapsed: 0.0,

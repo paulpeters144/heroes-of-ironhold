@@ -1,8 +1,5 @@
-use di_container::{BuildContext, Injectable};
 use pico_entity_store::store::{ChildSource, EntityStore as PicoEntityStore, IntoAdd};
-use std::future::Future;
 use std::ops::Deref;
-use std::pin::Pin;
 
 pub struct EStore(PicoEntityStore);
 
@@ -31,13 +28,5 @@ impl EStore {
 impl Default for EStore {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Injectable for EStore {
-    fn inject(
-        _ctx: &BuildContext,
-    ) -> Pin<Box<dyn Future<Output = di_container::Result<Self>> + '_>> {
-        Box::pin(std::future::ready(Ok(EStore(PicoEntityStore::new()))))
     }
 }

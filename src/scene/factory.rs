@@ -1,37 +1,30 @@
-use super::{AssetPreviewScene, Scene};
-use crate::{Assets, Config, EStore};
-use di_container::Container;
+use super::{AssetPreviewScene, BattleTestScene, Scene};
+use crate::DiContainer;
+use std::rc::Rc;
 
 #[derive(Clone, Copy)]
 pub enum SceneId {
     AssetPreview,
+    BattleTest,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct SceneFactory {
-    cfg: &'static Config,
-    container: &'static Container,
+    di: Rc<DiContainer>,
 }
 
 impl SceneFactory {
-    pub fn new(cfg: &'static Config, container: &'static Container) -> Self {
-        Self { cfg, container }
+    pub fn new(di: Rc<DiContainer>) -> Self {
+        Self { di }
     }
 
-    pub async fn create(&self, id: SceneId) -> Box<dyn Scene> {
+    pub fn create(&self, id: SceneId) -> Box<dyn Scene> {
+        let cfg = self.di.config();
+        let assets = self.di.assets();
+        let store = self.di.estore();
         match id {
-            SceneId::AssetPreview => {
-                let assets = self
-                    .container
-                    .resolve_transient::<Assets>()
-                    .await
-                    .expect("failed to resolve Assets");
-                let store = self
-                    .container
-                    .get::<EStore>()
-                    .expect("failed to resolve EStore");
-                Box::new(AssetPreviewScene::new(self.cfg, assets, store))
-            }
+            SceneId::AssetPreview => Box::new(AssetPreviewScene::new(cfg, assets, store)),
+            SceneId::BattleTest => Box::new(BattleTestScene::new(cfg, assets, store)),
         }
     }
 }

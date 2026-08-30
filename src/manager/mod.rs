@@ -2,15 +2,14 @@ use crate::scene::{
     ChangeSceneEvent, LoadingScene, SceneFactory, SceneFuture, SceneId, SceneState,
 };
 use crate::util::camera::GameCamera;
-use crate::{Config, Context, EventBus, SubCollection};
-use di_container::Container;
+use crate::{Config, Context, DiContainer, SubCollection};
 use macroquad::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
 
 pub struct Manager {
-    pub cfg: &'static Config,
-    pub camera: &'static GameCamera,
+    pub cfg: Rc<Config>,
+    pub camera: Rc<GameCamera>,
     scene_state: SceneState,
     pending_scene: Rc<Cell<Option<SceneId>>>,
     scene_factory: SceneFactory,
@@ -18,27 +17,28 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(container: &'static Container) -> Self {
-        let bus = container.get::<EventBus>().unwrap();
-        let camera = container.get::<GameCamera>().unwrap();
+    pub fn new(di: Rc<DiContainer>) -> Self {
+        let bus = di.event_bus();
+        let camera = di.camera();
+        let cfg = di.config();
 
         let pending: Rc<Cell<Option<SceneId>>> = Rc::new(Cell::new(None));
         let pending_for_handler = pending.clone();
         let subs = SubCollection::new();
-        subs.on::<ChangeSceneEvent>(bus, move |event: &ChangeSceneEvent| {
+        subs.on::<ChangeSceneEvent>(&bus, move |event: &ChangeSceneEvent| {
             pending_for_handler.set(Some(event.0));
         });
 
-        let cfg = container.get::<Config>().unwrap();
+        let scene_factory = SceneFactory::new(di);
+        bus.fire(&ChangeSceneEvent(SceneId::BattleTest));
 
-        let scene_factory = SceneFactory::new(cfg, container);
-        bus.fire(&ChangeSceneEvent(SceneId::AssetPreview));
+        let loading_scene = Box::new(LoadingScene::new(cfg.clone()));
 
         Manager {
             cfg,
             camera,
             scene_state: SceneState::Idle {
-                scene: Box::new(LoadingScene::new(cfg)),
+                scene: loading_scene,
             },
             pending_scene: pending,
             scene_factory,
@@ -51,9 +51,9 @@ impl Manager {
         }
 
         if let Some(id) = self.pending_scene.take() {
-            let factory = self.scene_factory;
+            let factory = self.scene_factory.clone();
             let loader = SceneFuture::new(Box::pin(async move {
-                let mut scene = factory.create(id).await;
+                let mut scene = factory.create(id);
                 scene.load().await;
                 scene
             }));
@@ -61,7 +61,7 @@ impl Manager {
             if let SceneState::Idle { scene } = &mut self.scene_state {
                 scene.dispose();
                 self.scene_state = SceneState::Transition {
-                    scene: Box::new(LoadingScene::new(self.cfg)),
+                    scene: Box::new(LoadingScene::new(self.cfg.clone())),
                     next_scene_loader: loader,
                     elapsed: 0.0,
                     min_wait: 0.3,
@@ -95,16 +95,17 @@ impl Manager {
     }
 
     pub fn draw(&self, ctx: &Context) {
-        self.begin_scene_pass();
+        self.begin_scene_pass(ctx);
         self.draw_scene(ctx);
         self.begin_screen_pass();
 
-        self.blit_target(ctx);
+        self.blit_target();
         self.draw_ui(ctx);
     }
 
-    fn begin_scene_pass(&self) {
-        set_camera(&self.camera.camera);
+    fn begin_scene_pass(&self, ctx: &Context) {
+        let camera = self.camera.camera_at(ctx.cam_target);
+        set_camera(&camera);
         clear_background(BLACK);
     }
 
@@ -156,7 +157,7 @@ impl Manager {
         set_default_camera();
     }
 
-    fn blit_target(&self, ctx: &Context) {
+    fn blit_target(&self) {
         let scale = f32::min(
             screen_width() / self.cfg.v_width,
             screen_height() / self.cfg.v_height,
@@ -166,15 +167,11 @@ impl Manager {
             (screen_width() - self.cfg.v_width * scale) * 0.5,
             (screen_height() - self.cfg.v_height * scale) * 0.5,
         );
-        let view = vec2(
-            self.cfg.v_width / ctx.cam_zoom,
-            self.cfg.v_height / ctx.cam_zoom,
-        );
         let src = Rect::new(
-            self.cfg.rt_width() * 0.5 + ctx.cam_pan.x - view.x * 0.5,
-            self.cfg.rt_height() * 0.5 - ctx.cam_pan.y - view.y * 0.5,
-            view.x,
-            view.y,
+            (self.cfg.rt_width() - self.cfg.v_width) * 0.5,
+            (self.cfg.rt_height() - self.cfg.v_height) * 0.5,
+            self.cfg.v_width,
+            self.cfg.v_height,
         );
 
         let dest_size = Some(vec2(self.cfg.v_width * scale, self.cfg.v_height * scale));
