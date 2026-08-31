@@ -46,7 +46,7 @@ pub async fn init() -> Game {
     let di = std::rc::Rc::new(DiContainer::new());
 
     Game {
-        mgr: Manager::new(di),
+        mgr: Manager::new(di).await,
         ctx: Context {
             dt: 0.0,
             cam_zoom: 1.0,

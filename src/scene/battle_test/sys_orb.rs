@@ -20,7 +20,7 @@ impl Orb {
     pub fn new() -> Self {
         Self {
             pos: Vec2::ZERO,
-            size: 4.0,
+            size: 6.0,
         }
     }
 }

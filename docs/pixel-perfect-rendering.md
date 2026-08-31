@@ -1,140 +1,130 @@
-# Pixel-Perfect Rendering Without Shaders
+# Pixel-Perfect Rendering
 
-This document explains how the game achieves jitter-free, pixel-perfect pixel-art
-rendering using render targets and nearest-neighbor filtering, without needing
-custom shaders.
+This document explains how the game renders pixel-art crisply at any window
+size, using two custom shaders: `pixel_snap.vert` (geometry snapping) and
+`jitter_free.frag` (texel-correct sampling).
 
-## The Problem: Pixel-Art Jitter
+## The Problem
 
-Classic pixel-art jitter shows up when a camera moves or zooms by fractional
-amounts. A sprite at world position `(100.5, 50.5)` maps to a fractional pixel on
-screen, so:
+Pixel art breaks in two ways when a camera moves by fractional amounts or the
+final image is scaled by a non-integer factor:
 
-- With linear filtering, the GPU blends neighboring texels, making edges fuzzy
-  and "swimming" as the camera moves.
-- With nearest filtering, the sprite snaps to whole texels, but at non-integer
-  screen positions it steps unevenly, producing shimmer.
+- **Geometry jitter.** A sprite whose vertices land on fractional pixels is
+  rasterized unevenly, so it "shimmers" or "swims" as the camera pans.
+- **Texture moiré.** When a low-res image is upscaled by a non-integer factor
+  with nearest-neighbor sampling, each source texel maps to a different number
+  of screen pixels (e.g. 2 then 3), producing crawling "lines of waves" that
+  shift as the content scrolls.
 
-The usual fixes are shaders that snap geometry to whole pixels
-(`pixel_snap.vert`) or do texel-correct sampling (`jitter_free.frag`). This
-project originally used both, but they turned out to be redundant: the render
-pipeline already prevents fractional-pixel rasterization in the first place.
+The project fixes both with a two-stage pipeline plus one shader per stage.
 
 ## The Pipeline
 
-The game never draws the scene directly to the screen. Instead it:
+The scene is never drawn directly to the screen. `Manager::draw`
+(`src/manager/mod.rs`) runs four passes:
 
-1. Renders the scene into an offscreen render target at an **integer scale**.
-2. Blits that target to the screen with **nearest-neighbor filtering**.
-3. Follows the scene by re-centering the scene `Camera2D` on a world-space
-   target and blitting a **fixed central sub-rectangle** of the target (rather
-   than panning the sample rect).
+1. `begin_scene_pass(ctx)` — sets the scene `Camera2D` centered on
+   `ctx.cam_target` and clears the render target.
+2. `draw_scene(ctx)` — draws the scene with the **pixel-snap** material applied
+   (geometry snapped to whole render-target texels).
+3. `begin_screen_pass()` — switches to the default screen camera and clears.
+4. `blit_target()` — draws the render target to the screen with the
+   **jitter-free** material applied (texel-correct sampling), then `draw_ui(ctx)`.
 
-### 1. Integer (2x) overscan render target
+### Stage 1: 2x overscan render target + `pixel_snap.vert`
 
-`src/util/config.rs` defines a logical view and an overscan factor:
-
-```rust
-v_width: 576.0,   // 640.0 * 0.9
-v_height: 324.0,  // 360.0 * 0.9
-rt_overscan: 2.0,
-```
-
-The render target is `rt_overscan` times the logical view
-(`src/util/camera.rs`):
+`src/util/config.rs` defines a 640x360 logical view with a 2x overscan factor:
 
 ```rust
-let target = render_target(w, h); // 1152 x 648
-target.texture.set_filter(FilterMode::Nearest);
+v_width: 640.0,
+v_height: 360.0,
+rt_overscan: 2.0,   // rt_width()/rt_height() = 1280 x 720
 ```
 
-Because the scale factor is exactly 2, any world coordinate maps to an integer
-target texel. A fractional world position like `(100.5, 50.5)` lands on whole
-pixel `(201, 101)`. Sprites are therefore never rasterized at a sub-pixel
-boundary, which removes the source of jitter entirely.
+The render target is 1280x720 (`src/util/camera.rs`) with
+`FilterMode::Nearest`. `GameCamera::camera_at(target)` uses
+`Camera2D::from_display_rect`, so 1 world unit maps to exactly 1 render-target
+texel.
 
-The camera's `display_rect` is centered so the logical 576x324 view sits in the
-middle of the 1152x648 buffer:
+During the scene pass, `draw_scene` applies `pixel_snap.vert`
+(`assets/shaders/pixel_snap.vert`). This vertex shader converts each vertex to
+its render-target pixel coordinate, rounds it to the nearest whole pixel
+(`floor(b + 0.5)`), and converts back:
+
+```glsl
+vec4 pos = Projection * Model * vec4(position, 1);
+vec2 ndc = pos.xy / pos.w;
+vec2 b   = ndc * half_vp + half_vp;   // pixel coords
+b        = floor(b + 0.5);            // snap to whole texel
+...
+```
+
+The `viewport` uniform is set to the render-target size (1280x720). Because
+every vertex is snapped to a whole texel, sprites are never rasterized at
+sub-texel boundaries — no geometry jitter. The scene camera is therefore free
+to move in sub-pixel increments; no CPU-side `.round()` calls are needed.
+
+The material is loaded in `Manager::new` (failure-tolerant) and is gated by the
+`Config.pixel_snap` flag (default `true`). It uses macroquad's default alpha
+blending so translucent sprites composite correctly.
+
+### Stage 2: fill-the-window blit + `jitter_free.frag`
+
+`blit_target` draws the central 640x360 sub-rectangle of the render target to
+the screen, scaled to fill the window while preserving aspect ratio. The scale
+and centering offset come from a single shared helper,
+`view_scale::view_scale()` (`src/util/view_scale.rs`):
 
 ```rust
-let display_rect = Rect::new(
-    -(rt_w - config.v_width) * 0.5,
-    -(rt_h - config.v_height) * 0.5,
-    rt_w,
-    rt_h,
-);
+let scale = f32::min(screen_width() / v_width, screen_height() / v_height);
+let offset = ((screen - v * scale) * 0.5);
 ```
 
-### 2. Nearest-neighbor filtering
+This scale is only an integer by accident. At non-integer scales, plain
+nearest-neighbor sampling would produce the crawling moiré described above.
+`blit_target` therefore applies `jitter_free.frag`
+(`assets/shaders/jitter_free.frag`), a texel-correct "sharp-bilinear" sampler:
 
-The render target texture is created with `FilterMode::Nearest`
-(`src/util/camera.rs`). When the target is later sampled, no linear blending
-happens between texels, so edges stay hard and crisp even when the final screen
-scale is not an integer.
-
-### 3. Camera follow via a fixed central blit
-
-The scene `Camera2D` is re-centered on a world-space target each frame, and the
-blit always samples the central sub-rectangle of the buffer. The scene sets
-`Context.cam_target` to the point to follow (`src/scene/battle_test/sys_camera.rs`):
-
-```rust
-ctx.cam_target.x = clamp_axis(body.x.round(), map_w, view_w); // follow the knight
+```glsl
+vec2 texel = 1.0 / texture_size;
+vec2 p     = uv * texture_size;      // position in texel space
+vec2 ddxy  = max(fwidth(p), 1e-6);   // texels per screen pixel
+vec2 k     = 1.0 / ddxy;             // screen pixels per texel
+// ... blend the 4 surrounding texels with a sub-pixel-wide ramp
 ```
 
-`Manager::begin_scene_pass` builds the camera centered on `cam_target`
-(`src/manager/mod.rs`), and `blit_target` blits the fixed central rect:
+For each screen pixel it computes its footprint in render-target texel space
+(via `fwidth`) and blends only across the sub-pixel boundary band. At integer
+scales the ramp is a hard edge (crisp); at fractional scales it produces a
+single-screen-pixel anti-aliased transition instead of moiré. This lets the
+image fill the window at *any* size — growing and shrinking with the window —
+without the "lines of waves".
 
-```rust
-let src = Rect::new(
-    (self.cfg.rt_width() - self.cfg.v_width) * 0.5,
-    (self.cfg.rt_height() - self.cfg.v_height) * 0.5,
-    self.cfg.v_width,
-    self.cfg.v_height,
-);
+The `texture_size` uniform is set to the full render-target size (1280x720),
+because `draw_texture_ex`'s `source` rect produces UVs in full-texture space.
+The render target keeps `FilterMode::Nearest`; the shader does its own point
+fetches at texel centers, so no linear filtering is involved. The material is
+loaded in `Manager::new` (failure-tolerant): if the shader sources are missing
+or fail to compile, the blit falls back to plain nearest sampling.
 
-draw_texture_ex(&self.camera.render_target.texture, offset.x, offset.y, WHITE,
-    DrawTextureParams {
-        dest_size: Some(vec2(self.cfg.v_width * scale, self.cfg.v_height * scale)),
-        source: Some(src),
-        flip_y: true,
-        ..Default::default()
-    });
-```
+The UI pass shares the same `view_scale` result: `draw_ui` builds its camera
+viewport from it, and `UI::begin` (`src/ui/core.rs`) maps the mouse position
+with the same scale/offset so hit-testing stays aligned.
 
-Because the camera target (and sprite positions) are rounded to whole pixels, and
-the blit rect is fixed, sprites are rasterized at whole render-target texels,
-giving stable, jitter-free motion.
+## Why the two shaders are complementary
 
-## The Role of the Overscan Margin
-
-The buffer is larger than the visible view (1152x648 vs 576x324), leaving extra
-rendered pixels around the edge. Because the camera is centered on the target, the
-buffer always captures `±576 x ±324` around it — far more than the visible view —
-so the fixed central `source` rect never runs off the rendered image. The only
-clamp needed is the map-edge clamp in `CameraSystem`, which keeps the view inside
-the map.
-
-## Why the Shaders Were Redundant
-
-Two shaders were originally applied on top of this pipeline:
-
-- `pixel_snap.vert` snaps quad vertices to whole screen pixels (fixes geometry
-  jitter when sprites land on fractional pixels).
-- `jitter_free.frag` does analytic texel-correct bilinear sampling (fixes
-  texture sampling jitter).
-
-Both solve the *direct-camera* case, where sprites land on fractional pixels.
-The render-target pipeline prevents fractional-pixel rasterization in the first
-place, so the shaders have nothing left to correct. They can be omitted
-entirely (the `gl_use_material` calls in `Manager::draw_scene` / `blit_target`
-are commented out) with no visual difference.
+`pixel_snap.vert` guarantees the render-target content is texel-aligned; that is
+the precondition `jitter_free.frag` needs to sample it correctly. Neither alone
+suffices: geometry snapping without texel-correct blitting still moirés at
+non-integer window scales, and texel-correct sampling without aligned content
+just anti-aliases sub-pixel geometry into softness.
 
 ## Key Code Locations
 
-- `src/util/config.rs` — `rt_overscan`, `rt_width`/`rt_height`
-- `src/util/camera.rs` — render target creation, `FilterMode::Nearest`,
-  centered `display_rect`, `camera_at(target)`
-- `src/manager/mod.rs` — `begin_scene_pass` (moves the camera), `blit_target` (fixed central blit)
-- `src/scene/battle_test/sys_camera.rs` — `cam_target` follow + map-edge clamp
-- `src/lib.rs` — `Context { cam_zoom, cam_target }`
+- `src/util/config.rs` — `v_width`, `v_height`, `rt_overscan`, `rt_width()/rt_height()`, `pixel_snap` flag.
+- `src/util/camera.rs` — render target creation (`FilterMode::Nearest`), `GameCamera::camera_at`.
+- `src/util/view_scale.rs` — shared fill-the-window scale/offset helper.
+- `src/manager/mod.rs` — `draw_scene` (pixel-snap material), `blit_target` (jitter-free material), `draw_ui`, `load_shader_material`.
+- `assets/shaders/pixel_snap.vert` — vertex snapping (geometry jitter).
+- `assets/shaders/jitter_free.frag` — texel-correct sampling (texture moiré).
+- `src/ui/core.rs` — `UI::begin` mouse mapping (same `view_scale`).

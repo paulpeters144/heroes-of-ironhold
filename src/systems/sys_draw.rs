@@ -37,8 +37,8 @@ impl DrawSystem {
 
         draw_texture_ex(
             &animation.source,
-            animation.position.x.round(),
-            animation.position.y.round(),
+            animation.position.x,
+            animation.position.y,
             animation.tint,
             DrawTextureParams {
                 dest_size: Some(dest_size),
@@ -52,8 +52,8 @@ impl DrawSystem {
     fn draw_static(image: &StaticImage) {
         draw_texture_ex(
             &image.source,
-            image.position.x.round(),
-            image.position.y.round(),
+            image.position.x,
+            image.position.y,
             image.tint,
             DrawTextureParams {
                 dest_size: Some(image.size * image.scale),

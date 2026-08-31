@@ -1,4 +1,5 @@
 use super::{cmd::Cmd, helpers, params::Label, rect::RectBuilder, style::Style, text::wrap_text};
+use crate::util::view_scale;
 use crate::{Config, Context};
 use macroquad::prelude::*;
 
@@ -23,14 +24,9 @@ impl UI {
 
     pub fn begin(&mut self, _ctx: &Context) {
         self.cmds.clear();
-        let scale = f32::min(
-            screen_width() / self.v_width,
-            screen_height() / self.v_height,
-        );
-        let offset_x = (screen_width() - self.v_width * scale) * 0.5;
-        let offset_y = (screen_height() - self.v_height * scale) * 0.5;
+        let (scale, offset) = view_scale::view_scale(self.v_width, self.v_height);
         let (mx, my) = mouse_position();
-        self.mouse_pos = vec2((mx - offset_x) / scale, (my - offset_y) / scale);
+        self.mouse_pos = vec2((mx - offset.x) / scale, (my - offset.y) / scale);
     }
 
     pub fn rect(&mut self) -> RectBuilder<'_> {

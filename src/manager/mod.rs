@@ -1,8 +1,11 @@
+use crate::access::ids::{shader, AssetId};
 use crate::scene::{
     ChangeSceneEvent, LoadingScene, SceneFactory, SceneFuture, SceneId, SceneState,
 };
 use crate::util::camera::GameCamera;
-use crate::{Config, Context, DiContainer, SubCollection};
+use crate::util::view_scale;
+use crate::{Assets, Config, Context, DiContainer, SubCollection};
+use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;
@@ -10,6 +13,8 @@ use std::rc::Rc;
 pub struct Manager {
     pub cfg: Rc<Config>,
     pub camera: Rc<GameCamera>,
+    pixel_snap: Option<Material>,
+    jitter_free: Option<Material>,
     scene_state: SceneState,
     pending_scene: Rc<Cell<Option<SceneId>>>,
     scene_factory: SceneFactory,
@@ -17,10 +22,43 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(di: Rc<DiContainer>) -> Self {
+    pub async fn new(di: Rc<DiContainer>) -> Self {
         let bus = di.event_bus();
         let camera = di.camera();
         let cfg = di.config();
+
+        let pixel_snap = if cfg.pixel_snap {
+            let params = MaterialParams {
+                pipeline_params: PipelineParams {
+                    color_blend: Some(BlendState::new(
+                        Equation::Add,
+                        BlendFactor::Value(BlendValue::SourceAlpha),
+                        BlendFactor::OneMinusValue(BlendValue::SourceAlpha),
+                    )),
+                    ..Default::default()
+                },
+                uniforms: vec![UniformDesc::new("viewport", UniformType::Float2)],
+                ..Default::default()
+            };
+            Self::load_shader_material(
+                shader::Shader::PixelSnapVert,
+                shader::Shader::PixelSnapFrag,
+                params,
+            )
+            .await
+        } else {
+            None
+        };
+
+        let jitter_free = Self::load_shader_material(
+            shader::Shader::JitterFreeVert,
+            shader::Shader::JitterFreeFrag,
+            MaterialParams {
+                uniforms: vec![UniformDesc::new("texture_size", UniformType::Float2)],
+                ..Default::default()
+            },
+        )
+        .await;
 
         let pending: Rc<Cell<Option<SceneId>>> = Rc::new(Cell::new(None));
         let pending_for_handler = pending.clone();
@@ -37,12 +75,38 @@ impl Manager {
         Manager {
             cfg,
             camera,
+            pixel_snap,
+            jitter_free,
             scene_state: SceneState::Idle {
                 scene: loading_scene,
             },
             pending_scene: pending,
             scene_factory,
             _subs: subs,
+        }
+    }
+
+    async fn load_shader_material(
+        vert: shader::Shader,
+        frag: shader::Shader,
+        params: MaterialParams,
+    ) -> Option<Material> {
+        let mut assets = Assets::new();
+        assets.preload(&[&vert, &frag]).await;
+
+        let (Some(vertex), Some(fragment)) =
+            (assets.shaders.get(&vert.path()), assets.shaders.get(&frag.path()))
+        else {
+            warn!("shader sources missing; material disabled");
+            return None;
+        };
+
+        match load_material(ShaderSource::Glsl { vertex, fragment }, params) {
+            Ok(material) => Some(material),
+            Err(err) => {
+                warn!("failed to compile shader: {}", err);
+                None
+            }
         }
     }
     pub fn update(&mut self, ctx: &mut Context) {
@@ -110,12 +174,20 @@ impl Manager {
     }
 
     fn draw_scene(&self, ctx: &Context) {
-        // gl_use_material(&self.pixel_snap.material);
+        if let Some(material) = &self.pixel_snap {
+            material.set_uniform(
+                "viewport",
+                vec2(self.cfg.rt_width(), self.cfg.rt_height()),
+            );
+            gl_use_material(material);
+        }
         match &self.scene_state {
             SceneState::Idle { scene } => scene.draw(ctx),
             SceneState::Transition { scene, .. } => scene.draw(ctx),
         }
-        // gl_use_default_material();
+        if self.pixel_snap.is_some() {
+            gl_use_default_material();
+        }
     }
 
     fn begin_screen_pass(&self) {
@@ -124,15 +196,7 @@ impl Manager {
     }
 
     fn draw_ui(&self, ctx: &Context) {
-        let scale = f32::min(
-            screen_width() / self.cfg.v_width,
-            screen_height() / self.cfg.v_height,
-        );
-
-        let offset = vec2(
-            (screen_width() - self.cfg.v_width * scale) * 0.5,
-            (screen_height() - self.cfg.v_height * scale) * 0.5,
-        );
+        let (scale, offset) = view_scale::view_scale(self.cfg.v_width, self.cfg.v_height);
 
         let cam = Camera2D {
             target: vec2(self.cfg.v_width * 0.5, self.cfg.v_height * 0.5),
@@ -158,15 +222,7 @@ impl Manager {
     }
 
     fn blit_target(&self) {
-        let scale = f32::min(
-            screen_width() / self.cfg.v_width,
-            screen_height() / self.cfg.v_height,
-        );
-
-        let offset = vec2(
-            (screen_width() - self.cfg.v_width * scale) * 0.5,
-            (screen_height() - self.cfg.v_height * scale) * 0.5,
-        );
+        let (scale, offset) = view_scale::view_scale(self.cfg.v_width, self.cfg.v_height);
         let src = Rect::new(
             (self.cfg.rt_width() - self.cfg.v_width) * 0.5,
             (self.cfg.rt_height() - self.cfg.v_height) * 0.5,
@@ -175,6 +231,13 @@ impl Manager {
         );
 
         let dest_size = Some(vec2(self.cfg.v_width * scale, self.cfg.v_height * scale));
+        if let Some(material) = &self.jitter_free {
+            material.set_uniform(
+                "texture_size",
+                vec2(self.cfg.rt_width(), self.cfg.rt_height()),
+            );
+            gl_use_material(material);
+        }
         draw_texture_ex(
             &self.camera.render_target.texture,
             offset.x,
@@ -187,5 +250,8 @@ impl Manager {
                 ..Default::default()
             },
         );
+        if self.jitter_free.is_some() {
+            gl_use_default_material();
+        }
     }
 }
