@@ -2,5 +2,7 @@ pub mod animation;
 pub mod enemy;
 pub mod factory_enemy;
 pub mod factory_hero;
+pub mod factory_skills;
 pub mod knight;
+pub mod skills;
 pub mod static_image;

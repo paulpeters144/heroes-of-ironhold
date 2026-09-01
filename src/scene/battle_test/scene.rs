@@ -4,8 +4,11 @@ use super::sys_facing_lock::KnightFacingLockSystem;
 use super::sys_hud::HudDrawSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
+use super::sys_skills_bar::SkillsBarDrawSystem;
 use crate::entity::factory_enemy::EnemyFactory;
 use crate::entity::factory_hero::{HeroFactory, KnightCfg};
+use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
+use crate::entity::skills::SkillIconKind;
 use crate::entity::knight::{
     Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
@@ -30,6 +33,7 @@ pub struct BattleTestScene {
     store: Rc<EStore>,
     agg: SystemAgg,
     hud: Option<HudDrawSystem>,
+    skills_bar: Option<SkillsBarDrawSystem>,
 }
 
 impl BattleTestScene {
@@ -49,7 +53,22 @@ impl BattleTestScene {
             store,
             agg,
             hud: None,
+            skills_bar: None,
         }
+    }
+
+    fn spawn_skills_widget(&self) {
+        SkillsFactory::spawn(
+            &self.store,
+            &[
+                SkillSlotCfg::icon(SkillIconKind::Sword),
+                SkillSlotCfg::icon(SkillIconKind::Shield),
+                SkillSlotCfg::icon(SkillIconKind::Potion),
+                SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
+                SkillSlotCfg::icon(SkillIconKind::Crossed),
+                SkillSlotCfg::empty(),
+            ],
+        );
     }
 
     fn spawn_knight(&self) {
@@ -194,6 +213,12 @@ impl Scene for BattleTestScene {
                 &self.assets,
                 self.store.clone(),
             ));
+            self.skills_bar = Some(SkillsBarDrawSystem::new(
+                self.cfg.clone(),
+                &self.assets,
+                self.store.clone(),
+            ));
+            self.spawn_skills_widget();
 
             let map = self.build_map();
             let map_w = map.map_size.0 as f32 * map.tile_size.0 as f32;
@@ -238,6 +263,9 @@ impl Scene for BattleTestScene {
     fn draw_ui(&self, ctx: &Context) {
         if let Some(hud) = &self.hud {
             hud.draw(ctx);
+        }
+        if let Some(skills_bar) = &self.skills_bar {
+            skills_bar.draw(ctx);
         }
     }
 }
