@@ -1,10 +1,13 @@
 use super::sys_camera::CameraSystem;
+use super::sys_enemy_ai::EnemyAiSystem;
 use super::sys_facing_lock::KnightFacingLockSystem;
+use super::sys_hud::HudDrawSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
+use crate::entity::factory_enemy::EnemyFactory;
 use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::knight::{
-    Effect, EffectKind, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
+    Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
 use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
@@ -12,7 +15,7 @@ use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
 use crate::scene::Scene;
 use crate::systems::{DrawSystem, SystemAgg};
-use crate::{file, images, Animation, Assets, Config, Context, EStore};
+use crate::{file, font, images, Animation, Assets, Config, Context, EStore};
 use macroquad::prelude::*;
 use pico_entity_store::store::IntoChild;
 use std::collections::HashMap;
@@ -26,6 +29,7 @@ pub struct BattleTestScene {
     assets: Assets,
     store: Rc<EStore>,
     agg: SystemAgg,
+    hud: Option<HudDrawSystem>,
 }
 
 impl BattleTestScene {
@@ -33,6 +37,7 @@ impl BattleTestScene {
         let agg = SystemAgg::new();
         agg.add_update(KnightControlSystem::new(store.clone()));
         agg.add_update(KnightFacingLockSystem::new(store.clone()));
+        agg.add_update(EnemyAiSystem::new(store.clone()));
         agg.add_update(AnimationUpdateSystem::new(store.clone()));
         agg.add_update(OffsetUpdateSystem::new(store.clone()));
         agg.add_update(AttackEffectSystem::new(store.clone()));
@@ -43,6 +48,7 @@ impl BattleTestScene {
             assets,
             store,
             agg,
+            hud: None,
         }
     }
 
@@ -67,10 +73,17 @@ impl BattleTestScene {
                 shield.into_child(),
                 sword.into_child(),
                 parts.facing.into_child(),
+                HeroStats::default().into_child(),
             ],
         );
 
         self.spawn_effects();
+    }
+
+    fn spawn_ram_head(&self, position: Vec2) {
+        let mut parts = EnemyFactory::new(&self.assets).create_ram_head();
+        parts.body.position = position;
+        self.store.add(parts.marker, &[parts.body.into_child()]);
     }
 
     fn spawn_effects(&self) {
@@ -170,8 +183,17 @@ impl Scene for BattleTestScene {
                     &file::File::HoiCharsTsx,
                     &images::TilesetImage::HoiBg,
                     &images::TilesetImage::HoiChars,
+                    &images::Enemy::RamHead,
+                    &images::Knight::Face,
+                    &font::Font::Pixellari,
                 ])
                 .await;
+
+            self.hud = Some(HudDrawSystem::new(
+                self.cfg.clone(),
+                &self.assets,
+                self.store.clone(),
+            ));
 
             let map = self.build_map();
             let map_w = map.map_size.0 as f32 * map.tile_size.0 as f32;
@@ -180,8 +202,9 @@ impl Scene for BattleTestScene {
             self.agg
                 .add_draw(MapDrawSystem::new(map, self.cfg.v_width, self.cfg.v_height));
             self.agg.add_draw(DrawSystem::new(self.store.clone()));
-            self.agg.add_draw(AttackEffectDrawSystem::new(self.store.clone()));
-            self.agg.add_draw(CameraOrbSystem::new(self.store.clone()));
+            self.agg
+                .add_draw(AttackEffectDrawSystem::new(self.store.clone()));
+            // self.agg.add_draw(CameraOrbSystem::new(self.store.clone()));
 
             self.agg.add_update(CameraSystem::new(
                 self.store.clone(),
@@ -199,6 +222,8 @@ impl Scene for BattleTestScene {
                     animation.position = body;
                 }
             }
+
+            self.spawn_ram_head(vec2(map_w * 0.5, map_h * 0.5));
         })
     }
 
@@ -208,5 +233,11 @@ impl Scene for BattleTestScene {
 
     fn draw(&self, ctx: &Context) {
         self.agg.draw(ctx);
+    }
+
+    fn draw_ui(&self, ctx: &Context) {
+        if let Some(hud) = &self.hud {
+            hud.draw(ctx);
+        }
     }
 }

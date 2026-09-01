@@ -18,7 +18,7 @@ pub use access::font::{FontTag, GameFont, TextStyle};
 pub use access::ids::{file, font, images, shader, sound, texture};
 pub use entity::animation::Animation;
 pub use entity::factory_hero::{HeroFactory, KnightCfg, KnightParts};
-pub use entity::knight::{Effect, EffectKind, FrameOffsets, Knight, Shield, Sword};
+pub use entity::knight::{Effect, EffectKind, FrameOffsets, HeroStats, Knight, Shield, Sword};
 pub use entity::static_image::StaticImage;
 use manager::Manager;
 pub use util::camera::GameCamera;

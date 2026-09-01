@@ -138,6 +138,7 @@ pub mod images {
         Sword3,
         ThrustGraphic,
         SwipeGraphic,
+        Face,
     }
 
     impl AssetId for Knight {
@@ -154,6 +155,7 @@ pub mod images {
                 Self::Sword3 => "images/knight/anim-knight-sword-3.png".to_string(),
                 Self::ThrustGraphic => "images/knight/static-knight-thrust-graphic.png".to_string(),
                 Self::SwipeGraphic => "images/knight/static-knight-swipe-graphic.png".to_string(),
+                Self::Face => "images/knight/static-knight-face.png".to_string(),
             }
         }
 
@@ -164,13 +166,13 @@ pub mod images {
 
     #[derive(Clone, Copy, Debug)]
     pub enum Enemy {
-        E3,
+        RamHead,
     }
 
     impl AssetId for Enemy {
         fn path(&self) -> String {
             match self {
-                Self::E3 => "images/enemy/e-3.png".to_string(),
+                Self::RamHead => "images/enemies/anim-ram-head.png".to_string(),
             }
         }
 
