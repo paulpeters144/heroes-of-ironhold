@@ -1,3 +1,5 @@
+use macroquad::prelude::Vec2;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Facing {
     Left,
@@ -18,6 +20,12 @@ pub struct Shield;
 
 #[derive(Clone, Debug)]
 pub struct Sword;
+
+#[derive(Clone, Copy, Debug)]
+pub struct Dash {
+    pub dir: Vec2,
+    pub time: f32,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct HeroStats {

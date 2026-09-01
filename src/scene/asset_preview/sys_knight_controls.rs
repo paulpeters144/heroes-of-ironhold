@@ -1,4 +1,6 @@
-use crate::entity::knight::{AttackKind, AttackPhase, Facing, Knight, IDLE_FRAME, WALK_FRAMES};
+use crate::entity::knight::{
+    AttackKind, AttackPhase, Dash, Facing, Knight, IDLE_FRAME, WALK_FRAMES,
+};
 use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, WALK_FRAME_DURATION};
 use crate::input::{self, Input};
 use crate::systems::Update;
@@ -156,7 +158,10 @@ impl Update for KnightControlSystem {
                 IDLE_FRAME
             }
             _ => {
-                if dir != 0.0 || dir_y != 0.0 {
+                if self.store.first::<Dash>().is_some() {
+                    self.walk_elapsed = 0.0;
+                    IDLE_FRAME
+                } else if dir != 0.0 || dir_y != 0.0 {
                     new_pos_x += dir * MOVE_SPEED * ctx.dt;
                     new_pos_y += dir_y * MOVE_SPEED_VERTICAL * ctx.dt;
                     self.walk_elapsed += ctx.dt;

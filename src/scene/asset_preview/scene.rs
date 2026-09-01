@@ -2,6 +2,7 @@ use super::sys_animation::AnimationUpdateSystem;
 use super::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
 use super::sys_knight_controls::KnightControlSystem;
 use super::sys_offsets::OffsetUpdateSystem;
+use super::sys_player_dash::PlayerDashSystem;
 use crate::entity::factory_hero::{
     HeroFactory, KnightCfg, FRAME_SIZE, SHIELD_SIZE, SWORD_FRAME_SIZE,
 };
@@ -55,6 +56,7 @@ pub struct AssetPreviewScene {
     focus: usize,
     focus_mode: FocusMode,
     knight_control: KnightControlSystem,
+    player_dash: PlayerDashSystem,
     agg: SystemAgg,
 }
 
@@ -67,6 +69,7 @@ impl AssetPreviewScene {
         agg.add_draw(DrawSystem::new(store.clone()));
 
         let knight_control = KnightControlSystem::new(store.clone());
+        let player_dash = PlayerDashSystem::new(store.clone());
 
         Self {
             cfg,
@@ -81,6 +84,7 @@ impl AssetPreviewScene {
             focus: 0,
             focus_mode: FocusMode::Boxes,
             knight_control,
+            player_dash,
             agg,
         }
     }
@@ -286,6 +290,7 @@ impl Scene for AssetPreviewScene {
         }
 
         if self.focus_mode == FocusMode::Knight {
+            self.player_dash.update(ctx);
             self.knight_control.update(ctx);
         } else {
             if input::down_once(Input::Up) {

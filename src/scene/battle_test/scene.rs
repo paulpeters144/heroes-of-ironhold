@@ -16,6 +16,7 @@ use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
 use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
 use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
+use crate::scene::asset_preview::sys_player_dash::PlayerDashSystem;
 use crate::scene::Scene;
 use crate::systems::{DrawSystem, SystemAgg};
 use crate::{file, font, images, Animation, Assets, Config, Context, EStore};
@@ -39,6 +40,7 @@ pub struct BattleTestScene {
 impl BattleTestScene {
     pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>) -> Self {
         let agg = SystemAgg::new();
+        agg.add_update(PlayerDashSystem::new(store.clone()));
         agg.add_update(KnightControlSystem::new(store.clone()));
         agg.add_update(KnightFacingLockSystem::new(store.clone()));
         agg.add_update(EnemyAiSystem::new(store.clone()));
