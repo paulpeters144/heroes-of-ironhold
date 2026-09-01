@@ -14,6 +14,8 @@ pub struct KnightControlSystem {
     phase_timer: f32,
     current_attack: Option<AttackKind>,
     buffered: Option<AttackKind>,
+    prev_facing: Option<Facing>,
+    combo_reset: bool,
 }
 
 impl KnightControlSystem {
@@ -26,6 +28,8 @@ impl KnightControlSystem {
             phase_timer: 0.0,
             current_attack: None,
             buffered: None,
+            prev_facing: None,
+            combo_reset: false,
         }
     }
 
@@ -74,13 +78,22 @@ impl Update for KnightControlSystem {
             0.0
         };
 
-        if dir != 0.0 {
+        if dir != 0.0 && !input::down(Input::Shift) {
             let facing = if dir < 0.0 { Facing::Left } else { Facing::Right };
             let facing_ref = self.store.first::<Facing>().map(|f| f.entity_ref());
             if let Some(f) = facing_ref {
                 self.store.update::<Facing, _>(&f, |f| *f = facing);
             }
         }
+
+        let current_facing = self.store.first::<Facing>().map(|f| *f);
+        if let (Some(prev), Some(cur)) = (self.prev_facing, current_facing) {
+            if prev != cur {
+                self.buffered = None;
+                self.combo_reset = true;
+            }
+        }
+        self.prev_facing = current_facing;
 
         let up = input::down(Input::Up);
         let down = input::down(Input::Down);
@@ -93,7 +106,13 @@ impl Update for KnightControlSystem {
         };
 
         if input::down_once(Input::Attack) && self.buffered.is_none() {
-            let kind = match self.last_scheduled() {
+            let last = if self.combo_reset {
+                self.combo_reset = false;
+                None
+            } else {
+                self.last_scheduled()
+            };
+            let kind = match last {
                 Some(AttackKind::Thrust) => AttackKind::Swipe,
                 _ => AttackKind::Thrust,
             };

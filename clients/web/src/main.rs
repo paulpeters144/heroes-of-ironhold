@@ -14,6 +14,10 @@ async fn main() {
         heroes_of_ironhold_core::input::set(Input::Right, is_key_down(KeyCode::Right));
         heroes_of_ironhold_core::input::set(Input::Jump, is_key_down(KeyCode::Space));
         heroes_of_ironhold_core::input::set(Input::Attack, is_key_down(KeyCode::X));
+        heroes_of_ironhold_core::input::set(
+            Input::Shift,
+            is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift),
+        );
         heroes_of_ironhold_core::update(&mut game);
         heroes_of_ironhold_core::draw(&game);
         next_frame().await;
