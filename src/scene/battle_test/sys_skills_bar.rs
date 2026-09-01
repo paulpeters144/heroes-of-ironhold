@@ -1,5 +1,6 @@
 use crate::entity::skills::{Skill, SkillIcon, SkillIconKind, SkillsWidget};
 use crate::ui::draw_rounded_rect;
+use crate::util::view_scale;
 use crate::{Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
 use macroquad::prelude::*;
 use std::rc::Rc;
@@ -197,17 +198,22 @@ impl SkillsBarDrawSystem {
         );
 
         let text = key.to_string();
-        let dims = measure_text(&text, Some(&self.font.font), self.font.size, 1.0);
-        let tx = (cx - dims.width * 0.5).round();
-        let ty = (cap_y + (KEY_H - dims.height) * 0.5 + dims.offset_y).round();
+        let scale = view_scale::view_scale(self.cfg.v_width, self.cfg.v_height).0;
+        let (font_size, font_scale) = view_scale::crisp_text_params(self.font.size, scale);
+        let dims = measure_text(&text, Some(&self.font.font), font_size, font_scale);
+        let tx = view_scale::snap_to_pixel(cx - dims.width * 0.5, scale);
+        let ty = view_scale::snap_to_pixel(
+            cap_y + (KEY_H - dims.height) * 0.5 + dims.offset_y,
+            scale,
+        );
         draw_text_ex(
             &text,
             tx,
             ty,
             TextParams {
                 font: Some(&self.font.font),
-                font_size: self.font.size,
-                font_scale: 1.0,
+                font_size,
+                font_scale,
                 color: KEY_INK,
                 ..Default::default()
             },

@@ -42,11 +42,13 @@ impl UI {
             max_width,
             ..
         } = params;
-        let text = wrap_text(&font, text, max_width);
+        let scale = view_scale::view_scale(self.v_width, self.v_height).0;
+        let (font_size, font_scale) = view_scale::crisp_text_params(font.size, scale);
+        let text = wrap_text(&font, text, max_width, scale);
         let mut width = 0.0_f32;
         let mut lines = 0u32;
         for line in text.split('\n') {
-            let dims = measure_text(line, Some(&font.font), font.size, 1.0);
+            let dims = measure_text(line, Some(&font.font), font_size, font_scale);
             width = width.max(dims.width);
             lines += 1;
         }
@@ -85,17 +87,21 @@ impl UI {
                     ref text,
                     font,
                 } => {
+                    let scale = view_scale::view_scale(self.v_width, self.v_height).0;
+                    let (font_size, font_scale) =
+                        view_scale::crisp_text_params(font.size, scale);
                     let mut line_y = *y;
                     for line in text.split('\n') {
-                        let dims = measure_text(line, Some(&font.font), font.size, 1.0);
+                        let dims = measure_text(line, Some(&font.font), font_size, font_scale);
+                        let baseline = view_scale::snap_to_pixel(line_y + dims.offset_y, scale);
                         draw_text_ex(
                             line,
-                            *x,
-                            line_y + dims.offset_y,
+                            view_scale::snap_to_pixel(*x, scale),
+                            baseline,
                             TextParams {
                                 font: Some(&font.font),
-                                font_size: font.size,
-                                font_scale: 1.0,
+                                font_size,
+                                font_scale,
                                 color: font.color,
                                 ..Default::default()
                             },

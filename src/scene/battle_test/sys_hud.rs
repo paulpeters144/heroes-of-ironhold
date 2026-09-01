@@ -1,4 +1,5 @@
 use crate::entity::knight::{HeroStats, Knight};
+use crate::util::view_scale;
 use crate::{images, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
 use macroquad::prelude::*;
 use std::rc::Rc;
@@ -123,10 +124,14 @@ pub struct HudDrawSystem {
     store: Rc<EStore>,
     face: Texture2D,
     font: GameFont,
+    v_width: f32,
+    v_height: f32,
 }
 
 impl HudDrawSystem {
-    pub fn new(_cfg: Rc<Config>, assets: &Assets, store: Rc<EStore>) -> Self {
+    pub fn new(cfg: Rc<Config>, assets: &Assets, store: Rc<EStore>) -> Self {
+        let v_width = cfg.v_width;
+        let v_height = cfg.v_height;
         let face = assets.texture(images::Knight::Face);
         face.set_filter(FilterMode::Nearest);
         let base = assets.get_font(&TextStyle::new(FontTag::Body));
@@ -135,7 +140,17 @@ impl HudDrawSystem {
             color: Color::new(0.96, 0.97, 1.0, 1.0),
             ..base
         };
-        Self { store, face, font }
+        Self {
+            store,
+            face,
+            font,
+            v_width,
+            v_height,
+        }
+    }
+
+    fn scale(&self) -> f32 {
+        view_scale::view_scale(self.v_width, self.v_height).0
     }
 
     fn stats(&self) -> Option<HeroStats> {
@@ -144,19 +159,22 @@ impl HudDrawSystem {
     }
 
     fn dims(&self, text: &str) -> TextDimensions {
-        measure_text(text, Some(&self.font.font), self.font.size, 1.0)
+        let (font_size, font_scale) = view_scale::crisp_text_params(self.font.size, self.scale());
+        measure_text(text, Some(&self.font.font), font_size, font_scale)
     }
 
     fn raw_text(&self, text: &str, x: f32, top: f32, color: Color) {
-        let baseline = top + self.dims(text).offset_y;
+        let scale = self.scale();
+        let (font_size, font_scale) = view_scale::crisp_text_params(self.font.size, scale);
+        let baseline = view_scale::snap_to_pixel(top + self.dims(text).offset_y, scale);
         draw_text_ex(
             text,
-            x,
+            view_scale::snap_to_pixel(x, scale),
             baseline,
             TextParams {
                 font: Some(&self.font.font),
-                font_size: self.font.size,
-                font_scale: 1.0,
+                font_size,
+                font_scale,
                 color,
                 ..Default::default()
             },
