@@ -25,7 +25,7 @@ const MEDAL_R: f32 = 9.0;
 // Palette: dark steel frame, warm steel rim, deep navy track/back.
 const FRAME: Color = Color::new(0.08, 0.09, 0.12, 1.0);
 const RIM: Color = Color::new(0.45, 0.48, 0.56, 1.0);
-const TRACK: Color = Color::new(0.055, 0.07, 0.17, 1.0);
+const TRACK: Color = Color::new(0.2, 0.192, 0.243, 1.0);
 const INK: Color = Color::new(0.02, 0.02, 0.04, 1.0);
 
 // Fill gradients; the light entries are also the gloss color.
