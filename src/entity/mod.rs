@@ -1,4 +1,5 @@
 pub mod animation;
+pub mod dash;
 pub mod enemy;
 pub mod factory_enemy;
 pub mod factory_hero;

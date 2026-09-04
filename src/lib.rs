@@ -17,6 +17,7 @@ pub use access::assets::Assets;
 pub use access::font::{FontTag, GameFont, TextStyle};
 pub use access::ids::{file, font, images, shader, sound, texture};
 pub use entity::animation::Animation;
+pub use entity::dash::{Dash, DashCfg};
 pub use entity::factory_hero::{HeroFactory, KnightCfg, KnightParts};
 pub use entity::factory_skills::{SkillSlotCfg, SkillsFactory};
 pub use entity::knight::{Effect, EffectKind, FrameOffsets, HeroStats, Knight, Shield, Sword};

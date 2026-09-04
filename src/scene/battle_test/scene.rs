@@ -6,11 +6,12 @@ use super::sys_hud::HudDrawSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
 use super::sys_skills_bar::SkillsBarDrawSystem;
+use crate::entity::dash::Dash;
 use crate::entity::factory_enemy::EnemyFactory;
 use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
 use crate::entity::knight::{
-    Dash, Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
+    Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
 use crate::entity::skills::SkillIconKind;
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
@@ -79,7 +80,7 @@ impl BattleTestScene {
 
     fn spawn_knight(&self) {
         let parts = HeroFactory::new(&self.assets).create_knight(KnightCfg {
-            outfit: images::Knight::Knight2,
+            outfit: images::Knight::Knight3,
             sword: images::Knight::Sword2,
             shield: images::Knight::Shield3,
         });
@@ -99,7 +100,7 @@ impl BattleTestScene {
                 sword.into_child(),
                 parts.facing.into_child(),
                 HeroStats::default().into_child(),
-                Dash::ready().into_child(),
+                Dash::knight().into_child(),
             ],
         );
 

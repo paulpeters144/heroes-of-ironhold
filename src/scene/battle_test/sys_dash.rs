@@ -1,6 +1,6 @@
+use crate::entity::dash::Dash;
 use crate::entity::knight::{
-    Dash, Knight, DASH_DURATION, DASH_SPEED, DOUBLE_TAP_WINDOW, IDLE_FRAME, RECOVER_SECS,
-    SWIPE_FRAME, THRUST_FRAME,
+    Knight, DOUBLE_TAP_WINDOW, IDLE_FRAME, SWIPE_FRAME, THRUST_FRAME,
 };
 use crate::input::{self, Input};
 use crate::systems::{Draw, Update};
@@ -235,8 +235,8 @@ impl DashSystem {
             },
         );
 
-        if dash.charges < dash.max_charges && dash.recovery > 0.0 {
-            let frac = (dash.recovery / RECOVER_SECS).clamp(0.0, 1.0);
+        if dash.charges < dash.cfg.max_charges && dash.recovery > 0.0 {
+            let frac = (dash.recovery / dash.cfg.recover_secs).clamp(0.0, 1.0);
             let r = (DASH_SIZE - 4.0) * 0.5;
             Self::radial_sweep(cx, cy, r, frac, SWEEP);
         }
@@ -290,11 +290,11 @@ impl Update for DashSystem {
             .is_some();
         if !has_dash {
             if let Some(knight) = self.store.get_by_id::<Knight>(knight_id) {
-                self.store.add(knight, &[Dash::ready().into_child()]);
+                self.store.add(knight, &[Dash::knight().into_child()]);
             }
         }
 
-        let mut dash = self.dash().unwrap_or_else(Dash::ready);
+        let mut dash = self.dash().unwrap_or_else(Dash::knight);
 
         let attacking = self
             .store
@@ -314,10 +314,10 @@ impl Update for DashSystem {
                 if input::down_once(input) {
                     if self.last_tap == Some(input) && self.tap_timer > 0.0 {
                         dash.dir = dir;
-                        dash.time = DASH_DURATION;
+                        dash.time = dash.cfg.duration;
                         dash.charges -= 1;
                         if dash.recovery <= 0.0 {
-                            dash.recovery = RECOVER_SECS;
+                            dash.recovery = dash.cfg.recover_secs;
                         }
                         self.last_tap = None;
                         self.tap_timer = 0.0;
@@ -340,19 +340,19 @@ impl Update for DashSystem {
                 .map(|a| a.entity_ref())
             {
                 self.store.update::<Animation, _>(&anim_ref, |a| {
-                    a.position.x += dir.x * DASH_SPEED * ctx.dt;
-                    a.position.y += dir.y * DASH_SPEED * ctx.dt;
+                    a.position.x += dir.x * dash.cfg.speed * ctx.dt;
+                    a.position.y += dir.y * dash.cfg.speed * ctx.dt;
                     a.current_frame = IDLE_FRAME;
                 });
             }
         }
 
-        if dash.charges < dash.max_charges {
+        if dash.charges < dash.cfg.max_charges {
             dash.recovery -= ctx.dt;
             if dash.recovery <= 0.0 {
                 dash.charges += 1;
-                if dash.charges < dash.max_charges {
-                    dash.recovery = RECOVER_SECS;
+                if dash.charges < dash.cfg.max_charges {
+                    dash.recovery = dash.cfg.recover_secs;
                 } else {
                     dash.recovery = 0.0;
                 }
@@ -392,7 +392,7 @@ impl Draw for DashSystem {
         };
 
         let dir = dash.dir;
-        let progress = (1.0 - dash.time / DASH_DURATION).clamp(0.0, 1.0);
+        let progress = (1.0 - dash.time / dash.cfg.duration).clamp(0.0, 1.0);
         let color = self.dash_color.get();
         let source = Rect::new(
             animation.current_frame as f32 * animation.frame_width,
