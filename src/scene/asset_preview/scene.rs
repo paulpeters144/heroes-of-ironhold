@@ -1,9 +1,7 @@
 use super::sys_animation::AnimationUpdateSystem;
 use super::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
-use super::sys_dash_fx::{outfit_dominant_color, DashFxDrawSystem};
 use super::sys_knight_controls::KnightControlSystem;
 use super::sys_offsets::OffsetUpdateSystem;
-use super::sys_player_dash::PlayerDashSystem;
 use crate::entity::factory_hero::{
     HeroFactory, KnightCfg, FRAME_SIZE, SHIELD_SIZE, SWORD_FRAME_SIZE,
 };
@@ -14,10 +12,9 @@ use crate::input::{self, Input};
 use crate::scene::Scene;
 use crate::systems::{DrawSystem, SystemAgg, Update};
 use crate::ui::{Outlined, Style, UI};
-use crate::{images, shader, Animation, Assets, Config, Context, EStore};
+use crate::{images, Animation, Assets, Config, Context, EStore};
 use macroquad::prelude::*;
 use pico_entity_store::store::IntoChild;
-use std::cell::Cell;
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -52,14 +49,12 @@ pub struct AssetPreviewScene {
     outfit_texture: Texture2D,
     shield_texture: Texture2D,
     sword_texture: Texture2D,
-    dash_color: Rc<Cell<Color>>,
     knight_variant: usize,
     shield_variant: usize,
     sword_variant: usize,
     focus: usize,
     focus_mode: FocusMode,
     knight_control: KnightControlSystem,
-    player_dash: PlayerDashSystem,
     agg: SystemAgg,
 }
 
@@ -72,7 +67,6 @@ impl AssetPreviewScene {
         agg.add_draw(DrawSystem::new(store.clone()));
 
         let knight_control = KnightControlSystem::new(store.clone());
-        let player_dash = PlayerDashSystem::new(store.clone());
 
         Self {
             cfg,
@@ -81,14 +75,12 @@ impl AssetPreviewScene {
             outfit_texture: Texture2D::empty(),
             shield_texture: Texture2D::empty(),
             sword_texture: Texture2D::empty(),
-            dash_color: Rc::new(Cell::new(Color::new(1.0, 1.0, 1.0, 1.0))),
             knight_variant: 0,
             shield_variant: 0,
             sword_variant: 0,
             focus: 0,
             focus_mode: FocusMode::Boxes,
             knight_control,
-            player_dash,
             agg,
         }
     }
@@ -204,8 +196,6 @@ impl AssetPreviewScene {
         self.knight_variant =
             (self.knight_variant as i32 + delta).rem_euclid(OUTFITS.len() as i32) as usize;
         self.outfit_texture = self.assets.texture(OUTFITS[self.knight_variant]);
-        self.dash_color
-            .set(outfit_dominant_color(&self.outfit_texture));
         self.rebuild_knight();
     }
 
@@ -248,23 +238,14 @@ impl Scene for AssetPreviewScene {
                     &images::Knight::Sword3,
                     &images::Knight::ThrustGraphic,
                     &images::Knight::SwipeGraphic,
-                    &shader::Shader::DashFxVert,
-                    &shader::Shader::DashAfterimageFrag,
                 ])
                 .await;
 
             self.outfit_texture = self.assets.texture(OUTFITS[0]);
             self.shield_texture = self.assets.texture(SHIELDS[0]);
             self.sword_texture = self.assets.texture(SWORDS[0]);
-            self.dash_color
-                .set(outfit_dominant_color(&self.outfit_texture));
 
             self.agg.add_draw(AttackEffectDrawSystem::new(self.store.clone()));
-            self.agg.add_draw(DashFxDrawSystem::new(
-                self.store.clone(),
-                &self.assets,
-                self.dash_color.clone(),
-            ));
 
             self.spawn_knight(KnightCfg {
                 outfit: OUTFITS[0],
@@ -305,7 +286,6 @@ impl Scene for AssetPreviewScene {
         }
 
         if self.focus_mode == FocusMode::Knight {
-            self.player_dash.update(ctx);
             self.knight_control.update(ctx);
         } else {
             if input::down_once(Input::Up) {

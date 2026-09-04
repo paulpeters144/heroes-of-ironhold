@@ -1,4 +1,5 @@
 use super::sys_camera::CameraSystem;
+use super::sys_dash::{outfit_dominant_color, DashSystem};
 use super::sys_enemy_ai::EnemyAiSystem;
 use super::sys_facing_lock::KnightFacingLockSystem;
 use super::sys_hud::HudDrawSystem;
@@ -9,15 +10,13 @@ use crate::entity::factory_enemy::EnemyFactory;
 use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
 use crate::entity::knight::{
-    Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
+    Dash, Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
 use crate::entity::skills::SkillIconKind;
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
 use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
-use crate::scene::asset_preview::sys_dash_fx::{outfit_dominant_color, DashFxDrawSystem};
 use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
-use crate::scene::asset_preview::sys_player_dash::PlayerDashSystem;
 use crate::scene::Scene;
 use crate::systems::{DrawSystem, SystemAgg};
 use crate::{file, font, images, shader, Animation, Assets, Config, Context, EStore};
@@ -38,12 +37,12 @@ pub struct BattleTestScene {
     dash_color: Rc<Cell<Color>>,
     hud: Option<HudDrawSystem>,
     skills_bar: Option<SkillsBarDrawSystem>,
+    dash_ui: Option<DashSystem>,
 }
 
 impl BattleTestScene {
     pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>) -> Self {
         let agg = SystemAgg::new();
-        agg.add_update(PlayerDashSystem::new(store.clone()));
         agg.add_update(KnightControlSystem::new(store.clone()));
         agg.add_update(KnightFacingLockSystem::new(store.clone()));
         agg.add_update(EnemyAiSystem::new(store.clone()));
@@ -60,6 +59,7 @@ impl BattleTestScene {
             dash_color: Rc::new(Cell::new(Color::new(1.0, 1.0, 1.0, 1.0))),
             hud: None,
             skills_bar: None,
+            dash_ui: None,
         }
     }
 
@@ -79,9 +79,9 @@ impl BattleTestScene {
 
     fn spawn_knight(&self) {
         let parts = HeroFactory::new(&self.assets).create_knight(KnightCfg {
-            outfit: images::Knight::Knight1,
-            sword: images::Knight::Sword3,
-            shield: images::Knight::Shield2,
+            outfit: images::Knight::Knight2,
+            sword: images::Knight::Sword2,
+            shield: images::Knight::Shield3,
         });
 
         self.store
@@ -99,6 +99,7 @@ impl BattleTestScene {
                 sword.into_child(),
                 parts.facing.into_child(),
                 HeroStats::default().into_child(),
+                Dash::ready().into_child(),
             ],
         );
 
@@ -237,11 +238,6 @@ impl Scene for BattleTestScene {
             self.agg.add_draw(DrawSystem::new(self.store.clone()));
             self.agg
                 .add_draw(AttackEffectDrawSystem::new(self.store.clone()));
-            self.agg.add_draw(DashFxDrawSystem::new(
-                self.store.clone(),
-                &self.assets,
-                self.dash_color.clone(),
-            ));
             // self.agg.add_draw(CameraOrbSystem::new(self.store.clone()));
 
             self.agg.add_update(CameraSystem::new(
@@ -264,6 +260,16 @@ impl Scene for BattleTestScene {
                 outfit_dominant_color(&animation.source)
             };
             self.dash_color.set(color);
+
+            let dash = DashSystem::new(
+                self.store.clone(),
+                &self.assets,
+                self.dash_color.clone(),
+                self.cfg.clone(),
+            );
+            self.agg.add_update(dash.clone());
+            self.agg.add_draw(dash.clone());
+            self.dash_ui = Some(dash);
 
             let body = vec2(200.0, 160.0);
             {
@@ -293,6 +299,9 @@ impl Scene for BattleTestScene {
         }
         if let Some(skills_bar) = &self.skills_bar {
             skills_bar.draw(ctx);
+        }
+        if let Some(dash_ui) = &self.dash_ui {
+            dash_ui.draw_ui(ctx);
         }
     }
 }

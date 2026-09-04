@@ -2,11 +2,11 @@
 Add a charge-based dash implemented as **one self-contained `DashSystem`** that owns all dash concerns: update logic (charge consumption, active-dash movement, recovery), scene-space afterimage drawing, and screen-space dash UI drawing. The knight's `Dash` component gains a finite dash count of **3 charges** plus recovery state. Consuming a dash immediately begins a 15-second recovery that refills one charge at a time, Diablo 3 style — a single serial countdown that keeps refilling until charges are back at max. A dash UI symbol is drawn on the left side of the screen, below the top-left HUD, showing remaining charges and a Diablo 3-style radial sweep that circles the widget while charges recover (no numeric countdown text).
 
 # TODO
-- [ ] Create a single modular `DashSystem` that consolidates dash update + afterimage draw + dash UI draw
-- [ ] Extend the `Dash` component to hold charge data and recovery state (all dash state lives in ECS)
-- [ ] Implement charge consumption + a single serial 15s recovery countdown (Diablo 3 style), starting immediately when a dash is consumed
-- [ ] Draw the dash symbol + charge count + Diablo 3-style circular sweep below the top-left HUD (procedural icon)
-- [ ] Wire `DashSystem` into `BattleTestScene` (update + draw + draw_ui)
+- [x] Create a single modular `DashSystem` that consolidates dash update + afterimage draw + dash UI draw
+- [x] Extend the `Dash` component to hold charge data and recovery state (all dash state lives in ECS)
+- [x] Implement charge consumption + a single serial 15s recovery countdown (Diablo 3 style), starting immediately when a dash is consumed
+- [x] Draw the dash symbol + charge count + Diablo 3-style circular sweep below the top-left HUD (procedural icon)
+- [x] Wire `DashSystem` into `BattleTestScene` (update + draw + draw_ui)
 
 # TODO Explanation
 

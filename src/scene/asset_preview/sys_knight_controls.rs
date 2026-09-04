@@ -158,7 +158,12 @@ impl Update for KnightControlSystem {
                 IDLE_FRAME
             }
             _ => {
-                if self.store.first::<Dash>().is_some() {
+                if self
+                    .store
+                    .first::<Dash>()
+                    .map(|d| d.time > 0.0)
+                    .unwrap_or(false)
+                {
                     self.walk_elapsed = 0.0;
                     IDLE_FRAME
                 } else if dir != 0.0 || dir_y != 0.0 {
