@@ -1,7 +1,7 @@
 use crate::entity::knight::{
     AttackKind, AttackPhase, Dash, Facing, Knight, IDLE_FRAME, WALK_FRAMES,
 };
-use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, WALK_FRAME_DURATION};
+use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, REVERSE_MULT, WALK_FRAME_DURATION};
 use crate::input::{self, Input};
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
@@ -162,12 +162,23 @@ impl Update for KnightControlSystem {
                     self.walk_elapsed = 0.0;
                     IDLE_FRAME
                 } else if dir != 0.0 || dir_y != 0.0 {
-                    new_pos_x += dir * MOVE_SPEED * ctx.dt;
+                    let backward = input::down(Input::Shift)
+                        && current_facing.is_some_and(|f| {
+                            matches!((f, dir), (Facing::Left, 1.0) | (Facing::Right, -1.0))
+                        });
+                    let speed = if backward { REVERSE_MULT } else { 1.0 };
+                    new_pos_x += dir * MOVE_SPEED * speed * ctx.dt;
                     new_pos_y += dir_y * MOVE_SPEED_VERTICAL * ctx.dt;
                     self.walk_elapsed += ctx.dt;
-                    if self.walk_elapsed >= WALK_FRAME_DURATION {
+                    let frame_duration = WALK_FRAME_DURATION / speed;
+                    if self.walk_elapsed >= frame_duration {
                         self.walk_elapsed = 0.0;
-                        self.walk_step = (self.walk_step + 1) % WALK_FRAMES.len();
+                        let n = WALK_FRAMES.len();
+                        self.walk_step = if backward {
+                            (self.walk_step + n - 1) % n
+                        } else {
+                            (self.walk_step + 1) % n
+                        };
                     }
                     WALK_FRAMES[self.walk_step]
                 } else {

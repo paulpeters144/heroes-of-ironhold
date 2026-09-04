@@ -8,20 +8,22 @@ use super::sys_skills_bar::SkillsBarDrawSystem;
 use crate::entity::factory_enemy::EnemyFactory;
 use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
-use crate::entity::skills::SkillIconKind;
 use crate::entity::knight::{
     Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
+use crate::entity::skills::SkillIconKind;
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
 use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
+use crate::scene::asset_preview::sys_dash_fx::{outfit_dominant_color, DashFxDrawSystem};
 use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
 use crate::scene::asset_preview::sys_player_dash::PlayerDashSystem;
 use crate::scene::Scene;
 use crate::systems::{DrawSystem, SystemAgg};
-use crate::{file, font, images, Animation, Assets, Config, Context, EStore};
+use crate::{file, font, images, shader, Animation, Assets, Config, Context, EStore};
 use macroquad::prelude::*;
 use pico_entity_store::store::IntoChild;
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -33,6 +35,7 @@ pub struct BattleTestScene {
     assets: Assets,
     store: Rc<EStore>,
     agg: SystemAgg,
+    dash_color: Rc<Cell<Color>>,
     hud: Option<HudDrawSystem>,
     skills_bar: Option<SkillsBarDrawSystem>,
 }
@@ -54,6 +57,7 @@ impl BattleTestScene {
             assets,
             store,
             agg,
+            dash_color: Rc::new(Cell::new(Color::new(1.0, 1.0, 1.0, 1.0))),
             hud: None,
             skills_bar: None,
         }
@@ -66,7 +70,7 @@ impl BattleTestScene {
                 SkillSlotCfg::icon(SkillIconKind::Sword),
                 SkillSlotCfg::icon(SkillIconKind::Shield),
                 SkillSlotCfg::icon(SkillIconKind::Potion),
-                SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
+                // SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
                 SkillSlotCfg::icon(SkillIconKind::Crossed),
                 SkillSlotCfg::empty(),
             ],
@@ -76,8 +80,8 @@ impl BattleTestScene {
     fn spawn_knight(&self) {
         let parts = HeroFactory::new(&self.assets).create_knight(KnightCfg {
             outfit: images::Knight::Knight1,
-            sword: images::Knight::Sword1,
-            shield: images::Knight::Shield1,
+            sword: images::Knight::Sword3,
+            shield: images::Knight::Shield2,
         });
 
         self.store
@@ -207,6 +211,8 @@ impl Scene for BattleTestScene {
                     &images::Enemy::RamHead,
                     &images::Knight::Face,
                     &font::Font::Pixellari,
+                    &shader::Shader::DashFxVert,
+                    &shader::Shader::DashAfterimageFrag,
                 ])
                 .await;
 
@@ -231,6 +237,11 @@ impl Scene for BattleTestScene {
             self.agg.add_draw(DrawSystem::new(self.store.clone()));
             self.agg
                 .add_draw(AttackEffectDrawSystem::new(self.store.clone()));
+            self.agg.add_draw(DashFxDrawSystem::new(
+                self.store.clone(),
+                &self.assets,
+                self.dash_color.clone(),
+            ));
             // self.agg.add_draw(CameraOrbSystem::new(self.store.clone()));
 
             self.agg.add_update(CameraSystem::new(
@@ -243,13 +254,27 @@ impl Scene for BattleTestScene {
 
             self.spawn_knight();
 
-            let body = vec2(200.0, 160.0);
-            if let Some(knight_ref) = self.store.first::<Knight>() {
-                if let Some(mut animation) = self.store.get_child_mut::<Animation>(knight_ref) {
-                    animation.position = body;
-                }
-            }
+            let color = {
+                let Some(knight) = self.store.first::<Knight>() else {
+                    return;
+                };
+                let Some(animation) = self.store.get_child::<Animation>(&knight) else {
+                    return;
+                };
+                outfit_dominant_color(&animation.source)
+            };
+            self.dash_color.set(color);
 
+            let body = vec2(200.0, 160.0);
+            {
+                let Some(knight_ref) = self.store.first::<Knight>() else {
+                    return;
+                };
+                let Some(mut animation) = self.store.get_child_mut::<Animation>(knight_ref) else {
+                    return;
+                };
+                animation.position = body;
+            }
             self.spawn_ram_head(vec2(map_w * 0.5, map_h * 0.5));
         })
     }
