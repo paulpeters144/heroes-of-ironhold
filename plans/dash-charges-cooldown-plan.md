@@ -1,54 +1,65 @@
 # Description
-Add a charge-based dash: the knight's `Dash` component gains a finite dash count (charges) plus recovery state. Consuming a dash immediately begins a 15-second recovery timer per charge. Add a dash UI symbol on the left side of the screen, below the top-left HUD, showing remaining charges and a WoW-style cooldown counter (radial sweep + seconds countdown) while charges are recovering.
+Add a charge-based dash implemented as **one self-contained `DashSystem`** that owns all dash concerns: update logic (charge consumption, active-dash movement, recovery), scene-space afterimage drawing, and screen-space dash UI drawing. The knight's `Dash` component gains a finite dash count of **3 charges** plus recovery state. Consuming a dash immediately begins a 15-second recovery that refills one charge at a time, Diablo 3 style — a single serial countdown that keeps refilling until charges are back at max. A dash UI symbol is drawn on the left side of the screen, below the top-left HUD, showing remaining charges and a Diablo 3-style radial sweep that circles the widget while charges recover (no numeric countdown text).
 
 # TODO
-- [ ] Extend the `Dash` component to hold charge data and recovery timers
-- [ ] Rework `PlayerDashSystem` to consume charges instead of removing/re-adding the component
-- [ ] Implement per-charge recovery (15s) that starts immediately when a dash is consumed
-- [ ] Add a `DashUiDrawSystem` that draws the dash symbol + charge count + cooldown counter below the HUD
-- [ ] Wire the new system into `BattleTestScene` (update + draw_ui) and preload any new assets
+- [ ] Create a single modular `DashSystem` that consolidates dash update + afterimage draw + dash UI draw
+- [ ] Extend the `Dash` component to hold charge data and recovery state (all dash state lives in ECS)
+- [ ] Implement charge consumption + a single serial 15s recovery countdown (Diablo 3 style), starting immediately when a dash is consumed
+- [ ] Draw the dash symbol + charge count + Diablo 3-style circular sweep below the top-left HUD (procedural icon)
+- [ ] Wire `DashSystem` into `BattleTestScene` (update + draw + draw_ui)
 
 # TODO Explanation
 
-## Extend the `Dash` component to hold charge data and recovery timers
-Currently `Dash { dir: Vec2, time: f32 }` (`src/entity/knight/components.rs:24-28`) models only the *active* dash state, and `PlayerDashSystem` spawns a `Dash` child on the `Knight` entity when a dash starts, then removes it when `time` runs out. We need `Dash` to also hold:
-- `charges: u32` (current available charges) and `max_charges: u32`
-- recovery state, e.g. `recovering: Vec<f32>` (one timer per missing charge) or a `charge_timers` queue, with a `RECOVER_SECS = 15.0` constant added to `src/entity/knight/movement.rs`.
+## Create a single modular `DashSystem` that consolidates dash update + afterimage draw + dash UI draw
+Today dash is split across three places: `PlayerDashSystem` (`src/scene/asset_preview/sys_player_dash.rs`, `Update` only), `DashFxDrawSystem` (`src/scene/asset_preview/sys_dash_fx.rs`, `Draw` only, afterimages), and there is no dash UI. Consolidate **everything** dash-related into one `DashSystem` module at `src/scene/battle_test/sys_dash.rs`: double-tap detection, charge consumption, active-dash movement, recovery, afterimage drawing (including the afterimage material, `outfit_dominant_color`, and the dash tint color), and the dash UI. Keep as much as possible colocated in this one system. `AssetPreviewScene` keeps its existing `PlayerDashSystem`/`DashFxDrawSystem` unchanged for now.
 
-Decision needed: extend the existing `Dash` component vs. a separate `DashCharges` component (see Open Questions). Since the user asked for "a component called Dash that holds the data for the dash", the working assumption is to extend `Dash` and have it always attached to the `Knight` (not spawned/removed per dash). `dir`/`time` continue to describe the in-flight dash (e.g. `time > 0` means dashing).
+Key architecture facts this must respect (verified in the codebase):
 
-## Rework `PlayerDashSystem` to consume charges instead of removing/re-adding the component
-`src/scene/asset_preview/sys_player_dash.rs` currently: detects double-tap (only when `!attacking && !has_dash`), spawns a `Dash` child, moves `Animation.position += dir * DASH_SPEED * dt`, forces `IDLE_FRAME`, decrements `time`, and removes the `Dash` child when `time <= 0`. New behavior:
-- `Dash` exists on the knight from spawn with `charges = max_charges`.
-- On double-tap (when `!attacking` and not currently dashing i.e. `time <= 0`), if `charges > 0`: set `dir`, set `time = DASH_DURATION`, `charges -= 1`, and **immediately** start recovery for that charge (push a 15s timer).
-- Active-dash movement stays as-is (move by `DASH_SPEED * dt`, idle frame).
-- When `time` expires, stop dashing but keep the `Dash` component (no removal).
+1. **`SystemAgg` keeps update and draw systems in separate vecs** (`src/systems/system_agg.rs`): `updates: Vec<Box<dyn Update>>` and `draws: Vec<Box<dyn Draw>>`, registered via `add_update`/`add_draw`, each taking ownership. A single *type* can implement both traits (e.g. `CameraOrbSystem` in `src/scene/battle_test/sys_orb.rs` implements both `Update` and `Draw`), but it is added twice, as two separate instances. A single *instance* cannot serve both roles through `SystemAgg`.
+2. **UI must render in the `draw_ui` pass, not the `Draw` pass.** `Draw`-trait systems run inside `Manager::draw_scene` under the **game camera** (`src/manager/mod.rs:161-191`); the dash charge symbol must be fixed on screen, so it has to go through `Scene::draw_ui`, which `Manager::draw_ui` (`src/manager/mod.rs:198-222`) invokes under a virtual 640x360 camera. This is exactly how `HudDrawSystem` (`sys_hud.rs`) and `SkillsBarDrawSystem` (`sys_skills_bar.rs`) work: they are scene-stored structs with a `draw(&self, ctx)` method called from `BattleTestScene::draw_ui`.
+3. **All mutable dash state lives in the ECS, not on the system** — this is what makes the split-registration pattern safe. Systems only hold transient derived state over a shared `Rc<EStore>` (e.g. `AnimationUpdateSystem.elapsed`, `AttackEffectSystem.prev_frame`).
 
-## Implement per-charge recovery (15s) that starts immediately when a dash is consumed
-Recovery decrements each pending timer by `ctx.dt`; when a timer hits 0, `charges += 1` (capped at `max_charges`) and that timer is removed. This is a small update step, either inside `PlayerDashSystem` or a separate `DashRecoverySystem`. The user said "when the player does a dash, then it should immediately start recovering" — recovery begins at the moment the charge is spent, not when the dash animation ends. Model choice (independent parallel timers vs. one-at-a-time) is an Open Question; WoW charge systems recover each charge independently in parallel.
+Consequence/design: `DashSystem` is a **stateless-over-ECS** struct holding only `Rc<EStore>` plus immutable draw resources (`Rc<Config>`, afterimage `Material`, font/icon), and it:
+- implements `Update` (double-tap detection, charge consumption, active-dash movement, recovery) — registered via `agg.add_update(DashSystem::new(...))`;
+- implements `Draw` (afterimages, scene space) — registered via `agg.add_draw(DashSystem::new(...))`;
+- exposes `draw_ui(&self, ctx: &Context)` (symbol + charges + circular sweep) — stored on the scene as `dash_ui: Option<DashSystem>` and called from `BattleTestScene::draw_ui`.
 
-## Add a `DashUiDrawSystem` that draws the dash symbol + charge count + cooldown counter below the HUD
-New draw system (e.g. `src/scene/battle_test/sys_dash_ui.rs`) following the pattern of `sys_hud.rs`/`sys_skills_bar.rs` (raw macroquad + `crate::ui::draw_rounded_rect`), drawn from `BattleTestScene::draw_ui`:
-- Anchored on the **left** edge, **below** the top-left HUD block (portrait at y=8, height 50, XP line ends around y=58 — so place the symbol below that, e.g. y ≈ 65+).
-- A square symbol/well with the dash icon (procedural or texture — see Open Questions).
-- Charge count: show `charges` (e.g. as a number, or N small pips) so the player sees how many dashes remain.
-- Cooldown counter (WoW-style): while at least one charge is recovering, overlay a **radial sweep** (a pie/arc that fills as recovery progresses — clockwise like WoW) tinted/darkened over the icon, with the remaining seconds in the center (e.g. "14"), snapped-to-pixel crisp text like the HUD. When full, icon is bright with no counter.
-- If charges can recover in parallel, the display shows the *soonest* completing charge's remaining time (standard charge-display behavior).
+Multiple instances of the same type stay coherent because the real state is the `Dash` component in the store. The only non-ECS state (double-tap `last_tap`/`tap_timer`) lives on the update instance, which is the sole writer.
 
-## Wire the new system into `BattleTestScene` (update + draw_ui) and preload any new assets
-- In `BattleTestScene::new` add the recovery/update step; in `load` construct the `DashUiDrawSystem` and store it like `hud`/`skills_bar`; call it from `draw_ui`.
-- If a texture is used for the symbol, register it in `src/access/ids.rs` (image category + manifest), add it to `BattleTestScene::load`'s `preload` list, and follow the AGENTS.md asset rules.
-- Ensure the knight is spawned with an initialized `Dash` (charges) component.
+## Extend the `Dash` component to hold charge data and recovery state (all dash state lives in ECS)
+Currently `Dash { dir: Vec2, time: f32 }` (`src/entity/knight/components.rs:24-28`) models only the in-flight dash, and `PlayerDashSystem` spawns a `Dash` child on the `Knight` when a dash starts and removes it when `time` expires. Change `Dash` to be **permanently attached to the knight** and hold:
+- `charges: u32` and `max_charges: u32` — the player starts with **3 charges** (`max_charges = 3`, `charges = 3`).
+- active-dash state: `dir: Vec2`, `time: f32` (`time > 0` means dashing)
+- recovery state: `recovery: f32` — a single countdown toward the next charge (0 = no pending recovery), with a `RECOVER_SECS = 15.0` constant added to `src/entity/knight/movement.rs` alongside `DASH_SPEED`/`DASH_DURATION`.
 
-# Open Questions
-- How many dash charges should the player have (value of N)? Working assumption: 3.
-- Should each missing charge recover on its own **parallel** 15s timer (WoW-style, multiple can recover at once), or one-at-a-time? Working assumption: parallel independent timers.
-- Extend the existing `Dash` component, or keep `Dash` for the active dash and add a separate charge/recovery component? Working assumption: extend `Dash`.
-- Dash symbol art: draw it procedurally (like the skills-bar icons) or use an image asset? Working assumption: procedural, no new asset.
-- Should the cooldown counter show only while recovering, or always show the next-charge progress even when some charges remain? Working assumption: always show the soonest recovering charge's progress when `charges < max`.
-- Keep dash mechanics otherwise identical (double-tap, cardinal directions, blocked during attack)?
+Because the knight currently has no `Dash` until the first double-tap, the spawn path must be updated to attach an initialized `Dash { charges: 3, max_charges: 3, dir: ZERO, time: 0, recovery: 0.0 }` when the knight is created (or the system lazily creates it if absent).
+
+## Implement charge consumption + a single serial 15s recovery countdown (Diablo 3 style)
+In `DashSystem::update` (replacing the body of `PlayerDashSystem`):
+- Decrement `tap_timer` by `ctx.dt`.
+- Double-tap detection (mechanics unchanged): when `!attacking` and not currently dashing (`time <= 0`), on a double-tap of a cardinal direction (`Left`/`Right`/`Up`/`Down`) with `charges > 0`: set `dir`, `time = DASH_DURATION`, `charges -= 1`, and **start/restart the recovery countdown** (`recovery = RECOVER_SECS`) — recovery begins the moment the charge is spent, not when the dash animation ends.
+- Active-dash movement: `Animation.position += dir * DASH_SPEED * dt`, force `IDLE_FRAME`; decrement `time`; when `time` hits 0 the dash ends (component stays).
+- Recovery (serial, Diablo 3 style): while `charges < max_charges`, decrement `recovery` by `ctx.dt`; when it reaches 0, `charges += 1`; if `charges < max_charges`, reset `recovery = RECOVER_SECS` and keep counting down. Once `charges == max_charges`, clear `recovery` to 0 and stop. There is exactly **one** countdown at a time — charges refill one at a time, and the counter never stops until full.
+
+The knight controls already force idle while a `Dash` exists (`sys_knight_controls.rs`), and `KnightFacingLockSystem`/attack gating remain unchanged.
+
+## Draw the dash symbol + charge count + Diablo 3-style circular sweep below the top-left HUD
+In `DashSystem::draw_ui`, following the raw-macroquad + `crate::ui::draw_rounded_rect` style of `sys_hud.rs`/`sys_skills_bar.rs`:
+- Anchor on the **left edge, below the top-left HUD block** (portrait occupies y=8..58; the XP line ends around y≈58, so place the symbol at y ≈ 65+, x = MARGIN, matching HUD constants).
+- Draw a square well/frame (matching the HUD steel-frame palette: `FRAME`/`RIM`/`TRACK` from `sys_hud.rs` or a dash-specific tint) with a **procedurally drawn dash icon** inside (no image asset — draw the glyph with macroquad primitives, in the same spirit as the `SkillsBarDrawSystem` icons).
+- **Charge count**: show `charges` (number and/or pips) so the player sees remaining dashes.
+- **Cooldown animation (Diablo 3 style, no numeric text)**: while `charges < max_charges`, overlay a darkened radial wedge over the icon whose edge **sweeps clockwise around the widget** as recovery progresses. Implementation: a filled pie/arc (or a clipped circle drawn with several triangle/arc segments, like the `CORNER_SIDES` approach in `ui/helpers.rs`) whose remaining fraction = `recovery / RECOVER_SECS`; as `recovery` counts down to 0, the dark overlay shrinks and the sweep circles around until the charge is restored. The direction/start angle can be tuned to match Diablo 3 (sweep starts at 12 o'clock and moves clockwise).
+- When all charges are full, draw the icon bright with no overlay. Because recovery is a single serial countdown that never stops until full, the circling sweep is always shown whenever `charges < max_charges` — it is the visual countdown to the next charge. No seconds text is rendered.
+
+## Wire `DashSystem` into `BattleTestScene` (update + draw + draw_ui)
+- In `BattleTestScene::load` (mirroring how `CameraSystem` is added there): construct `DashSystem` with `store`, `cfg`, and `assets`; `self.agg.add_update(...)` and `self.agg.add_draw(...)`; store `self.dash_ui = Some(...)` for `draw_ui`.
+- Remove `PlayerDashSystem` and `DashFxDrawSystem` from `BattleTestScene::new`/`load` (and their imports); keep the `dash_color` cell if afterimages still need it (or move dominant-color computation into `DashSystem`).
+- `BattleTestScene::draw_ui` calls `dash_ui.draw_ui(ctx)` after the HUD.
+- No new assets: the dash icon is procedural, so nothing is added to `src/access/ids.rs` or the preload list.
+- Ensure the knight spawns with an initialized `Dash` component.
 
 # Out of Scope
 - No dash collision, i-frames, or dash-cancelling mechanics.
 - No changes to how the HUD portrait/HP/MP/XP or skills bar are drawn.
 - No key/input binding changes.
+- No changes to `SystemAgg` or the `EStore`/`pico_entity_store` APIs.
