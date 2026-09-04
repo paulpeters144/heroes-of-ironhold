@@ -1,4 +1,7 @@
-use super::{cmd::Cmd, helpers, params::Label, rect::RectBuilder, style::Style, text::wrap_text};
+use super::{
+    cmd::Cmd, helpers, params::Image, params::Label, rect::RectBuilder, style::Style,
+    text::wrap_text,
+};
 use crate::util::view_scale;
 use crate::{Config, Context};
 use macroquad::prelude::*;
@@ -57,6 +60,25 @@ impl UI {
         Rect::new(x, y, width, height)
     }
 
+    pub fn image(&mut self, params: Image<'_>) -> Rect {
+        let Image {
+            x,
+            y,
+            w,
+            h,
+            texture,
+            ..
+        } = params;
+        self.cmds.push(Cmd::Image {
+            x,
+            y,
+            w,
+            h,
+            texture,
+        });
+        Rect::new(x, y, w, h)
+    }
+
     pub fn end(&self) {
         for cmd in &self.cmds {
             match cmd {
@@ -109,6 +131,22 @@ impl UI {
                         line_y += font.size as f32;
                     }
                 }
+                Cmd::Image {
+                    x,
+                    y,
+                    w,
+                    h,
+                    texture,
+                } => draw_texture_ex(
+                    texture,
+                    *x,
+                    *y,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(vec2(*w, *h)),
+                        ..Default::default()
+                    },
+                ),
             }
         }
     }

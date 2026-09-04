@@ -1,5 +1,5 @@
 use crate::{Context, GameFont};
-use macroquad::prelude::Color;
+use macroquad::prelude::{Color, Texture2D};
 
 pub struct Label<'a> {
     pub ctx: &'a Context,
@@ -62,4 +62,13 @@ pub struct DefaultCenteredOutlined<'a> {
     pub ctx: &'a Context,
     pub w: f32,
     pub h: f32,
+}
+
+pub struct Image<'a> {
+    pub ctx: &'a Context,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+    pub texture: Texture2D,
 }
