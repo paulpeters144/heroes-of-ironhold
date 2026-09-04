@@ -80,9 +80,9 @@ impl BattleTestScene {
 
     fn spawn_knight(&self) {
         let parts = HeroFactory::new(&self.assets).create_knight(KnightCfg {
-            outfit: images::Knight::Knight3,
-            sword: images::Knight::Sword2,
-            shield: images::Knight::Shield3,
+            outfit: images::Knight::Knight1,
+            sword: images::Knight::Sword1,
+            shield: images::Knight::Shield1,
         });
 
         self.store
