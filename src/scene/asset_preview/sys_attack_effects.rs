@@ -7,7 +7,6 @@ use crate::entity::player::PlayerOne;
 use crate::systems::{Draw, Update};
 use crate::{Animation, Context, EStore};
 use macroquad::prelude::*;
-use pico_entity_store::entity_ref::EntityRef;
 use std::rc::Rc;
 
 pub struct AttackEffectSystem {
@@ -22,19 +21,17 @@ impl AttackEffectSystem {
             prev_frame: None,
         }
     }
-
-    fn locate_knight_frame(&self) -> Option<usize> {
-        let player = self.store.first::<PlayerOne>()?;
-        let knight = self.store.get_child::<Knight>(&player)?;
-        self.store
-            .get_child::<Animation>(&knight)
-            .map(|a| a.current_frame)
-    }
 }
 
 impl Update for AttackEffectSystem {
     fn update(&mut self, ctx: &mut Context) {
-        let Some(frame) = self.locate_knight_frame() else {
+        let Some(frame) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|player| self.store.get_child::<Knight>(&player))
+            .and_then(|knight| self.store.get_child::<Animation>(&knight))
+            .map(|a| a.current_frame)
+        else {
             return;
         };
 
@@ -72,21 +69,6 @@ impl AttackEffectDrawSystem {
     pub fn new(store: Rc<EStore>) -> Self {
         Self { store }
     }
-
-    fn knight_ref(&self) -> Option<EntityRef> {
-        let player = self.store.first::<PlayerOne>()?;
-        self.store
-            .get_child::<Knight>(&player)
-            .map(|k| k.entity_ref())
-    }
-
-    fn sword_position(&self) -> Option<Vec2> {
-        let knight_ref = self.knight_ref()?;
-        let knight = self.store.get_by_id::<Knight>(knight_ref.id())?;
-        let sword = self.store.get_child::<Sword>(&knight)?;
-        let animation = self.store.get_child::<Animation>(&sword)?;
-        Some(animation.position)
-    }
 }
 
 fn glow_envelope(t: f32) -> f32 {
@@ -114,12 +96,22 @@ fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32, flip_x: bool) {
 
 impl Draw for AttackEffectDrawSystem {
     fn draw(&self, _ctx: &Context) {
-        let Some(sword_pos) = self.sword_position() else {
+        let Some(sword_pos) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_by_id::<Knight>(k.id()))
+            .and_then(|k| self.store.get_child::<Sword>(&k))
+            .and_then(|s| self.store.get_child::<Animation>(&s))
+            .map(|a| a.position)
+        else {
             return;
         };
 
         let mirror = self
-            .knight_ref()
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
             .and_then(|r| self.store.get_by_id::<Knight>(r.id()))
             .and_then(|k| self.store.get_child::<Facing>(&k))
             .is_some_and(|f| *f == Facing::Left);

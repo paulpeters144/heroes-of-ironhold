@@ -31,18 +31,17 @@ impl CameraOrbSystem {
         store.add(Orb::new(), &[]);
         Self { store }
     }
-
-    fn knight_center(&self) -> Option<Vec2> {
-        let player = self.store.first::<PlayerOne>()?;
-        let knight = self.store.get_child::<Knight>(&player)?;
-        let animation = self.store.get_child::<Animation>(&knight)?;
-        Some(animation.rect().center())
-    }
 }
 
 impl Update for CameraOrbSystem {
     fn update(&mut self, _ctx: &mut Context) {
-        let Some(center) = self.knight_center() else {
+        let Some(center) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_child::<Animation>(&k))
+            .map(|a| a.rect().center())
+        else {
             return;
         };
         let facing_sign = match self

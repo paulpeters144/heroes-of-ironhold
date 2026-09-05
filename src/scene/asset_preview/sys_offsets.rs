@@ -4,7 +4,6 @@ use crate::entity::player::PlayerOne;
 use crate::systems::Update;
 use crate::{Animation, Context, EStore, StaticImage};
 use macroquad::prelude::Vec2;
-use pico_entity_store::entity_ref::EntityRef;
 use std::rc::Rc;
 
 pub struct OffsetUpdateSystem {
@@ -15,13 +14,6 @@ impl OffsetUpdateSystem {
     pub fn new(store: Rc<EStore>) -> Self {
         Self { store }
     }
-
-    fn knight_ref(&self) -> Option<EntityRef> {
-        let player = self.store.first::<PlayerOne>()?;
-        self.store
-            .get_child::<Knight>(&player)
-            .map(|k| k.entity_ref())
-    }
 }
 
 fn mirror_x(offset_x: f32, child_w: f32) -> f32 {
@@ -30,7 +22,12 @@ fn mirror_x(offset_x: f32, child_w: f32) -> f32 {
 
 impl Update for OffsetUpdateSystem {
     fn update(&mut self, _ctx: &mut Context) {
-        let Some(knight_ref) = self.knight_ref() else {
+        let Some(knight_ref) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|player| self.store.get_child::<Knight>(&player))
+            .map(|k| k.entity_ref())
+        else {
             return;
         };
 

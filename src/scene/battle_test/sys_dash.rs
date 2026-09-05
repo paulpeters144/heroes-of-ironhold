@@ -151,16 +151,6 @@ impl DashSystem {
         }
     }
 
-    fn knight_id(&self) -> Option<u64> {
-        let player = self.store.first::<PlayerOne>()?;
-        self.store.get_child::<Knight>(&player).map(|k| k.id())
-    }
-
-    fn dash(&self) -> Option<Dash> {
-        let knight = self.store.get_by_id::<Knight>(self.knight_id()?)?;
-        self.store.get_child::<Dash>(&knight).map(|d| *d)
-    }
-
     fn draw_afterimage(&self, ghost: &Ghost, dir: Vec2, progress: f32, color: Color) {
         let Some(material) = self.afterimage.as_ref() else {
             return;
@@ -190,7 +180,14 @@ impl DashSystem {
     }
 
     pub fn draw_ui(&self, _ctx: &Context) {
-        let Some(dash) = self.dash() else {
+        let Some(dash) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_by_id::<Knight>(k.id()))
+            .and_then(|k| self.store.get_child::<Dash>(&k))
+            .map(|d| *d)
+        else {
             return;
         };
 
@@ -286,7 +283,12 @@ impl Update for DashSystem {
     fn update(&mut self, ctx: &mut Context) {
         self.tap_timer = (self.tap_timer - ctx.dt).max(0.0);
 
-        let Some(knight_id) = self.knight_id() else {
+        let Some(knight_id) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .map(|k| k.id())
+        else {
             return;
         };
 
@@ -301,7 +303,12 @@ impl Update for DashSystem {
             }
         }
 
-        let mut dash = self.dash().unwrap_or_else(Dash::knight);
+        let mut dash = self
+            .store
+            .get_by_id::<Knight>(knight_id)
+            .and_then(|k| self.store.get_child::<Dash>(&k))
+            .map(|d| *d)
+            .unwrap_or_else(Dash::knight);
 
         let attacking = self
             .store
@@ -381,10 +388,20 @@ impl Update for DashSystem {
 
 impl Draw for DashSystem {
     fn draw(&self, _ctx: &Context) {
-        let Some(knight_id) = self.knight_id() else {
+        let Some(knight_id) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .map(|k| k.id())
+        else {
             return;
         };
-        let Some(dash) = self.dash() else {
+        let Some(dash) = self
+            .store
+            .get_by_id::<Knight>(knight_id)
+            .and_then(|k| self.store.get_child::<Dash>(&k))
+            .map(|d| *d)
+        else {
             return;
         };
         if dash.time <= 0.0 {

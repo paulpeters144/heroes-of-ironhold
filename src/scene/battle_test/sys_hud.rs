@@ -154,12 +154,6 @@ impl HudDrawSystem {
         view_scale::view_scale(self.v_width, self.v_height).0
     }
 
-    fn stats(&self) -> Option<HeroStats> {
-        let player = self.store.first::<PlayerOne>()?;
-        let knight = self.store.get_child::<Knight>(&player)?;
-        self.store.get_child::<HeroStats>(&knight).map(|r| *r)
-    }
-
     fn dims(&self, text: &str) -> TextDimensions {
         let (font_size, font_scale) = view_scale::crisp_text_params(self.font.size, self.scale());
         measure_text(text, Some(&self.font.font), font_size, font_scale)
@@ -284,7 +278,13 @@ impl HudDrawSystem {
     }
 
     pub fn draw(&self, _ctx: &Context) {
-        let Some(stats) = self.stats() else {
+        let Some(stats) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_child::<HeroStats>(&k))
+            .map(|r| *r)
+        else {
             return;
         };
 

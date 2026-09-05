@@ -7,7 +7,6 @@ use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
-use pico_entity_store::entity_ref::EntityRef;
 use std::rc::Rc;
 
 pub struct KnightControlSystem {
@@ -48,33 +47,18 @@ impl KnightControlSystem {
             self.phase_timer = kind.windup();
         }
     }
-
-    fn knight(&self) -> Option<EntityRef> {
-        let player = self.store.first::<PlayerOne>()?;
-        self.store
-            .get_child::<Knight>(&player)
-            .map(|k| k.entity_ref())
-    }
-
-    fn locate(&self) -> Option<EntityRef> {
-        let knight_ref = self.knight()?;
-        self.store
-            .get_by_id::<Knight>(knight_ref.id())
-            .and_then(|k| self.store.get_child::<Animation>(&k))
-            .map(|a| a.entity_ref())
-    }
-
-    fn facing_ref(&self, knight_ref: &EntityRef) -> Option<EntityRef> {
-        self.store
-            .get_by_id::<Knight>(knight_ref.id())
-            .and_then(|k| self.store.get_child::<Facing>(&k))
-            .map(|f| f.entity_ref())
-    }
 }
 
 impl Update for KnightControlSystem {
     fn update(&mut self, ctx: &mut Context) {
-        let Some(anim_ref) = self.locate() else {
+        let Some(anim_ref) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_by_id::<Knight>(k.id()))
+            .and_then(|k| self.store.get_child::<Animation>(&k))
+            .map(|a| a.entity_ref())
+        else {
             return;
         };
 
@@ -85,7 +69,12 @@ impl Update for KnightControlSystem {
             (animation.position.x, animation.position.y)
         };
 
-        let Some(knight_ref) = self.knight() else {
+        let Some(knight_ref) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .map(|k| k.entity_ref())
+        else {
             return;
         };
 
@@ -101,7 +90,11 @@ impl Update for KnightControlSystem {
 
         if dir != 0.0 && !input::down(Input::Shift) {
             let facing = if dir < 0.0 { Facing::Left } else { Facing::Right };
-            let facing_ref = self.facing_ref(&knight_ref);
+            let facing_ref = self
+                .store
+                .get_by_id::<Knight>(knight_ref.id())
+                .and_then(|k| self.store.get_child::<Facing>(&k))
+                .map(|f| f.entity_ref());
             if let Some(f) = facing_ref {
                 self.store.update::<Facing, _>(&f, |f| *f = facing);
             }

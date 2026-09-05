@@ -31,10 +31,6 @@ impl CameraSystem {
         }
     }
 
-    fn locate_orb(&self) -> Option<Orb> {
-        self.store.first::<Orb>().map(|orb| (*orb).clone())
-    }
-
     fn clamp_axis(&self, value: f32, map_size: f32, view_size: f32) -> f32 {
         let half = view_size * 0.5;
         if map_size >= view_size {
@@ -69,7 +65,7 @@ fn step_camera(pos: Vec2, vel: Vec2, target: Vec2, zone_half: f32, dt: f32) -> (
 
 impl Update for CameraSystem {
     fn update(&mut self, ctx: &mut Context) {
-        let Some(orb) = self.locate_orb() else {
+        let Some(orb) = self.store.first::<Orb>().map(|orb| (*orb).clone()) else {
             return;
         };
 

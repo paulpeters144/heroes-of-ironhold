@@ -6,8 +6,7 @@ use crate::entity::knight::Knight;
 use crate::entity::player::PlayerOne;
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
-use macroquad::prelude::{vec2, Vec2};
-use pico_entity_store::entity_ref::EntityRef;
+use macroquad::prelude::vec2;
 use std::rc::Rc;
 
 pub struct EnemyAiSystem {
@@ -27,19 +26,6 @@ impl EnemyAiSystem {
             attack_step: 0,
             attacking: false,
         }
-    }
-
-    fn knight_position(&self) -> Option<Vec2> {
-        let player = self.store.first::<PlayerOne>()?;
-        let knight = self.store.get_child::<Knight>(&player)?;
-        self.store.get_child::<Animation>(&knight).map(|a| a.position)
-    }
-
-    fn locate(&self) -> Option<EntityRef> {
-        let enemy = self.store.first::<RamHead>()?;
-        self.store
-            .get_child::<Animation>(&enemy)
-            .map(|a| a.entity_ref())
     }
 
     fn next_frame(&mut self, dt: f32) -> usize {
@@ -65,7 +51,12 @@ impl EnemyAiSystem {
 
 impl Update for EnemyAiSystem {
     fn update(&mut self, ctx: &mut Context) {
-        let Some(anim_ref) = self.locate() else {
+        let Some(anim_ref) = self
+            .store
+            .first::<RamHead>()
+            .and_then(|enemy| self.store.get_child::<Animation>(&enemy))
+            .map(|a| a.entity_ref())
+        else {
             return;
         };
 
@@ -77,7 +68,13 @@ impl Update for EnemyAiSystem {
             return;
         };
 
-        let Some(knight_pos) = self.knight_position() else {
+        let Some(knight_pos) = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_child::<Animation>(&k))
+            .map(|a| a.position)
+        else {
             self.store.update::<Animation, _>(&anim_ref, |animation| {
                 animation.current_frame = IDLE_FRAME;
             });
