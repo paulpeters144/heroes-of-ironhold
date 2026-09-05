@@ -13,6 +13,7 @@ use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
 use crate::entity::knight::{
     Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
+use crate::entity::player::{PlayerFactory, PlayerOne};
 use crate::entity::skills::SkillIconKind;
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
 use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
@@ -22,7 +23,7 @@ use crate::scene::Scene;
 use crate::systems::{DrawSystem, SystemAgg};
 use crate::{file, font, images, shader, Animation, Assets, Config, Context, EStore};
 use macroquad::prelude::*;
-use pico_entity_store::store::IntoChild;
+use pico_entity_store::store::{ChildSource, IntoChild};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::future::Future;
@@ -78,59 +79,20 @@ impl BattleTestScene {
         );
     }
 
-    fn spawn_knight(&self) {
+    fn spawn_player(&self) {
         let parts = HeroFactory::new(&self.assets).create_knight(KnightCfg {
-            outfit: images::Knight::Knight1,
+            outfit: images::Knight::Knight3,
             sword: images::Knight::Sword1,
             shield: images::Knight::Shield1,
         });
 
-        self.store
-            .add(parts.shield, &[parts.shield_image.into_child()]);
-        self.store
-            .add(parts.sword, &[parts.sword_animation.into_child()]);
-
-        let shield = self.store.first::<Shield>().expect("shield");
-        let sword = self.store.first::<Sword>().expect("sword");
-        self.store.add(
-            Knight,
-            &[
-                parts.body.into_child(),
-                shield.into_child(),
-                sword.into_child(),
-                parts.facing.into_child(),
-                HeroStats::default().into_child(),
-                Dash::knight().into_child(),
-            ],
-        );
-
-        self.spawn_effects();
-    }
-
-    fn spawn_ram_head(&self, position: Vec2) {
-        let mut parts = EnemyFactory::new(&self.assets).create_ram_head();
-        parts.body.position = position;
-        self.store.add(parts.marker, &[parts.body.into_child()]);
-    }
-
-    fn spawn_effects(&self) {
         let thrust_tex = self.assets.texture(images::Knight::ThrustGraphic);
         let swipe_tex = self.assets.texture(images::Knight::SwipeGraphic);
 
-        let (thrust_offset, slash_offset) = {
-            let Some(sword) = self.store.first::<Sword>() else {
-                return;
-            };
-            let Some(sword_anim) = self.store.get_child::<Animation>(&sword) else {
-                return;
-            };
-            let rect = sword_anim.rect();
-            let x = rect.right() - sword_anim.position.x;
-            (
-                vec2(x, (rect.h - thrust_tex.height()) * 0.5),
-                vec2(x + 15.0, (rect.h - swipe_tex.height()) * 0.5),
-            )
-        };
+        let sword_rect = parts.sword_animation.rect();
+        let x = sword_rect.right() - parts.sword_animation.position.x;
+        let thrust_offset = vec2(x, (sword_rect.h - thrust_tex.height()) * 0.5);
+        let slash_offset = vec2(x + 15.0, (sword_rect.h - swipe_tex.height()) * 0.5);
 
         let thrust = Effect {
             kind: EffectKind::Thrust,
@@ -149,10 +111,40 @@ impl BattleTestScene {
             visible: false,
         };
 
-        if let Some(sword) = self.store.first::<Sword>() {
-            self.store
-                .add(sword, &[thrust.into_child(), slash.into_child()]);
-        }
+        self.store
+            .add(parts.shield, &[parts.shield_image.into_child()]);
+        self.store.add(
+            parts.sword,
+            &[
+                parts.sword_animation.into_child(),
+                thrust.into_child(),
+                slash.into_child(),
+            ],
+        );
+
+        let shield = self.store.first::<Shield>().expect("shield");
+        let sword = self.store.first::<Sword>().expect("sword");
+        self.store.add(
+            Knight,
+            &[
+                parts.body.into_child(),
+                shield.into_child(),
+                sword.into_child(),
+                parts.facing.into_child(),
+                HeroStats::default().into_child(),
+                Dash::knight().into_child(),
+            ],
+        );
+
+        let knight = self.store.first::<Knight>().expect("knight").entity_ref();
+        self.store
+            .add(PlayerFactory::spawn_one(), &[ChildSource::Existing(knight)]);
+    }
+
+    fn spawn_ram_head(&self, position: Vec2) {
+        let mut parts = EnemyFactory::new(&self.assets).create_ram_head();
+        parts.body.position = position;
+        self.store.add(parts.marker, &[parts.body.into_child()]);
     }
 
     fn build_map(&self) -> TiledMap {
@@ -239,7 +231,7 @@ impl Scene for BattleTestScene {
             self.agg.add_draw(DrawSystem::new(self.store.clone()));
             self.agg
                 .add_draw(AttackEffectDrawSystem::new(self.store.clone()));
-            // self.agg.add_draw(CameraOrbSystem::new(self.store.clone()));
+            // self.agg.add_draw(CameraOrbSystem::new(self.store.clone(), 0));
 
             self.agg.add_update(CameraSystem::new(
                 self.store.clone(),
@@ -249,10 +241,13 @@ impl Scene for BattleTestScene {
                 map_h,
             ));
 
-            self.spawn_knight();
+            self.spawn_player();
 
             let color = {
-                let Some(knight) = self.store.first::<Knight>() else {
+                let Some(player) = self.store.first::<PlayerOne>() else {
+                    return;
+                };
+                let Some(knight) = self.store.get_child::<Knight>(&player) else {
                     return;
                 };
                 let Some(animation) = self.store.get_child::<Animation>(&knight) else {
@@ -273,15 +268,20 @@ impl Scene for BattleTestScene {
             self.dash_ui = Some(dash);
 
             let body = vec2(200.0, 160.0);
-            {
-                let Some(knight_ref) = self.store.first::<Knight>() else {
+            let anim_ref = {
+                let Some(player) = self.store.first::<PlayerOne>() else {
                     return;
                 };
-                let Some(mut animation) = self.store.get_child_mut::<Animation>(knight_ref) else {
+                let Some(knight) = self.store.get_child::<Knight>(&player) else {
                     return;
                 };
-                animation.position = body;
-            }
+                let Some(animation) = self.store.get_child::<Animation>(&knight) else {
+                    return;
+                };
+                animation.entity_ref()
+            };
+            self.store
+                .update::<Animation, _>(&anim_ref, |a| a.position = body);
             self.spawn_ram_head(vec2(map_w * 0.5, map_h * 0.5));
         })
     }

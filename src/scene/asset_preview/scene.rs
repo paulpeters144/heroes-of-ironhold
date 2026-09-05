@@ -2,19 +2,22 @@ use super::sys_animation::AnimationUpdateSystem;
 use super::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
 use super::sys_knight_controls::KnightControlSystem;
 use super::sys_offsets::OffsetUpdateSystem;
+use crate::entity::dash::Dash;
 use crate::entity::factory_hero::{
     HeroFactory, KnightCfg, FRAME_SIZE, SHIELD_SIZE, SWORD_FRAME_SIZE,
 };
 use crate::entity::knight::{
-    Effect, EffectKind, Knight, Shield, Sword, IDLE_FRAME, SLASH_LIFETIME, THRUST_LIFETIME,
+    Effect, EffectKind, HeroStats, Knight, Shield, Sword, IDLE_FRAME, SLASH_LIFETIME,
+    THRUST_LIFETIME,
 };
+use crate::entity::player::{PlayerFactory, PlayerOne};
 use crate::input::{self, Input};
 use crate::scene::Scene;
 use crate::systems::{DrawSystem, SystemAgg, Update};
 use crate::ui::{Outlined, Style, UI};
 use crate::{images, Animation, Assets, Config, Context, EStore};
 use macroquad::prelude::*;
-use pico_entity_store::store::IntoChild;
+use pico_entity_store::store::{ChildSource, IntoChild};
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -101,47 +104,16 @@ impl AssetPreviewScene {
         }
     }
 
-    fn spawn_knight(&self, cfg: KnightCfg) {
+    fn spawn_player(&self, cfg: KnightCfg) {
         let parts = HeroFactory::new(&self.assets).create_knight(cfg);
 
-        self.store
-            .add(parts.shield, &[parts.shield_image.into_child()]);
-        self.store
-            .add(parts.sword, &[parts.sword_animation.into_child()]);
-
-        let shield = self.store.first::<Shield>().expect("shield");
-        let sword = self.store.first::<Sword>().expect("sword");
-        self.store.add(
-            Knight,
-            &[
-                parts.body.into_child(),
-                shield.into_child(),
-                sword.into_child(),
-                parts.facing.into_child(),
-            ],
-        );
-
-        self.spawn_effects();
-    }
-
-    fn spawn_effects(&self) {
         let thrust_tex = self.assets.texture(images::Knight::ThrustGraphic);
         let swipe_tex = self.assets.texture(images::Knight::SwipeGraphic);
 
-        let (thrust_offset, slash_offset) = {
-            let Some(sword) = self.store.first::<Sword>() else {
-                return;
-            };
-            let Some(sword_anim) = self.store.get_child::<Animation>(&sword) else {
-                return;
-            };
-            let rect = sword_anim.rect();
-            let x = rect.right() - sword_anim.position.x;
-            (
-                vec2(x, (rect.h - thrust_tex.height()) * 0.5),
-                vec2(x + 15.0, (rect.h - swipe_tex.height()) * 0.5),
-            )
-        };
+        let sword_rect = parts.sword_animation.rect();
+        let x = sword_rect.right() - parts.sword_animation.position.x;
+        let thrust_offset = vec2(x, (sword_rect.h - thrust_tex.height()) * 0.5);
+        let slash_offset = vec2(x + 15.0, (sword_rect.h - swipe_tex.height()) * 0.5);
 
         let thrust = Effect {
             kind: EffectKind::Thrust,
@@ -160,34 +132,63 @@ impl AssetPreviewScene {
             visible: false,
         };
 
-        if let Some(sword) = self.store.first::<Sword>() {
-            self.store
-                .add(sword, &[thrust.into_child(), slash.into_child()]);
-        }
+        self.store
+            .add(parts.shield, &[parts.shield_image.into_child()]);
+        self.store.add(
+            parts.sword,
+            &[
+                parts.sword_animation.into_child(),
+                thrust.into_child(),
+                slash.into_child(),
+            ],
+        );
+
+        let shield = self.store.first::<Shield>().expect("shield");
+        let sword = self.store.first::<Sword>().expect("sword");
+        self.store.add(
+            Knight,
+            &[
+                parts.body.into_child(),
+                shield.into_child(),
+                sword.into_child(),
+                parts.facing.into_child(),
+                HeroStats::default().into_child(),
+                Dash::knight().into_child(),
+            ],
+        );
+
+        let knight = self.store.first::<Knight>().expect("knight").entity_ref();
+        self.store
+            .add(PlayerFactory::spawn_one(), &[ChildSource::Existing(knight)]);
     }
 
-    fn rebuild_knight(&self) {
-        let body_pos = {
-            if let Some(knight_ref) = self.store.first::<Knight>() {
-                self.store
-                    .get_child::<Animation>(&knight_ref)
-                    .map(|a| a.position)
-            } else {
-                None
-            }
-        };
+    fn rebuild_player(&self) {
+        let body_pos = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|player| self.store.get_child::<Knight>(&player))
+            .and_then(|knight| self.store.get_child::<Animation>(&knight))
+            .map(|a| a.position);
 
-        if let Some(knight_ref) = self.store.first::<Knight>().map(|k| k.entity_ref()) {
-            self.store.remove(&[knight_ref]);
+        if let Some(player_ref) = self
+            .store
+            .first::<PlayerOne>()
+            .map(|p| p.entity_ref())
+        {
+            self.store.remove(&[player_ref]);
         }
 
-        self.spawn_knight(self.current_cfg());
+        self.spawn_player(self.current_cfg());
 
         if let Some(body_pos) = body_pos {
-            if let Some(knight_ref) = self.store.first::<Knight>() {
-                if let Some(mut animation) = self.store.get_child_mut::<Animation>(knight_ref) {
-                    animation.position = body_pos;
-                }
+            let anim_ref = self
+                .store
+                .first::<PlayerOne>()
+                .and_then(|player| self.store.get_child::<Knight>(&player))
+                .and_then(|knight| self.store.get_child::<Animation>(&knight))
+                .map(|a| a.entity_ref());
+            if let Some(anim_ref) = anim_ref {
+                self.store.update::<Animation, _>(&anim_ref, |a| a.position = body_pos);
             }
         }
     }
@@ -196,28 +197,32 @@ impl AssetPreviewScene {
         self.knight_variant =
             (self.knight_variant as i32 + delta).rem_euclid(OUTFITS.len() as i32) as usize;
         self.outfit_texture = self.assets.texture(OUTFITS[self.knight_variant]);
-        self.rebuild_knight();
+        self.rebuild_player();
     }
 
     fn cycle_shield(&mut self, delta: i32) {
         self.shield_variant =
             (self.shield_variant as i32 + delta).rem_euclid(SHIELDS.len() as i32) as usize;
         self.shield_texture = self.assets.texture(SHIELDS[self.shield_variant]);
-        self.rebuild_knight();
+        self.rebuild_player();
     }
 
     fn cycle_sword(&mut self, delta: i32) {
         self.sword_variant =
             (self.sword_variant as i32 + delta).rem_euclid(SWORDS.len() as i32) as usize;
         self.sword_texture = self.assets.texture(SWORDS[self.sword_variant]);
-        self.rebuild_knight();
+        self.rebuild_player();
     }
 
     fn set_knight_idle(&self) {
-        if let Some(knight_ref) = self.store.first::<Knight>() {
-            if let Some(mut animation) = self.store.get_child_mut::<Animation>(knight_ref) {
-                animation.current_frame = IDLE_FRAME;
-            }
+        let anim_ref = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|player| self.store.get_child::<Knight>(&player))
+            .and_then(|knight| self.store.get_child::<Animation>(&knight))
+            .map(|a| a.entity_ref());
+        if let Some(anim_ref) = anim_ref {
+            self.store.update::<Animation, _>(&anim_ref, |a| a.current_frame = IDLE_FRAME);
         }
     }
 }
@@ -247,7 +252,7 @@ impl Scene for AssetPreviewScene {
 
             self.agg.add_draw(AttackEffectDrawSystem::new(self.store.clone()));
 
-            self.spawn_knight(KnightCfg {
+            self.spawn_player(KnightCfg {
                 outfit: OUTFITS[0],
                 sword: SWORDS[0],
                 shield: SHIELDS[0],
@@ -260,10 +265,14 @@ impl Scene for AssetPreviewScene {
                 ui_left * 0.5 - FRAME_SIZE * 0.5,
                 self.cfg.v_height * 0.5 - FRAME_SIZE * 0.5,
             );
-            if let Some(knight_ref) = self.store.first::<Knight>() {
-                if let Some(mut animation) = self.store.get_child_mut::<Animation>(knight_ref) {
-                    animation.position = body;
-                }
+            let anim_ref = self
+                .store
+                .first::<PlayerOne>()
+                .and_then(|player| self.store.get_child::<Knight>(&player))
+                .and_then(|knight| self.store.get_child::<Animation>(&knight))
+                .map(|animation| animation.entity_ref());
+            if let Some(anim_ref) = anim_ref {
+                self.store.update::<Animation, _>(&anim_ref, |a| a.position = body);
             }
         })
     }

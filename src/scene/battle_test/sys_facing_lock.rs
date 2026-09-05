@@ -1,4 +1,5 @@
 use crate::entity::knight::{Facing, Knight, SWIPE_FRAME, THRUST_FRAME};
+use crate::entity::player::PlayerOne;
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
 use std::rc::Rc;
@@ -26,7 +27,10 @@ impl KnightFacingLockSystem {
 impl Update for KnightFacingLockSystem {
     fn update(&mut self, ctx: &mut Context) {
         let (frame, facing_ref, current) = {
-            let Some(knight) = self.store.first::<Knight>() else {
+            let Some(player) = self.store.first::<PlayerOne>() else {
+                return;
+            };
+            let Some(knight) = self.store.get_child::<Knight>(&player) else {
                 return;
             };
             let frame = self

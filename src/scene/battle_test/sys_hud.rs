@@ -1,4 +1,5 @@
 use crate::entity::knight::{HeroStats, Knight};
+use crate::entity::player::PlayerOne;
 use crate::util::view_scale;
 use crate::{images, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
 use macroquad::prelude::*;
@@ -154,7 +155,8 @@ impl HudDrawSystem {
     }
 
     fn stats(&self) -> Option<HeroStats> {
-        let knight = self.store.first::<Knight>()?;
+        let player = self.store.first::<PlayerOne>()?;
+        let knight = self.store.get_child::<Knight>(&player)?;
         self.store.get_child::<HeroStats>(&knight).map(|r| *r)
     }
 

@@ -3,6 +3,7 @@ use crate::entity::knight::{
     AttackKind, AttackPhase, Facing, Knight, IDLE_FRAME, WALK_FRAMES,
 };
 use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, REVERSE_MULT, WALK_FRAME_DURATION};
+use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
@@ -48,13 +49,26 @@ impl KnightControlSystem {
         }
     }
 
+    fn knight(&self) -> Option<EntityRef> {
+        let player = self.store.first::<PlayerOne>()?;
+        self.store
+            .get_child::<Knight>(&player)
+            .map(|k| k.entity_ref())
+    }
+
     fn locate(&self) -> Option<EntityRef> {
-        for knight in self.store.all::<Knight>() {
-            if let Some(animation) = self.store.get_child::<Animation>(&knight) {
-                return Some(animation.entity_ref());
-            }
-        }
-        None
+        let knight_ref = self.knight()?;
+        self.store
+            .get_by_id::<Knight>(knight_ref.id())
+            .and_then(|k| self.store.get_child::<Animation>(&k))
+            .map(|a| a.entity_ref())
+    }
+
+    fn facing_ref(&self, knight_ref: &EntityRef) -> Option<EntityRef> {
+        self.store
+            .get_by_id::<Knight>(knight_ref.id())
+            .and_then(|k| self.store.get_child::<Facing>(&k))
+            .map(|f| f.entity_ref())
     }
 }
 
@@ -71,6 +85,10 @@ impl Update for KnightControlSystem {
             (animation.position.x, animation.position.y)
         };
 
+        let Some(knight_ref) = self.knight() else {
+            return;
+        };
+
         let left = input::down(Input::Left);
         let right = input::down(Input::Right);
         let dir: f32 = if left && !right {
@@ -83,13 +101,17 @@ impl Update for KnightControlSystem {
 
         if dir != 0.0 && !input::down(Input::Shift) {
             let facing = if dir < 0.0 { Facing::Left } else { Facing::Right };
-            let facing_ref = self.store.first::<Facing>().map(|f| f.entity_ref());
+            let facing_ref = self.facing_ref(&knight_ref);
             if let Some(f) = facing_ref {
                 self.store.update::<Facing, _>(&f, |f| *f = facing);
             }
         }
 
-        let current_facing = self.store.first::<Facing>().map(|f| *f);
+        let current_facing = self
+            .store
+            .get_by_id::<Knight>(knight_ref.id())
+            .and_then(|k| self.store.get_child::<Facing>(&k))
+            .map(|f| *f);
         if let (Some(prev), Some(cur)) = (self.prev_facing, current_facing) {
             if prev != cur {
                 self.buffered = None;
@@ -161,7 +183,8 @@ impl Update for KnightControlSystem {
             _ => {
                 if self
                     .store
-                    .first::<Dash>()
+                    .get_by_id::<Knight>(knight_ref.id())
+                    .and_then(|k| self.store.get_child::<Dash>(&k))
                     .map(|d| d.time > 0.0)
                     .unwrap_or(false)
                 {

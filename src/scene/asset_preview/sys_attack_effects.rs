@@ -3,9 +3,11 @@ use crate::entity::knight::{
     Effect, EffectKind, Facing, Knight, Sword, GLOW_IN_FRACTION, HOLD_START, SWIPE_FRAME,
     THRUST_FRAME,
 };
+use crate::entity::player::PlayerOne;
 use crate::systems::{Draw, Update};
 use crate::{Animation, Context, EStore};
 use macroquad::prelude::*;
+use pico_entity_store::entity_ref::EntityRef;
 use std::rc::Rc;
 
 pub struct AttackEffectSystem {
@@ -22,12 +24,11 @@ impl AttackEffectSystem {
     }
 
     fn locate_knight_frame(&self) -> Option<usize> {
-        for knight in self.store.all::<Knight>() {
-            if let Some(animation) = self.store.get_child::<Animation>(&knight) {
-                return Some(animation.current_frame);
-            }
-        }
-        None
+        let player = self.store.first::<PlayerOne>()?;
+        let knight = self.store.get_child::<Knight>(&player)?;
+        self.store
+            .get_child::<Animation>(&knight)
+            .map(|a| a.current_frame)
     }
 }
 
@@ -72,8 +73,17 @@ impl AttackEffectDrawSystem {
         Self { store }
     }
 
+    fn knight_ref(&self) -> Option<EntityRef> {
+        let player = self.store.first::<PlayerOne>()?;
+        self.store
+            .get_child::<Knight>(&player)
+            .map(|k| k.entity_ref())
+    }
+
     fn sword_position(&self) -> Option<Vec2> {
-        let sword = self.store.first::<Sword>()?;
+        let knight_ref = self.knight_ref()?;
+        let knight = self.store.get_by_id::<Knight>(knight_ref.id())?;
+        let sword = self.store.get_child::<Sword>(&knight)?;
         let animation = self.store.get_child::<Animation>(&sword)?;
         Some(animation.position)
     }
@@ -109,8 +119,9 @@ impl Draw for AttackEffectDrawSystem {
         };
 
         let mirror = self
-            .store
-            .first::<Facing>()
+            .knight_ref()
+            .and_then(|r| self.store.get_by_id::<Knight>(r.id()))
+            .and_then(|k| self.store.get_child::<Facing>(&k))
             .is_some_and(|f| *f == Facing::Left);
 
         for effect in self.store.all::<Effect>() {

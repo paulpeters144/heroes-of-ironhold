@@ -2,6 +2,7 @@ use crate::entity::dash::Dash;
 use crate::entity::knight::{
     Knight, DOUBLE_TAP_WINDOW, IDLE_FRAME, SWIPE_FRAME, THRUST_FRAME,
 };
+use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
 use crate::systems::{Draw, Update};
 use crate::ui::draw_rounded_rect;
@@ -127,7 +128,12 @@ fn load_afterimage_material(assets: &Assets) -> Option<Material> {
 }
 
 impl DashSystem {
-    pub fn new(store: Rc<EStore>, assets: &Assets, dash_color: Rc<Cell<Color>>, cfg: Rc<Config>) -> Self {
+    pub fn new(
+        store: Rc<EStore>,
+        assets: &Assets,
+        dash_color: Rc<Cell<Color>>,
+        cfg: Rc<Config>,
+    ) -> Self {
         let base = assets.get_font(&TextStyle::new(FontTag::Body));
         let font = GameFont {
             size: 12,
@@ -146,7 +152,8 @@ impl DashSystem {
     }
 
     fn knight_id(&self) -> Option<u64> {
-        self.store.first::<Knight>().map(|k| k.id())
+        let player = self.store.first::<PlayerOne>()?;
+        self.store.get_child::<Knight>(&player).map(|k| k.id())
     }
 
     fn dash(&self) -> Option<Dash> {

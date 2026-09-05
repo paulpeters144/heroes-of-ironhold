@@ -6,5 +6,6 @@ pub mod factory_enemy;
 pub mod factory_hero;
 pub mod factory_skills;
 pub mod knight;
+pub mod player;
 pub mod skills;
 pub mod static_image;

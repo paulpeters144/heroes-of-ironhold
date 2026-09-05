@@ -3,6 +3,7 @@ use crate::entity::enemy::{
     MOVE_SPEED_VERTICAL, WALK_FRAMES,
 };
 use crate::entity::knight::Knight;
+use crate::entity::player::PlayerOne;
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
 use macroquad::prelude::{vec2, Vec2};
@@ -29,7 +30,8 @@ impl EnemyAiSystem {
     }
 
     fn knight_position(&self) -> Option<Vec2> {
-        let knight = self.store.first::<Knight>()?;
+        let player = self.store.first::<PlayerOne>()?;
+        let knight = self.store.get_child::<Knight>(&player)?;
         self.store.get_child::<Animation>(&knight).map(|a| a.position)
     }
 

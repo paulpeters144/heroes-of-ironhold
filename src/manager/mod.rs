@@ -94,9 +94,10 @@ impl Manager {
         let mut assets = Assets::new();
         assets.preload(&[&vert, &frag]).await;
 
-        let (Some(vertex), Some(fragment)) =
-            (assets.shaders.get(&vert.path()), assets.shaders.get(&frag.path()))
-        else {
+        let (Some(vertex), Some(fragment)) = (
+            assets.shaders.get(&vert.path()),
+            assets.shaders.get(&frag.path()),
+        ) else {
             warn!("shader sources missing; material disabled");
             return None;
         };
@@ -175,10 +176,7 @@ impl Manager {
 
     fn draw_scene(&self, ctx: &Context) {
         if let Some(material) = &self.pixel_snap {
-            material.set_uniform(
-                "viewport",
-                vec2(self.cfg.rt_width(), self.cfg.rt_height()),
-            );
+            material.set_uniform("viewport", vec2(self.cfg.rt_width(), self.cfg.rt_height()));
             gl_use_material(material);
         }
         match &self.scene_state {
