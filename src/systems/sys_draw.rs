@@ -1,6 +1,5 @@
 use crate::systems::Draw;
-use crate::{Animation, Context, EStore, StaticImage};
-use macroquad::prelude::*;
+use crate::{Animation, Context, Drawable, EStore, StaticImage};
 use std::rc::Rc;
 
 enum DrawKind {
@@ -21,47 +20,6 @@ impl DrawSystem {
     pub fn new(store: Rc<EStore>) -> Self {
         Self { store }
     }
-
-    fn draw_animation(animation: &Animation) {
-        let source = Rect::new(
-            animation.current_frame as f32 * animation.frame_width,
-            0.0,
-            animation.frame_width,
-            animation.frame_height,
-        );
-        let dest_size = if animation.dest_size == Vec2::ZERO {
-            vec2(animation.frame_width, animation.frame_height)
-        } else {
-            animation.dest_size
-        } * animation.scale;
-
-        draw_texture_ex(
-            &animation.source,
-            animation.position.x,
-            animation.position.y,
-            animation.tint,
-            DrawTextureParams {
-                dest_size: Some(dest_size),
-                source: Some(source),
-                flip_x: animation.flip_x,
-                ..Default::default()
-            },
-        );
-    }
-
-    fn draw_static(image: &StaticImage) {
-        draw_texture_ex(
-            &image.source,
-            image.position.x,
-            image.position.y,
-            image.tint,
-            DrawTextureParams {
-                dest_size: Some(image.size * image.scale),
-                flip_x: image.flip_x,
-                ..Default::default()
-            },
-        );
-    }
 }
 
 impl Draw for DrawSystem {
@@ -73,7 +31,7 @@ impl Draw for DrawSystem {
                 continue;
             }
             cmds.push(DrawCmd {
-                z_idx: animation.z_idx,
+                z_idx: animation.zdx(),
                 kind: DrawKind::Animation(animation.clone()),
             });
         }
@@ -83,7 +41,7 @@ impl Draw for DrawSystem {
                 continue;
             }
             cmds.push(DrawCmd {
-                z_idx: image.z_idx,
+                z_idx: image.zdx(),
                 kind: DrawKind::Static(image.clone()),
             });
         }
@@ -92,8 +50,8 @@ impl Draw for DrawSystem {
 
         for cmd in cmds {
             match cmd.kind {
-                DrawKind::Animation(animation) => Self::draw_animation(&animation),
-                DrawKind::Static(image) => Self::draw_static(&image),
+                DrawKind::Animation(animation) => animation.draw(),
+                DrawKind::Static(image) => image.draw(),
             }
         }
     }

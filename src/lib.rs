@@ -19,6 +19,7 @@ pub use access::game_state::{DiskJsonStore, GameState, GameStateStore, SaveError
 pub use access::ids::{file, font, images, shader, sound, texture};
 pub use entity::animation::Animation;
 pub use entity::dash::{Dash, DashCfg};
+pub use entity::drawable::Drawable;
 pub use entity::factory_hero::{HeroFactory, KnightCfg, KnightParts};
 pub use entity::factory_skills::{SkillSlotCfg, SkillsFactory};
 pub use entity::knight::{Effect, EffectKind, FrameOffsets, HeroStats, Knight, Shield, Sword};
