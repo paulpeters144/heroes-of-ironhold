@@ -52,6 +52,11 @@ pub struct AssetPreviewScene {
     outfit_texture: Texture2D,
     shield_texture: Texture2D,
     sword_texture: Texture2D,
+    outfit_textures: [Texture2D; 3],
+    shield_textures: [Texture2D; 3],
+    sword_textures: [Texture2D; 3],
+    thrust_tex: Texture2D,
+    swipe_tex: Texture2D,
     knight_variant: usize,
     shield_variant: usize,
     sword_variant: usize,
@@ -78,6 +83,11 @@ impl AssetPreviewScene {
             outfit_texture: Texture2D::empty(),
             shield_texture: Texture2D::empty(),
             sword_texture: Texture2D::empty(),
+            outfit_textures: std::array::from_fn(|_| Texture2D::empty()),
+            shield_textures: std::array::from_fn(|_| Texture2D::empty()),
+            sword_textures: std::array::from_fn(|_| Texture2D::empty()),
+            thrust_tex: Texture2D::empty(),
+            swipe_tex: Texture2D::empty(),
             knight_variant: 0,
             shield_variant: 0,
             sword_variant: 0,
@@ -107,8 +117,8 @@ impl AssetPreviewScene {
     fn spawn_player(&self, cfg: KnightCfg) {
         let parts = HeroFactory::new(&self.assets).create_knight(cfg);
 
-        let thrust_tex = self.assets.texture(images::Knight::ThrustGraphic);
-        let swipe_tex = self.assets.texture(images::Knight::SwipeGraphic);
+        let thrust_tex = self.thrust_tex.clone();
+        let swipe_tex = self.swipe_tex.clone();
 
         let sword_rect = parts.sword_animation.rect();
         let x = sword_rect.right() - parts.sword_animation.position.x;
@@ -196,21 +206,21 @@ impl AssetPreviewScene {
     fn cycle_outfit(&mut self, delta: i32) {
         self.knight_variant =
             (self.knight_variant as i32 + delta).rem_euclid(OUTFITS.len() as i32) as usize;
-        self.outfit_texture = self.assets.texture(OUTFITS[self.knight_variant]);
+        self.outfit_texture = self.outfit_textures[self.knight_variant].clone();
         self.rebuild_player();
     }
 
     fn cycle_shield(&mut self, delta: i32) {
         self.shield_variant =
             (self.shield_variant as i32 + delta).rem_euclid(SHIELDS.len() as i32) as usize;
-        self.shield_texture = self.assets.texture(SHIELDS[self.shield_variant]);
+        self.shield_texture = self.shield_textures[self.shield_variant].clone();
         self.rebuild_player();
     }
 
     fn cycle_sword(&mut self, delta: i32) {
         self.sword_variant =
             (self.sword_variant as i32 + delta).rem_euclid(SWORDS.len() as i32) as usize;
-        self.sword_texture = self.assets.texture(SWORDS[self.sword_variant]);
+        self.sword_texture = self.sword_textures[self.sword_variant].clone();
         self.rebuild_player();
     }
 
@@ -246,9 +256,16 @@ impl Scene for AssetPreviewScene {
                 ])
                 .await;
 
-            self.outfit_texture = self.assets.texture(OUTFITS[0]);
-            self.shield_texture = self.assets.texture(SHIELDS[0]);
-            self.sword_texture = self.assets.texture(SWORDS[0]);
+            for i in 0..3 {
+                self.outfit_textures[i] = self.assets.texture(OUTFITS[i]);
+                self.shield_textures[i] = self.assets.texture(SHIELDS[i]);
+                self.sword_textures[i] = self.assets.texture(SWORDS[i]);
+            }
+            self.outfit_texture = self.outfit_textures[0].clone();
+            self.shield_texture = self.shield_textures[0].clone();
+            self.sword_texture = self.sword_textures[0].clone();
+            self.thrust_tex = self.assets.texture(images::Knight::ThrustGraphic);
+            self.swipe_tex = self.assets.texture(images::Knight::SwipeGraphic);
 
             self.agg.add_draw(AttackEffectDrawSystem::new(self.store.clone()));
 
