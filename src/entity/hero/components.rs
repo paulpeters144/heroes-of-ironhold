@@ -8,20 +8,18 @@ pub enum CoreStat {
     Strength,
     Armor,
     Intelligence,
-    Resistances,
     Evasion,
     Accuracy,
     CriticalStrike,
 }
 
 impl CoreStat {
-    pub const ALL: [CoreStat; 9] = [
+    pub const ALL: [CoreStat; 8] = [
         CoreStat::HealthPoints,
         CoreStat::MagicPoints,
         CoreStat::Strength,
         CoreStat::Armor,
         CoreStat::Intelligence,
-        CoreStat::Resistances,
         CoreStat::Evasion,
         CoreStat::Accuracy,
         CoreStat::CriticalStrike,
@@ -34,7 +32,6 @@ impl CoreStat {
             CoreStat::Strength => "Strength (STR)",
             CoreStat::Armor => "Armor (ARM)",
             CoreStat::Intelligence => "Intelligence (INT)",
-            CoreStat::Resistances => "Resistances (RES)",
             CoreStat::Evasion => "Evasion (EVA)",
             CoreStat::Accuracy => "Accuracy (ACC)",
             CoreStat::CriticalStrike => "Critical Strike (CTR)",
@@ -53,13 +50,10 @@ impl CoreStat {
                 "Increases physical damage, knockback, stun duration, and reduces knockback taken."
             }
             CoreStat::Armor => {
-                "Mitigates incoming physical damage from melee attacks and projectiles."
+                "Mitigates all incoming damage, both physical and magical."
             }
             CoreStat::Intelligence => {
                 "Increases magical power, spell effectiveness, and maximum Mana pool."
-            }
-            CoreStat::Resistances => {
-                "Reduces the effect of magical damage."
             }
             CoreStat::Evasion => {
                 "Increases the chances of dodging incoming physical attacks, both physical and magical."
@@ -89,7 +83,6 @@ pub struct HeroStats {
     pub strength: i32,
     pub armor: i32,
     pub intelligence: i32,
-    pub resistances: i32,
     pub evasion: i32,
     pub accuracy: i32,
     pub critical: i32,
@@ -109,7 +102,6 @@ impl Default for HeroStats {
             strength: 12,
             armor: 8,
             intelligence: 5,
-            resistances: 5,
             evasion: 5,
             accuracy: 95,
             critical: 10,

@@ -18,8 +18,8 @@ from decimal import ROUND_HALF_UP, Decimal
 
 HEROES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "heroes.json")
 
-STAT_KEYS = ["hp", "mp", "str", "arm", "int", "res", "eva", "acc", "crit"]
-STAT_HEADERS = ["HP", "MP", "STR", "ARM", "INT", "RES", "EVA", "ACC", "CRIT"]
+STAT_KEYS = ["hp", "mp", "str", "arm", "int", "eva", "acc", "crit"]
+STAT_HEADERS = ["HP", "MP", "STR", "ARM", "INT", "EVA", "ACC", "CRIT"]
 
 
 def calc_stat(base, mod, level: int) -> int:
