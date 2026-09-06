@@ -6,9 +6,9 @@ use crate::entity::dash::Dash;
 use crate::entity::factory_hero::{
     HeroFactory, KnightCfg, FRAME_SIZE, SHIELD_SIZE, SWORD_FRAME_SIZE,
 };
+use crate::entity::hero::HeroStats;
 use crate::entity::knight::{
-    Effect, EffectKind, HeroStats, Knight, Shield, Sword, IDLE_FRAME, SLASH_LIFETIME,
-    THRUST_LIFETIME,
+    Effect, EffectKind, Knight, Shield, Sword, IDLE_FRAME, SLASH_LIFETIME, THRUST_LIFETIME,
 };
 use crate::entity::player::{PlayerFactory, PlayerOne};
 use crate::input::{self, Input};

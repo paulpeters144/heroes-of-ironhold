@@ -5,6 +5,7 @@ pub mod enemy;
 pub mod factory_enemy;
 pub mod factory_hero;
 pub mod factory_skills;
+pub mod hero;
 pub mod knight;
 pub mod player;
 pub mod skills;

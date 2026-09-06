@@ -10,8 +10,9 @@ use crate::entity::dash::Dash;
 use crate::entity::factory_enemy::EnemyFactory;
 use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
+use crate::entity::hero::HeroStats;
 use crate::entity::knight::{
-    Effect, EffectKind, HeroStats, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
+    Effect, EffectKind, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
 use crate::entity::player::{PlayerFactory, PlayerOne};
 use crate::entity::skills::SkillIconKind;

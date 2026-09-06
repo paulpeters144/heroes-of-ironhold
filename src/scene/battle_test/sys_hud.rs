@@ -1,4 +1,5 @@
-use crate::entity::knight::{HeroStats, Knight};
+use crate::entity::hero::HeroStats;
+use crate::entity::knight::Knight;
 use crate::entity::player::PlayerOne;
 use crate::util::view_scale;
 use crate::{images, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
