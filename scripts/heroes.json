@@ -1,0 +1,22 @@
+{
+  "hunter": {
+    "base": { "hp": 115, "mp": 90, "str": 13, "arm": 5, "int": 4, "res": 5, "eva": 8, "acc": 96, "crit": 7 },
+    "mods": { "hp": 0.11, "mp": 0.07, "str": 0.12, "arm": 0.06, "int": 0.04, "res": 0.06, "eva": 0.022, "acc": 0.0, "crit": 0.003 }
+  },
+  "knight": {
+    "base": { "hp": 160, "mp": 60, "str": 10, "arm": 12, "int": 3, "res": 9, "eva": 3, "acc": 95, "crit": 5 },
+    "mods": { "hp": 0.09, "mp": 0.05, "str": 0.12, "arm": 0.09, "int": 0.04, "res": 0.07, "eva": 0.012, "acc": 0.0, "crit": 0.002 }
+  },
+  "wizard": {
+    "base": { "hp": 100, "mp": 160, "str": 2, "arm": 3, "int": 16, "res": 10, "eva": 5, "acc": 95, "crit": 6 },
+    "mods": { "hp": 0.07, "mp": 0.10, "str": 0.02, "arm": 0.04, "int": 0.10, "res": 0.08, "eva": 0.012, "acc": 0.0, "crit": 0.003 }
+  },
+  "assassin": {
+    "base": { "hp": 95, "mp": 70, "str": 8, "arm": 3, "int": 3, "res": 3, "eva": 13, "acc": 91, "crit": 10 },
+    "mods": { "hp": 0.10, "mp": 0.06, "str": 0.075, "arm": 0.03, "int": 0.03, "res": 0.03, "eva": 0.05, "acc": 0.0, "crit": 0.008 }
+  },
+  "berserk": {
+    "base": { "hp": 165, "mp": 50, "str": 18, "arm": 8, "int": 2, "res": 5, "eva": 4, "acc": 90, "crit": 8 },
+    "mods": { "hp": 0.09, "mp": 0.04, "str": 0.10, "arm": 0.06, "int": 0.02, "res": 0.04, "eva": 0.010, "acc": 0.0, "crit": 0.003 }
+  }
+}
