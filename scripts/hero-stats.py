@@ -46,8 +46,7 @@ def parse_level_range(arg: str) -> tuple[int, int]:
 
 
 def print_table(hero_name: str, hero: dict, start: int, end: int):
-    base = hero["base"]
-    mods = hero["mods"]
+    stats = hero
 
     col_widths = [5] + [max(len(h), 6) for h in STAT_HEADERS]
     header = "Level".ljust(col_widths[0]) + "".join(
@@ -63,7 +62,8 @@ def print_table(hero_name: str, hero: dict, start: int, end: int):
     for lvl in range(start, end + 1):
         row = str(lvl).ljust(col_widths[0])
         for i, key in enumerate(STAT_KEYS):
-            val = calc_stat(base[key], mods[key], lvl)
+            stat = stats[key]
+            val = calc_stat(stat["base"], stat["mod"], lvl)
             row += str(val).rjust(col_widths[i + 1])
         print(row)
 
