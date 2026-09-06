@@ -14,7 +14,7 @@ Examples:
 import json
 import os
 import sys
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 HEROES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "heroes.json")
 
@@ -35,7 +35,7 @@ def load_heroes(path: str) -> dict:
 def parse_level_range(arg: str) -> tuple[int, int]:
     if not arg.startswith("--lvl="):
         raise ValueError(f"Bad level arg: {arg}")
-    rest = arg[len("--lvl="):]
+    rest = arg[len("--lvl=") :]
     parts = rest.split(":")
     if len(parts) == 1:
         lvl = int(parts[0])
@@ -56,7 +56,7 @@ def print_table(hero_name: str, hero: dict, start: int, end: int):
     sep = "-" * len(header)
 
     label = f"level {start}" if start == end else f"levels {start}-{end}"
-    print(f"\n  {hero_name.upper()}  ({label})\n")
+    print(f"{hero_name.upper()}  ({label})")
     print(header)
     print(sep)
 
@@ -66,8 +66,6 @@ def print_table(hero_name: str, hero: dict, start: int, end: int):
             val = calc_stat(base[key], mods[key], lvl)
             row += str(val).rjust(col_widths[i + 1])
         print(row)
-
-    print()
 
 
 def main():
@@ -91,7 +89,10 @@ def main():
 
     if hero_name not in heroes:
         available = ", ".join(sorted(heroes.keys()))
-        print(f"Error: unknown hero '{hero_name}'. Available: {available}", file=sys.stderr)
+        print(
+            f"Error: unknown hero '{hero_name}'. Available: {available}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     try:
