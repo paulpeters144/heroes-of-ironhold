@@ -2,51 +2,51 @@
   "hunter": {
     "hp":   { "base": 95,  "mod": 0.48 },
     "mp":   { "base": 75,  "mod": 0.32 },
-    "str":  { "base": 10,  "mod": 0.72 },
-    "arm":  { "base": 6,   "mod": 0.24 },
-    "int":  { "base": 5,   "mod": 0.18 },
-    "eva":  { "base": 10,  "mod": 0.03 },
-    "acc":  { "base": 9,   "mod": 0.055 },
-    "crit": { "base": 5,   "mod": 0.003 }
+    "str":  { "base": 10,  "mod": 0.25 },
+    "arm":  { "base": 8,   "mod": 0.25 },
+    "int":  { "base": 8,   "mod": 0.25 },
+    "eva":  { "base": 14,  "mod": 0.25 },
+    "acc":  { "base": 16,  "mod": 0.25 },
+    "crit": { "base": 8,   "mod": 0.25 }
   },
   "knight": {
     "hp":   { "base": 145, "mod": 0.36 },
     "mp":   { "base": 50,  "mod": 0.15 },
-    "str":  { "base": 8,   "mod": 0.40 },
-    "arm":  { "base": 16,  "mod": 0.26 },
-    "int":  { "base": 3,   "mod": 0.12 },
-    "eva":  { "base": 3,   "mod": 0.02 },
-    "acc":  { "base": 4,   "mod": 0.035 },
-    "crit": { "base": 4,   "mod": 0.002 }
+    "str":  { "base": 10,  "mod": 0.25 },
+    "arm":  { "base": 18,  "mod": 0.25 },
+    "int":  { "base": 6,   "mod": 0.25 },
+    "eva":  { "base": 6,   "mod": 0.25 },
+    "acc":  { "base": 8,   "mod": 0.25 },
+    "crit": { "base": 6,   "mod": 0.25 }
   },
   "wizard": {
     "hp":   { "base": 80,  "mod": 0.30 },
     "mp":   { "base": 125, "mod": 0.52 },
-    "str":  { "base": 4,   "mod": 0.08 },
-    "arm":  { "base": 6,   "mod": 0.26 },
-    "int":  { "base": 14,  "mod": 0.58 },
-    "eva":  { "base": 4,   "mod": 0.02 },
-    "acc":  { "base": 7,   "mod": 0.06 },
-    "crit": { "base": 4,   "mod": 0.002 }
+    "str":  { "base": 6,   "mod": 0.25 },
+    "arm":  { "base": 8,   "mod": 0.25 },
+    "int":  { "base": 18,  "mod": 0.25 },
+    "eva":  { "base": 8,   "mod": 0.25 },
+    "acc":  { "base": 10,  "mod": 0.25 },
+    "crit": { "base": 6,   "mod": 0.25 }
   },
   "assassin": {
     "hp":   { "base": 85,  "mod": 0.48 },
     "mp":   { "base": 65,  "mod": 0.25 },
-    "str":  { "base": 5,  "mod": 0.5 },
-    "arm":  { "base": 3,   "mod": 0.15 },
-    "int":  { "base": 4,   "mod": 0.10 },
-    "eva":  { "base": 15,  "mod": 0.04 },
-    "acc":  { "base": 3,   "mod": 0.02 },
-    "crit": { "base": 15,  "mod": 0.004 }
+    "str":  { "base": 14,  "mod": 0.25 },
+    "arm":  { "base": 6,   "mod": 0.25 },
+    "int":  { "base": 6,   "mod": 0.25 },
+    "eva":  { "base": 14,  "mod": 0.25 },
+    "acc":  { "base": 8,   "mod": 0.25 },
+    "crit": { "base": 12,  "mod": 0.45}
   },
   "berserk": {
     "hp":   { "base": 150, "mod": 0.40 },
     "mp":   { "base": 45,  "mod": 0.15 },
-    "str":  { "base": 15,  "mod": 0.52 },
-    "arm":  { "base": 8,   "mod": 0.20 },
-    "int":  { "base": 2,   "mod": 0.08 },
-    "eva":  { "base": 3,   "mod": 0.02 },
-    "acc":  { "base": 3,   "mod": 0.025 },
-    "crit": { "base": 6,   "mod": 0.004 }
+    "str":  { "base": 16,  "mod": 0.25 },
+    "arm":  { "base": 10,  "mod": 0.25 },
+    "int":  { "base": 6,   "mod": 0.25 },
+    "eva":  { "base": 6,   "mod": 0.25 },
+    "acc":  { "base": 8,   "mod": 0.25 },
+    "crit": { "base": 8,   "mod": 0.25 }
   }
 }
