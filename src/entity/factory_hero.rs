@@ -47,7 +47,7 @@ impl<'a> HeroFactory<'a> {
             dest_size: Vec2::new(FRAME_SIZE, FRAME_SIZE),
             scale: 1.0,
             visible: true,
-            z_idx: 0,
+            z_idx: 0.0,
         };
 
         let shield_image = StaticImage {
@@ -58,7 +58,7 @@ impl<'a> HeroFactory<'a> {
             tint: Color::new(1.0, 1.0, 1.0, 1.0),
             flip_x: false,
             visible: true,
-            z_idx: 1,
+            z_idx: 1.0,
         };
 
         let sword_animation = Animation {
@@ -74,7 +74,7 @@ impl<'a> HeroFactory<'a> {
             dest_size: Vec2::new(SWORD_FRAME_SIZE, SWORD_FRAME_SIZE),
             scale: 1.0,
             visible: true,
-            z_idx: 2,
+            z_idx: 2.0,
         };
 
         KnightParts {

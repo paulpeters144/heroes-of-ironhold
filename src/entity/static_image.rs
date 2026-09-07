@@ -10,7 +10,7 @@ pub struct StaticImage {
     pub tint: Color,
     pub flip_x: bool,
     pub visible: bool,
-    pub z_idx: i32,
+    pub z_idx: f32,
 }
 
 impl StaticImage {
@@ -39,7 +39,7 @@ impl Drawable for StaticImage {
         );
     }
 
-    fn zdx(&self) -> i32 {
+    fn zdx(&self) -> f32 {
         self.z_idx
     }
 }

@@ -21,7 +21,7 @@ use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, At
 use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
 use crate::scene::Scene;
-use crate::systems::{DrawSystem, SystemAgg};
+use crate::systems::{DrawSystem, SystemAgg, ZSortSystem};
 use crate::{file, font, images, shader, Animation, Assets, Config, Context, EStore};
 use macroquad::prelude::*;
 use pico_entity_store::store::{ChildSource, IntoChild};
@@ -53,6 +53,7 @@ impl BattleTestScene {
         agg.add_update(OffsetUpdateSystem::new(store.clone()));
         agg.add_update(AttackEffectSystem::new(store.clone()));
         agg.add_update(CameraOrbSystem::new(store.clone()));
+        agg.add_update(ZSortSystem::new(store.clone()));
 
         Self {
             cfg,

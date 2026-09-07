@@ -32,7 +32,7 @@ impl<'a> EnemyFactory<'a> {
             dest_size: Vec2::new(FRAME_SIZE, FRAME_SIZE),
             scale: 1.0,
             visible: true,
-            z_idx: 0,
+            z_idx: 0.0,
         };
 
         RamHeadParts {

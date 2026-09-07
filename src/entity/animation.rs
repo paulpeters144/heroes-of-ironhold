@@ -15,7 +15,7 @@ pub struct Animation {
     pub dest_size: Vec2,
     pub scale: f32,
     pub visible: bool,
-    pub z_idx: i32,
+    pub z_idx: f32,
 }
 
 impl Animation {
@@ -57,7 +57,7 @@ impl Drawable for Animation {
         );
     }
 
-    fn zdx(&self) -> i32 {
+    fn zdx(&self) -> f32 {
         self.z_idx
     }
 }

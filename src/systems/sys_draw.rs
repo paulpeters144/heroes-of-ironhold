@@ -8,7 +8,7 @@ enum DrawKind {
 }
 
 struct DrawCmd {
-    z_idx: i32,
+    z_idx: f32,
     kind: DrawKind,
 }
 
@@ -46,7 +46,11 @@ impl Draw for DrawSystem {
             });
         }
 
-        cmds.sort_by_key(|cmd| cmd.z_idx);
+        cmds.sort_by(|a, b| {
+            a.z_idx
+                .partial_cmp(&b.z_idx)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for cmd in cmds {
             match cmd.kind {
