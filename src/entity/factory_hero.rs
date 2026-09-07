@@ -1,12 +1,14 @@
 use crate::entity::knight::{Facing, Shield, Sword};
-use crate::{images, Animation, Assets, StaticImage};
-use macroquad::prelude::{Color, Vec2};
+use crate::{images, Animation, Assets, CollisionRect, StaticImage};
+use macroquad::prelude::{Color, Rect, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;
 pub const FRAME_COUNT: usize = 6;
 pub const SWORD_FRAME_SIZE: f32 = 32.0;
 pub const SWORD_FRAME_COUNT: usize = 2;
 pub const SHIELD_SIZE: f32 = 32.0;
+pub const COLLISION_WIDTH_SCALE: f32 = 0.25;
+pub const COLLISION_HEIGHT_SCALE: f32 = 0.5;
 
 #[derive(Clone, Copy, Debug)]
 pub struct KnightCfg {
@@ -22,6 +24,7 @@ pub struct KnightParts {
     pub sword: Sword,
     pub sword_animation: Animation,
     pub facing: Facing,
+    pub collision_rect: CollisionRect,
 }
 
 pub struct HeroFactory<'a> {
@@ -84,6 +87,14 @@ impl<'a> HeroFactory<'a> {
             sword: Sword,
             sword_animation,
             facing: Facing::Right,
+            collision_rect: CollisionRect {
+                rect: Rect::new(
+                    0.0,
+                    0.0,
+                    FRAME_SIZE * COLLISION_WIDTH_SCALE,
+                    FRAME_SIZE * COLLISION_HEIGHT_SCALE,
+                ),
+            },
         }
     }
 }

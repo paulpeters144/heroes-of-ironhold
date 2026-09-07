@@ -21,7 +21,7 @@ use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, At
 use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
 use crate::scene::Scene;
-use crate::systems::{DrawSystem, SystemAgg, ZSortSystem};
+use crate::systems::{CollisionRectSystem, DrawSystem, SystemAgg, ZSortSystem};
 use crate::{file, font, images, shader, Animation, Assets, Config, Context, EStore};
 use macroquad::prelude::*;
 use pico_entity_store::store::{ChildSource, IntoChild};
@@ -51,6 +51,7 @@ impl BattleTestScene {
         agg.add_update(EnemyAiSystem::new(store.clone()));
         agg.add_update(AnimationUpdateSystem::new(store.clone()));
         agg.add_update(OffsetUpdateSystem::new(store.clone()));
+        agg.add_update(CollisionRectSystem::new(store.clone()));
         agg.add_update(AttackEffectSystem::new(store.clone()));
         agg.add_update(CameraOrbSystem::new(store.clone()));
         agg.add_update(ZSortSystem::new(store.clone()));
@@ -133,6 +134,7 @@ impl BattleTestScene {
                 shield.into_child(),
                 sword.into_child(),
                 parts.facing.into_child(),
+                parts.collision_rect.into_child(),
                 HeroStats::default().into_child(),
                 Dash::knight().into_child(),
             ],
@@ -146,7 +148,10 @@ impl BattleTestScene {
     fn spawn_ram_head(&self, position: Vec2) {
         let mut parts = EnemyFactory::new(&self.assets).create_ram_head();
         parts.body.position = position;
-        self.store.add(parts.marker, &[parts.body.into_child()]);
+        self.store.add(
+            parts.marker,
+            &[parts.body.into_child(), parts.collision_rect.into_child()],
+        );
     }
 
     fn build_map(&self) -> TiledMap {
@@ -233,6 +238,8 @@ impl Scene for BattleTestScene {
             self.agg.add_draw(DrawSystem::new(self.store.clone()));
             self.agg
                 .add_draw(AttackEffectDrawSystem::new(self.store.clone()));
+            self.agg
+                .add_draw(CollisionRectSystem::new(self.store.clone()));
             // self.agg.add_draw(CameraOrbSystem::new(self.store.clone(), 0));
 
             self.agg.add_update(CameraSystem::new(

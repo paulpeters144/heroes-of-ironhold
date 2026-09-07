@@ -1,4 +1,5 @@
 pub mod animation;
+pub mod collision_rect;
 pub mod dash;
 pub mod drawable;
 pub mod enemy;

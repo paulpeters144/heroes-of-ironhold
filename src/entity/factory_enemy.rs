@@ -1,12 +1,15 @@
 use crate::entity::enemy::{RamHead, RAM_HEAD_FRAME_COUNT};
-use crate::{images, Animation, Assets};
-use macroquad::prelude::{Color, Vec2};
+use crate::{images, Animation, Assets, CollisionRect};
+use macroquad::prelude::{Color, Rect, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;
+pub const COLLISION_WIDTH_SCALE: f32 = 0.25;
+pub const COLLISION_HEIGHT_SCALE: f32 = 0.5;
 
 pub struct RamHeadParts {
     pub marker: RamHead,
     pub body: Animation,
+    pub collision_rect: CollisionRect,
 }
 
 pub struct EnemyFactory<'a> {
@@ -38,6 +41,14 @@ impl<'a> EnemyFactory<'a> {
         RamHeadParts {
             marker: RamHead,
             body,
+            collision_rect: CollisionRect {
+                rect: Rect::new(
+                    0.0,
+                    0.0,
+                    FRAME_SIZE * COLLISION_WIDTH_SCALE,
+                    FRAME_SIZE * COLLISION_HEIGHT_SCALE,
+                ),
+            },
         }
     }
 }

@@ -8,6 +8,7 @@ pub struct Config {
     pub win_h: u32,
     pub rt_overscan: f32,
     pub pixel_snap: bool,
+    pub debug: bool,
 }
 
 impl Default for Config {
@@ -20,6 +21,7 @@ impl Default for Config {
             win_h: 720,
             rt_overscan: 2.0,
             pixel_snap: true,
+            debug: true,
         }
     }
 }

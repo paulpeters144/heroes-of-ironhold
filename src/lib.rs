@@ -18,6 +18,7 @@ pub use access::font::{FontTag, GameFont, TextStyle};
 pub use access::game_state::{DiskJsonStore, GameState, GameStateStore, SaveError};
 pub use access::ids::{file, font, images, shader, sound, texture};
 pub use entity::animation::Animation;
+pub use entity::collision_rect::CollisionRect;
 pub use entity::dash::{Dash, DashCfg};
 pub use entity::drawable::Drawable;
 pub use entity::factory_hero::{HeroFactory, KnightCfg, KnightParts};
@@ -38,6 +39,7 @@ pub struct Context {
     pub dt: f32,
     pub cam_zoom: f32,
     pub cam_target: macroquad::prelude::Vec2,
+    pub debug: bool,
 }
 
 pub struct Game {
@@ -51,6 +53,7 @@ pub async fn init() -> Game {
     set_pc_assets_folder("assets");
 
     let di = std::rc::Rc::new(DiContainer::new());
+    let debug = di.config().debug;
 
     Game {
         mgr: Manager::new(di).await,
@@ -58,6 +61,7 @@ pub async fn init() -> Game {
             dt: 0.0,
             cam_zoom: 1.0,
             cam_target: macroquad::prelude::Vec2::ZERO,
+            debug,
         },
     }
 }
