@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 const DAMAGE_COLOR: Color = Color::new(1.0, 0.2, 0.14, 1.0);
 const HEAL_COLOR: Color = Color::new(0.25, 0.9, 0.35, 1.0);
-const FONT_SIZE: u16 = 24;
+const FONT_SIZE: u16 = 12;
 
 pub struct HealthTextAnimationSystem {
     store: Rc<EStore>,

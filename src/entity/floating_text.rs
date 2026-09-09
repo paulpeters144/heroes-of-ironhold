@@ -1,8 +1,15 @@
+use crate::util::view_scale;
 use crate::Drawable;
 use macroquad::prelude::{
     draw_text_ex, measure_text, vec2, Color, Font, Rect, TextParams, Vec2, WHITE,
 };
 use macroquad::rand::gen_range;
+
+// Logical view resolution, matching `Config::v_width`/`v_height`. The render
+// pipeline blits this view to the window by `view_scale`, so rasterizing the
+// text at that higher resolution (then drawing it back down) keeps it crisp.
+const V_WIDTH: f32 = 640.0;
+const V_HEIGHT: f32 = 360.0;
 
 const ON_TOP_Z: f32 = 1000.0;
 const LIFETIME: f32 = 0.8;
@@ -82,18 +89,27 @@ impl FloatingText {
 impl Drawable for FloatingText {
     fn draw(&self) {
         let t = (self.age / self.lifetime).clamp(0.0, 1.0);
-        let scale = self.scale(t);
+        let anim = self.scale(t);
         let alpha = self.alpha(t);
-        if alpha <= 0.0 || scale <= 0.0 {
+        if alpha <= 0.0 || anim <= 0.0 {
             return;
         }
+
+        // Rasterize the glyph at the blit (render-target → window) resolution,
+        // then draw it back down. `font_size * font_scale` still equals
+        // `nominal * anim`, so layout is unchanged — only the atlas is higher
+        // resolution, which keeps the animated upscale crisp instead of fuzzy.
+        let blit = view_scale::view_scale(V_WIDTH, V_HEIGHT).0;
+        let blit = if blit > 0.0 { blit } else { 1.0 };
+        let font_size = (self.font_size as f32 * blit).round().max(1.0) as u16;
+        let font_scale = anim / blit;
 
         let color = self.color_at(t, alpha);
         let y = self.position.y - RISE_DISTANCE * ease_out_cubic(t);
 
-        let dims = measure_text(&self.text, Some(&self.font), self.font_size, 1.0);
-        let x = self.position.x - dims.width * 0.5 * scale;
-        let baseline = y + dims.offset_y * scale;
+        let dims = measure_text(&self.text, Some(&self.font), font_size, font_scale);
+        let x = self.position.x - dims.width * 0.5;
+        let baseline = y + dims.offset_y;
 
         let outline = Color::new(0.0, 0.0, 0.0, alpha);
         for (dx, dy) in [
@@ -112,8 +128,8 @@ impl Drawable for FloatingText {
                 baseline + dy,
                 TextParams {
                     font: Some(&self.font),
-                    font_size: self.font_size,
-                    font_scale: scale,
+                    font_size,
+                    font_scale,
                     color: outline,
                     ..Default::default()
                 },
@@ -126,8 +142,8 @@ impl Drawable for FloatingText {
             baseline,
             TextParams {
                 font: Some(&self.font),
-                font_size: self.font_size,
-                font_scale: scale,
+                font_size,
+                font_scale,
                 color,
                 ..Default::default()
             },
