@@ -14,3 +14,18 @@ pub struct EnemyStats {
     pub accuracy: i32,
     pub critical: i32,
 }
+
+impl Default for EnemyStats {
+    fn default() -> Self {
+        EnemyStats {
+            name: "Ram Head",
+            hp: 60,
+            max_hp: 60,
+            strength: 8,
+            armor: 0,
+            evasion: 5,
+            accuracy: 90,
+            critical: 5,
+        }
+    }
+}

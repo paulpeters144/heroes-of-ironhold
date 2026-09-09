@@ -8,6 +8,7 @@ use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
 use super::sys_skills_bar::SkillsBarDrawSystem;
 use crate::entity::dash::Dash;
+use crate::entity::enemy::EnemyStats;
 use crate::entity::factory_enemy::EnemyFactory;
 use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
@@ -169,6 +170,7 @@ impl BattleTestScene {
                 parts.body.into_child(),
                 parts.collision_rect.into_child(),
                 HealthBar::default().into_child(),
+                EnemyStats::default().into_child(),
             ],
         );
     }
