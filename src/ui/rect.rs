@@ -59,7 +59,13 @@ impl RectBuilder<'_> {
     }
 
     pub fn centered_solid(self, params: CenteredSolid<'_>) -> Rect {
-        let CenteredSolid { w, h, color, radius, .. } = params;
+        let CenteredSolid {
+            w,
+            h,
+            color,
+            radius,
+            ..
+        } = params;
         let x = (self.ui.v_width - w) * 0.5;
         let y = (self.ui.v_height - h) * 0.5;
         self.ui.cmds.push(Cmd::Solid {

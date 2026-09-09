@@ -1,3 +1,5 @@
+use macroquad::prelude::Rect;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Facing {
     Left,
@@ -18,3 +20,9 @@ pub struct Shield;
 
 #[derive(Clone, Debug)]
 pub struct Sword;
+
+#[derive(Clone, Debug)]
+pub struct AttackArea {
+    pub rects: Vec<Rect>,
+    pub visible: bool,
+}

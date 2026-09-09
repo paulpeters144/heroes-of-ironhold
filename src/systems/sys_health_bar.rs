@@ -1,0 +1,49 @@
+use crate::entity::enemy::RamHead;
+use crate::systems::Update;
+use crate::{Animation, Context, EStore, HealthBar};
+use macroquad::prelude::*;
+use std::rc::Rc;
+
+pub struct HealthBarSystem {
+    store: Rc<EStore>,
+}
+
+impl HealthBarSystem {
+    pub fn new(store: Rc<EStore>) -> Self {
+        Self { store }
+    }
+}
+
+impl Update for HealthBarSystem {
+    fn update(&mut self, _ctx: &mut Context) {
+        let mut writes: Vec<(pico_entity_store::entity_ref::EntityRef, Vec2, f32)> = Vec::new();
+
+        for bar in self.store.all::<HealthBar>() {
+            let Some(owner) = self.store.parent(&bar) else {
+                continue;
+            };
+            let Some((width, height, parent_rect, parent_z)) = self
+                .store
+                .get_by_id::<RamHead>(owner.id())
+                .and_then(|e| self.store.get_child::<Animation>(&e))
+                .map(|anim| {
+                    let r = anim.rect();
+                    (bar.width, bar.height, r, anim.z_idx)
+                })
+            else {
+                continue;
+            };
+
+            let x = parent_rect.x + (parent_rect.w - width) * 0.5;
+            let y = parent_rect.y - height;
+            writes.push((bar.entity_ref(), vec2(x, y), parent_z + 0.5));
+        }
+
+        for (eref, position, z_idx) in writes {
+            self.store.update::<HealthBar, _>(&eref, |bar| {
+                bar.position = position;
+                bar.z_idx = z_idx;
+            });
+        }
+    }
+}

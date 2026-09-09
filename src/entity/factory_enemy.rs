@@ -3,8 +3,8 @@ use crate::{images, Animation, Assets, CollisionRect};
 use macroquad::prelude::{Color, Rect, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;
-pub const COLLISION_WIDTH_SCALE: f32 = 0.25;
-pub const COLLISION_HEIGHT_SCALE: f32 = 0.5;
+pub const COLLISION_WIDTH_SCALE: f32 = 0.5;
+pub const COLLISION_HEIGHT_SCALE: f32 = 0.35;
 
 pub struct RamHeadParts {
     pub marker: RamHead,

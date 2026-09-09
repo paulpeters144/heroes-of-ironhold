@@ -110,8 +110,7 @@ impl UI {
                     font,
                 } => {
                     let scale = view_scale::view_scale(self.v_width, self.v_height).0;
-                    let (font_size, font_scale) =
-                        view_scale::crisp_text_params(font.size, scale);
+                    let (font_size, font_scale) = view_scale::crisp_text_params(font.size, scale);
                     let mut line_y = *y;
                     for line in text.split('\n') {
                         let dims = measure_text(line, Some(&font.font), font_size, font_scale);

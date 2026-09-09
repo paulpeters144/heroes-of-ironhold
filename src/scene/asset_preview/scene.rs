@@ -180,11 +180,7 @@ impl AssetPreviewScene {
             .and_then(|knight| self.store.get_child::<Animation>(&knight))
             .map(|a| a.position);
 
-        if let Some(player_ref) = self
-            .store
-            .first::<PlayerOne>()
-            .map(|p| p.entity_ref())
-        {
+        if let Some(player_ref) = self.store.first::<PlayerOne>().map(|p| p.entity_ref()) {
             self.store.remove(&[player_ref]);
         }
 
@@ -198,7 +194,8 @@ impl AssetPreviewScene {
                 .and_then(|knight| self.store.get_child::<Animation>(&knight))
                 .map(|a| a.entity_ref());
             if let Some(anim_ref) = anim_ref {
-                self.store.update::<Animation, _>(&anim_ref, |a| a.position = body_pos);
+                self.store
+                    .update::<Animation, _>(&anim_ref, |a| a.position = body_pos);
             }
         }
     }
@@ -232,7 +229,8 @@ impl AssetPreviewScene {
             .and_then(|knight| self.store.get_child::<Animation>(&knight))
             .map(|a| a.entity_ref());
         if let Some(anim_ref) = anim_ref {
-            self.store.update::<Animation, _>(&anim_ref, |a| a.current_frame = IDLE_FRAME);
+            self.store
+                .update::<Animation, _>(&anim_ref, |a| a.current_frame = IDLE_FRAME);
         }
     }
 }
@@ -267,7 +265,8 @@ impl Scene for AssetPreviewScene {
             self.thrust_tex = self.assets.texture(images::Knight::ThrustGraphic);
             self.swipe_tex = self.assets.texture(images::Knight::SwipeGraphic);
 
-            self.agg.add_draw(AttackEffectDrawSystem::new(self.store.clone()));
+            self.agg
+                .add_draw(AttackEffectDrawSystem::new(self.store.clone()));
 
             self.spawn_player(KnightCfg {
                 outfit: OUTFITS[0],
@@ -289,7 +288,8 @@ impl Scene for AssetPreviewScene {
                 .and_then(|knight| self.store.get_child::<Animation>(&knight))
                 .map(|animation| animation.entity_ref());
             if let Some(anim_ref) = anim_ref {
-                self.store.update::<Animation, _>(&anim_ref, |a| a.position = body);
+                self.store
+                    .update::<Animation, _>(&anim_ref, |a| a.position = body);
             }
         })
     }

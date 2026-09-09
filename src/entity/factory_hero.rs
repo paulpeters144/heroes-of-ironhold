@@ -7,8 +7,8 @@ pub const FRAME_COUNT: usize = 6;
 pub const SWORD_FRAME_SIZE: f32 = 32.0;
 pub const SWORD_FRAME_COUNT: usize = 2;
 pub const SHIELD_SIZE: f32 = 32.0;
-pub const COLLISION_WIDTH_SCALE: f32 = 0.25;
-pub const COLLISION_HEIGHT_SCALE: f32 = 0.5;
+pub const COLLISION_WIDTH_SCALE: f32 = 0.5;
+pub const COLLISION_HEIGHT_SCALE: f32 = 0.35;
 
 #[derive(Clone, Copy, Debug)]
 pub struct KnightCfg {

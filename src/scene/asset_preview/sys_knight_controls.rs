@@ -1,7 +1,5 @@
 use crate::entity::dash::Dash;
-use crate::entity::knight::{
-    AttackKind, AttackPhase, Facing, Knight, IDLE_FRAME, WALK_FRAMES,
-};
+use crate::entity::knight::{AttackKind, AttackPhase, Facing, Knight, IDLE_FRAME, WALK_FRAMES};
 use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, REVERSE_MULT, WALK_FRAME_DURATION};
 use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
@@ -89,7 +87,11 @@ impl Update for KnightControlSystem {
         };
 
         if dir != 0.0 && !input::down(Input::Shift) {
-            let facing = if dir < 0.0 { Facing::Left } else { Facing::Right };
+            let facing = if dir < 0.0 {
+                Facing::Left
+            } else {
+                Facing::Right
+            };
             let facing_ref = self
                 .store
                 .get_by_id::<Knight>(knight_ref.id())

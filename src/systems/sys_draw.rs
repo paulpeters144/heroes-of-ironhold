@@ -1,10 +1,11 @@
 use crate::systems::Draw;
-use crate::{Animation, Context, Drawable, EStore, StaticImage};
+use crate::{Animation, Context, Drawable, EStore, HealthBar, StaticImage};
 use std::rc::Rc;
 
 enum DrawKind {
     Animation(Animation),
     Static(StaticImage),
+    Bar(HealthBar),
 }
 
 struct DrawCmd {
@@ -46,6 +47,16 @@ impl Draw for DrawSystem {
             });
         }
 
+        for bar in self.store.all::<HealthBar>() {
+            if !bar.visible {
+                continue;
+            }
+            cmds.push(DrawCmd {
+                z_idx: bar.zdx(),
+                kind: DrawKind::Bar(bar.clone()),
+            });
+        }
+
         cmds.sort_by(|a, b| {
             a.z_idx
                 .partial_cmp(&b.z_idx)
@@ -56,6 +67,7 @@ impl Draw for DrawSystem {
             match cmd.kind {
                 DrawKind::Animation(animation) => animation.draw(),
                 DrawKind::Static(image) => image.draw(),
+                DrawKind::Bar(bar) => bar.draw(),
             }
         }
     }

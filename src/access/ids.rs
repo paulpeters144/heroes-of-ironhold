@@ -106,6 +106,7 @@ pub mod shader {
         JitterFreeFrag,
         DashFxVert,
         DashAfterimageFrag,
+        FlashWhiteFrag,
     }
 
     impl AssetId for Shader {
@@ -117,6 +118,7 @@ pub mod shader {
                 Self::JitterFreeFrag => "shaders/jitter_free.frag".to_string(),
                 Self::DashFxVert => "shaders/dash_fx.vert".to_string(),
                 Self::DashAfterimageFrag => "shaders/dash_afterimage.frag".to_string(),
+                Self::FlashWhiteFrag => "shaders/flash_white.frag".to_string(),
             }
         }
 

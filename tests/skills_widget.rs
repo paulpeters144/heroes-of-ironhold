@@ -82,14 +82,7 @@ fn keys_assign_in_order_and_skip_empty_slots() {
         .collect();
     assert_eq!(
         keys,
-        [
-            Some('a'),
-            Some('b'),
-            Some('c'),
-            Some('d'),
-            Some('e'),
-            None,
-        ]
+        [Some('a'), Some('b'), Some('c'), Some('d'), Some('e'), None,]
     );
 }
 

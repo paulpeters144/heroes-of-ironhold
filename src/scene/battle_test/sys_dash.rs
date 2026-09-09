@@ -1,7 +1,5 @@
 use crate::entity::dash::Dash;
-use crate::entity::knight::{
-    Knight, DOUBLE_TAP_WINDOW, IDLE_FRAME, SWIPE_FRAME, THRUST_FRAME,
-};
+use crate::entity::knight::{Knight, DOUBLE_TAP_WINDOW, IDLE_FRAME, SWIPE_FRAME, THRUST_FRAME};
 use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
 use crate::systems::{Draw, Update};
@@ -221,10 +219,7 @@ impl DashSystem {
         let scale = view_scale::view_scale(self.cfg.v_width, self.cfg.v_height).0;
         let (font_size, font_scale) = view_scale::crisp_text_params(self.font.size, scale);
         let dims = measure_text(&text, Some(&self.font.font), font_size, font_scale);
-        let tx = view_scale::snap_to_pixel(
-            x + DASH_SIZE - CHARGE_INSET_X - dims.width,
-            scale,
-        );
+        let tx = view_scale::snap_to_pixel(x + DASH_SIZE - CHARGE_INSET_X - dims.width, scale);
         let ty = view_scale::snap_to_pixel(y + CHARGE_INSET_Y + dims.offset_y, scale);
         draw_text_ex(
             &text,
@@ -317,7 +312,7 @@ impl Update for DashSystem {
             .map(|a| matches!(a.current_frame, THRUST_FRAME | SWIPE_FRAME))
             .unwrap_or(false);
 
-        if !attacking && dash.time <= 0.0 && dash.charges > 0 {
+        if !attacking && dash.time <= 0.0 && dash.charges > 0 && input::down(Input::Shift) {
             let taps = [
                 (Input::Left, Vec2::new(-1.0, 0.0)),
                 (Input::Right, Vec2::new(1.0, 0.0)),

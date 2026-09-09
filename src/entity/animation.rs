@@ -25,7 +25,12 @@ impl Animation {
         } else {
             self.dest_size
         };
-        Rect::new(self.position.x, self.position.y, size.x * self.scale, size.y * self.scale)
+        Rect::new(
+            self.position.x,
+            self.position.y,
+            size.x * self.scale,
+            size.y * self.scale,
+        )
     }
 }
 

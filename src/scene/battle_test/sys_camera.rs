@@ -142,7 +142,11 @@ mod tests {
         let (next, vel) = step_camera(pos, Vec2::ZERO, target, 2.0, DT);
 
         assert_eq!(next, pos, "camera must not move inside the stop zone");
-        assert_eq!(vel, Vec2::ZERO, "camera must have no velocity inside the zone");
+        assert_eq!(
+            vel,
+            Vec2::ZERO,
+            "camera must have no velocity inside the zone"
+        );
     }
 
     #[test]
@@ -151,6 +155,9 @@ mod tests {
         let pos = Vec2::new(0.0, 0.0);
         let (next, _) = step_camera(pos, Vec2::ZERO, target, 2.0, DT);
 
-        assert!(next.x > pos.x, "camera must move toward the target outside the zone");
+        assert!(
+            next.x > pos.x,
+            "camera must move toward the target outside the zone"
+        );
     }
 }

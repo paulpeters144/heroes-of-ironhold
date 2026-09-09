@@ -35,7 +35,10 @@ impl Update for OffsetUpdateSystem {
             let Some(knight) = self.store.get_by_id::<Knight>(knight_ref.id()) else {
                 return;
             };
-            let body = self.store.get_child::<Animation>(&knight).map(|a| a.position);
+            let body = self
+                .store
+                .get_child::<Animation>(&knight)
+                .map(|a| a.position);
             let frame_offsets = self
                 .store
                 .get_child::<Animation>(&knight)
@@ -55,13 +58,19 @@ impl Update for OffsetUpdateSystem {
         let mirror = facing == Facing::Left;
 
         let shield_pos = if mirror {
-            Vec2::new(mirror_x(frame_offsets.shield.x, SHIELD_SIZE), frame_offsets.shield.y)
+            Vec2::new(
+                mirror_x(frame_offsets.shield.x, SHIELD_SIZE),
+                frame_offsets.shield.y,
+            )
         } else {
             frame_offsets.shield
         };
 
         let sword_pos = if mirror {
-            Vec2::new(mirror_x(frame_offsets.sword.x, SWORD_FRAME_SIZE), frame_offsets.sword.y)
+            Vec2::new(
+                mirror_x(frame_offsets.sword.x, SWORD_FRAME_SIZE),
+                frame_offsets.sword.y,
+            )
         } else {
             frame_offsets.sword
         };
@@ -72,7 +81,8 @@ impl Update for OffsetUpdateSystem {
             .and_then(|k| self.store.get_child::<Animation>(&k))
             .map(|a| a.entity_ref())
         {
-            self.store.update::<Animation, _>(&anim_ref, |a| a.flip_x = mirror);
+            self.store
+                .update::<Animation, _>(&anim_ref, |a| a.flip_x = mirror);
         }
 
         if let Some(shield_ref) = self

@@ -1,4 +1,5 @@
 mod scene;
+mod sys_attack_hit;
 mod sys_camera;
 mod sys_dash;
 mod sys_enemy_ai;

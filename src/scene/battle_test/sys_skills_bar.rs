@@ -202,10 +202,8 @@ impl SkillsBarDrawSystem {
         let (font_size, font_scale) = view_scale::crisp_text_params(self.font.size, scale);
         let dims = measure_text(&text, Some(&self.font.font), font_size, font_scale);
         let tx = view_scale::snap_to_pixel(cx - dims.width * 0.5, scale);
-        let ty = view_scale::snap_to_pixel(
-            cap_y + (KEY_H - dims.height) * 0.5 + dims.offset_y,
-            scale,
-        );
+        let ty =
+            view_scale::snap_to_pixel(cap_y + (KEY_H - dims.height) * 0.5 + dims.offset_y, scale);
         draw_text_ex(
             &text,
             tx,

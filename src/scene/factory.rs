@@ -24,7 +24,12 @@ impl SceneFactory {
         let store = self.di.estore();
         match id {
             SceneId::AssetPreview => Box::new(AssetPreviewScene::new(cfg, assets, store)),
-            SceneId::BattleTest => Box::new(BattleTestScene::new(cfg, assets, store)),
+            SceneId::BattleTest => Box::new(BattleTestScene::new(
+                cfg,
+                assets,
+                store,
+                self.di.event_bus(),
+            )),
         }
     }
 }

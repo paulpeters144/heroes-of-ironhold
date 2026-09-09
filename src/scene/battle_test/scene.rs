@@ -1,3 +1,4 @@
+use super::sys_attack_hit::AttackHitSystem;
 use super::sys_camera::CameraSystem;
 use super::sys_dash::{outfit_dominant_color, DashSystem};
 use super::sys_enemy_ai::EnemyAiSystem;
@@ -12,17 +13,22 @@ use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
 use crate::entity::hero::HeroStats;
 use crate::entity::knight::{
-    Effect, EffectKind, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
+    AttackArea, Effect, EffectKind, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
 use crate::entity::player::{PlayerFactory, PlayerOne};
 use crate::entity::skills::SkillIconKind;
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
 use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
+use crate::scene::asset_preview::sys_knight_attack::KnightAttackSystem;
 use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
 use crate::scene::Scene;
-use crate::systems::{CollisionRectSystem, DrawSystem, SystemAgg, ZSortSystem};
-use crate::{file, font, images, shader, Animation, Assets, Config, Context, EStore};
+use crate::systems::{
+    CollisionRectSystem, DrawSystem, HandleAttackSystem, HealthBarSystem, SystemAgg, ZSortSystem,
+};
+use crate::{
+    file, font, images, shader, Animation, Assets, Config, Context, EStore, EventBus, HealthBar,
+};
 use macroquad::prelude::*;
 use pico_entity_store::store::{ChildSource, IntoChild};
 use std::cell::Cell;
@@ -36,6 +42,7 @@ pub struct BattleTestScene {
     cfg: Rc<Config>,
     assets: Assets,
     store: Rc<EStore>,
+    bus: Rc<EventBus>,
     agg: SystemAgg,
     dash_color: Rc<Cell<Color>>,
     hud: Option<HudDrawSystem>,
@@ -44,22 +51,25 @@ pub struct BattleTestScene {
 }
 
 impl BattleTestScene {
-    pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>) -> Self {
+    pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>, bus: Rc<EventBus>) -> Self {
         let agg = SystemAgg::new();
         agg.add_update(KnightControlSystem::new(store.clone()));
         agg.add_update(KnightFacingLockSystem::new(store.clone()));
         agg.add_update(EnemyAiSystem::new(store.clone()));
         agg.add_update(AnimationUpdateSystem::new(store.clone()));
         agg.add_update(OffsetUpdateSystem::new(store.clone()));
-        agg.add_update(CollisionRectSystem::new(store.clone()));
         agg.add_update(AttackEffectSystem::new(store.clone()));
+        agg.add_update(KnightAttackSystem::new(store.clone()));
+        agg.add_update(AttackHitSystem::new(store.clone(), bus.clone()));
         agg.add_update(CameraOrbSystem::new(store.clone()));
         agg.add_update(ZSortSystem::new(store.clone()));
+        agg.add_update(HealthBarSystem::new(store.clone()));
 
         Self {
             cfg,
             assets,
             store,
+            bus,
             agg,
             dash_color: Rc::new(Cell::new(Color::new(1.0, 1.0, 1.0, 1.0))),
             hud: None,
@@ -84,7 +94,7 @@ impl BattleTestScene {
 
     fn spawn_player(&self) {
         let parts = HeroFactory::new(&self.assets).create_knight(KnightCfg {
-            outfit: images::Knight::Knight3,
+            outfit: images::Knight::Knight1,
             sword: images::Knight::Sword1,
             shield: images::Knight::Shield1,
         });
@@ -122,6 +132,11 @@ impl BattleTestScene {
                 parts.sword_animation.into_child(),
                 thrust.into_child(),
                 slash.into_child(),
+                AttackArea {
+                    rects: Vec::new(),
+                    visible: false,
+                }
+                .into_child(),
             ],
         );
 
@@ -150,7 +165,11 @@ impl BattleTestScene {
         parts.body.position = position;
         self.store.add(
             parts.marker,
-            &[parts.body.into_child(), parts.collision_rect.into_child()],
+            &[
+                parts.body.into_child(),
+                parts.collision_rect.into_child(),
+                HealthBar::default().into_child(),
+            ],
         );
     }
 
@@ -214,6 +233,7 @@ impl Scene for BattleTestScene {
                     &font::Font::Pixellari,
                     &shader::Shader::DashFxVert,
                     &shader::Shader::DashAfterimageFrag,
+                    &shader::Shader::FlashWhiteFrag,
                 ])
                 .await;
 
@@ -240,6 +260,8 @@ impl Scene for BattleTestScene {
                 .add_draw(AttackEffectDrawSystem::new(self.store.clone()));
             self.agg
                 .add_draw(CollisionRectSystem::new(self.store.clone()));
+            self.agg
+                .add_draw(KnightAttackSystem::new(self.store.clone()));
             // self.agg.add_draw(CameraOrbSystem::new(self.store.clone(), 0));
 
             self.agg.add_update(CameraSystem::new(
@@ -273,8 +295,15 @@ impl Scene for BattleTestScene {
                 self.cfg.clone(),
             );
             self.agg.add_update(dash.clone());
+            self.agg
+                .add_update(CollisionRectSystem::new(self.store.clone()));
             self.agg.add_draw(dash.clone());
             self.dash_ui = Some(dash);
+
+            let handle_attack =
+                HandleAttackSystem::new(self.store.clone(), &self.assets, self.bus.clone());
+            self.agg.add_update(handle_attack.clone());
+            self.agg.add_draw(handle_attack);
 
             let body = vec2(200.0, 160.0);
             let anim_ref = {
