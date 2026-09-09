@@ -39,7 +39,13 @@ impl Update for HealthBarSystem {
                 })
                 .map(|(anim, percent)| {
                     let r = anim.rect();
-                    (bar.width, bar.height, r, anim.z_idx, percent.clamp(0.0, 1.0))
+                    (
+                        bar.width,
+                        bar.height,
+                        r,
+                        anim.z_idx,
+                        percent.clamp(0.0, 1.0),
+                    )
                 })
             else {
                 continue;
