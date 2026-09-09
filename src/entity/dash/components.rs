@@ -40,7 +40,7 @@ impl Dash {
             },
             dir: Vec2::ZERO,
             time: 0.0,
-            charges: 3,
+            charges: 5,
             recovery: 0.0,
         }
     }

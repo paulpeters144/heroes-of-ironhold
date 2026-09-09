@@ -6,6 +6,7 @@ pub mod enemy;
 pub mod factory_enemy;
 pub mod factory_hero;
 pub mod factory_skills;
+pub mod floating_text;
 pub mod health_bar;
 pub mod hero;
 pub mod knight;

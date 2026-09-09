@@ -5,33 +5,20 @@ use std::rc::Rc;
 use crate::entity::enemy::{EnemyStats, RamHead};
 use crate::entity::hero::HeroStats;
 use crate::entity::knight::Knight;
-use crate::events::AttackEvent;
+use crate::events::{AttackEvent, HealthChangeEvent};
 use crate::systems::{Draw, Update};
-use crate::{
-    shader, Animation, Assets, Context, EStore, EventBus, FontTag, GameFont, SubCollection,
-    TextStyle,
-};
+use crate::{shader, Animation, Assets, Context, EStore, EventBus, SubCollection};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
 
 const FLASH_DURATION: f32 = 0.15;
-const DAMAGE_TEXT_LIFETIME: f32 = 1.0;
-const DAMAGE_TEXT_HEIGHT: f32 = 28.0;
-
-#[derive(Clone)]
-struct FloatingNumber {
-    pos: Vec2,
-    text: String,
-    remaining: f32,
-}
 
 #[derive(Clone)]
 pub struct HandleAttackSystem {
     store: Rc<EStore>,
+    bus: Rc<EventBus>,
     flash_material: Rc<Option<Material>>,
     flashing: Rc<RefCell<HashMap<u64, f32>>>,
-    damage_numbers: Rc<RefCell<Vec<FloatingNumber>>>,
-    font: GameFont,
     queue: Rc<RefCell<VecDeque<AttackEvent>>>,
     _subs: Rc<SubCollection>,
 }
@@ -44,18 +31,11 @@ impl HandleAttackSystem {
         subs.on::<AttackEvent>(&bus, move |event: &AttackEvent| {
             queue_for_handler.borrow_mut().push_back(event.clone());
         });
-        let base = assets.get_font(&TextStyle::new(FontTag::Body));
-        let font = GameFont {
-            size: 24,
-            color: Color::new(1.0, 0.2, 0.14, 1.0),
-            ..base
-        };
         Self {
             store,
+            bus,
             flash_material: Rc::new(load_flash_material(assets)),
             flashing: Rc::new(RefCell::new(HashMap::new())),
-            damage_numbers: Rc::new(RefCell::new(Vec::new())),
-            font,
             queue,
             _subs: subs,
         }
@@ -119,19 +99,16 @@ impl Update for HandleAttackSystem {
                         stats.hp = (stats.hp - damage).max(0);
                     });
 
-                    if let Some(pos) = self
+                    let rect = self
                         .store
                         .get_by_id::<RamHead>(target)
                         .and_then(|enemy| self.store.get_child::<Animation>(&enemy))
-                        .map(|anim| {
-                            let r = anim.rect();
-                            vec2(r.x + r.w * 0.5, r.y - DAMAGE_TEXT_HEIGHT)
-                        })
-                    {
-                        self.damage_numbers.borrow_mut().push(FloatingNumber {
-                            pos,
-                            text: damage.to_string(),
-                            remaining: DAMAGE_TEXT_LIFETIME,
+                        .map(|anim| anim.rect());
+                    if let Some(rect) = rect {
+                        self.bus.fire(&HealthChangeEvent {
+                            entity: target,
+                            amount: -(damage),
+                            rect,
                         });
                     }
                 }
@@ -143,18 +120,6 @@ impl Update for HandleAttackSystem {
             *remaining -= dt;
             *remaining > 0.0
         });
-        {
-            let mut numbers = self.damage_numbers.borrow_mut();
-            let mut i = 0;
-            while i < numbers.len() {
-                numbers[i].remaining -= dt;
-                if numbers[i].remaining <= 0.0 {
-                    numbers.remove(i);
-                } else {
-                    i += 1;
-                }
-            }
-        }
     }
 }
 
@@ -200,48 +165,6 @@ impl Draw for HandleAttackSystem {
                 );
             }
             gl_use_default_material();
-        }
-
-        let numbers: Vec<FloatingNumber> = self.damage_numbers.borrow().iter().cloned().collect();
-        for number in numbers {
-            let dims = measure_text(&number.text, Some(&self.font.font), self.font.size, 1.0);
-            let x = number.pos.x - dims.width * 0.5;
-            let baseline = number.pos.y + dims.offset_y;
-            for (dx, dy) in [
-                (-1.0, 0.0),
-                (1.0, 0.0),
-                (0.0, -1.0),
-                (0.0, 1.0),
-                (-1.0, -1.0),
-                (1.0, -1.0),
-                (-1.0, 1.0),
-                (1.0, 1.0),
-            ] {
-                draw_text_ex(
-                    &number.text,
-                    x + dx,
-                    baseline + dy,
-                    TextParams {
-                        font: Some(&self.font.font),
-                        font_size: self.font.size,
-                        font_scale: 1.0,
-                        color: Color::new(0.0, 0.0, 0.0, 1.0),
-                        ..Default::default()
-                    },
-                );
-            }
-            draw_text_ex(
-                &number.text,
-                x,
-                baseline,
-                TextParams {
-                    font: Some(&self.font.font),
-                    font_size: self.font.size,
-                    font_scale: 1.0,
-                    color: self.font.color,
-                    ..Default::default()
-                },
-            );
         }
     }
 }

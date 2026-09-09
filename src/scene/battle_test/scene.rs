@@ -25,7 +25,8 @@ use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
 use crate::scene::Scene;
 use crate::systems::{
-    CollisionRectSystem, DrawSystem, HandleAttackSystem, HealthBarSystem, SystemAgg, ZSortSystem,
+    CollisionRectSystem, DrawSystem, HandleAttackSystem, HealthBarSystem, HealthTextAnimationSystem,
+    SystemAgg, ZSortSystem,
 };
 use crate::{
     file, font, images, shader, Animation, Assets, Config, Context, EStore, EventBus, HealthBar,
@@ -306,6 +307,12 @@ impl Scene for BattleTestScene {
                 HandleAttackSystem::new(self.store.clone(), &self.assets, self.bus.clone());
             self.agg.add_update(handle_attack.clone());
             self.agg.add_draw(handle_attack);
+
+            self.agg.add_update(HealthTextAnimationSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                &self.assets,
+            ));
 
             let body = vec2(200.0, 160.0);
             let anim_ref = {
