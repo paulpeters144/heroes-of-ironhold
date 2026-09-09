@@ -55,7 +55,6 @@ impl Update for HealthTextAnimationSystem {
         let mut expired: Vec<EntityRef> = Vec::new();
         for mut text in self.store.all_mut::<FloatingText>() {
             text.age += dt;
-            text.position.y -= text.rise_speed * dt;
             if text.age >= text.lifetime {
                 expired.push(text.entity_ref());
             }
