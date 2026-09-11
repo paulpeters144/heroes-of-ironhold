@@ -24,3 +24,8 @@ pub struct EnemyAttackEvent {
     pub attacker: u64,
     pub target: u64,
 }
+
+#[derive(Clone, Debug)]
+pub struct EnemyDeathEvent {
+    pub enemy: u64,
+}

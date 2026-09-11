@@ -5,12 +5,14 @@ use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
 use crate::systems::Update;
 use crate::{Animation, Context, EStore};
+use std::cell::Cell;
 use std::rc::Rc;
 
 const FACE_LOCK_SECS: f32 = 0.25;
 
 pub struct KnightControlSystem {
     store: Rc<EStore>,
+    enabled: Rc<Cell<bool>>,
     walk_elapsed: f32,
     walk_step: usize,
     phase: AttackPhase,
@@ -25,8 +27,13 @@ pub struct KnightControlSystem {
 
 impl KnightControlSystem {
     pub fn new(store: Rc<EStore>) -> Self {
+        Self::with_enabled(store, Rc::new(Cell::new(true)))
+    }
+
+    pub fn with_enabled(store: Rc<EStore>, enabled: Rc<Cell<bool>>) -> Self {
         Self {
             store,
+            enabled,
             walk_elapsed: 0.0,
             walk_step: 0,
             phase: AttackPhase::Idle,
@@ -55,6 +62,10 @@ impl KnightControlSystem {
 
 impl Update for KnightControlSystem {
     fn update(&mut self, ctx: &mut Context) {
+        if !self.enabled.get() {
+            return;
+        }
+
         let Some(anim_ref) = self
             .store
             .first::<PlayerOne>()

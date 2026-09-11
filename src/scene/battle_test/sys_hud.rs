@@ -2,6 +2,7 @@ use crate::entity::hero::HeroStats;
 use crate::entity::knight::Knight;
 use crate::entity::player::PlayerOne;
 use crate::util::view_scale;
+use crate::systems::DrawUi;
 use crate::{images, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
 use macroquad::prelude::*;
 use std::rc::Rc;
@@ -278,7 +279,10 @@ impl HudDrawSystem {
         );
     }
 
-    pub fn draw(&self, _ctx: &Context) {
+}
+
+impl DrawUi for HudDrawSystem {
+    fn draw_ui(&self, _ctx: &Context) {
         let Some(stats) = self
             .store
             .first::<PlayerOne>()

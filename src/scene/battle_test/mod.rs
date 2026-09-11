@@ -1,5 +1,6 @@
 mod scene;
 mod sys_camera;
+mod sys_enemy_death;
 mod sys_knight_attack_hit;
 mod sys_knight_dash;
 mod sys_hud;

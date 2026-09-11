@@ -1,4 +1,5 @@
 use crate::entity::skills::{Skill, SkillIcon, SkillIconKind, SkillsWidget};
+use crate::systems::DrawUi;
 use crate::ui::draw_rounded_rect;
 use crate::util::view_scale;
 use crate::{Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
@@ -94,30 +95,6 @@ impl SkillsBarDrawSystem {
                 })
             })
             .collect()
-    }
-
-    pub fn draw(&self, _ctx: &Context) {
-        let slots = self.slots();
-        if slots.is_empty() {
-            return;
-        }
-
-        let n = slots.len() as f32;
-        let w = PAD * 2.0 + n * SLOT + (n - 1.0) * GAP;
-        let h = PAD * 2.0 + SLOT;
-        let x = ((self.cfg.v_width - w) * 0.5).round();
-        let y = (self.cfg.v_height - BOTTOM - h).round();
-
-        // Bar frame: dark edge, steel rim, navy back.
-        draw_rounded_rect(x, y, w, h, BAR_RADIUS, FRAME);
-        draw_rounded_rect(x + 1.0, y + 1.0, w - 2.0, h - 2.0, BAR_RADIUS - 1.0, RIM);
-        draw_rounded_rect(x + 2.0, y + 2.0, w - 4.0, h - 4.0, BAR_RADIUS - 2.0, BACK);
-
-        for (i, slot) in slots.iter().enumerate() {
-            let sx = x + PAD + i as f32 * (SLOT + GAP);
-            let sy = y + PAD;
-            self.slot(sx, sy, slot);
-        }
     }
 
     /// One rounded well: dark separation gap, steel edge, navy fill, top
@@ -317,5 +294,31 @@ impl SkillsBarDrawSystem {
         let t = 3.0;
         draw_rectangle(cx - len * 0.5, cy - t * 0.5, len, t, DIM);
         draw_rectangle(cx - t * 0.5, cy - len * 0.5, t, len, DIM);
+    }
+}
+
+impl DrawUi for SkillsBarDrawSystem {
+    fn draw_ui(&self, _ctx: &Context) {
+        let slots = self.slots();
+        if slots.is_empty() {
+            return;
+        }
+
+        let n = slots.len() as f32;
+        let w = PAD * 2.0 + n * SLOT + (n - 1.0) * GAP;
+        let h = PAD * 2.0 + SLOT;
+        let x = ((self.cfg.v_width - w) * 0.5).round();
+        let y = (self.cfg.v_height - BOTTOM - h).round();
+
+        // Bar frame: dark edge, steel rim, navy back.
+        draw_rounded_rect(x, y, w, h, BAR_RADIUS, FRAME);
+        draw_rounded_rect(x + 1.0, y + 1.0, w - 2.0, h - 2.0, BAR_RADIUS - 1.0, RIM);
+        draw_rounded_rect(x + 2.0, y + 2.0, w - 4.0, h - 4.0, BAR_RADIUS - 2.0, BACK);
+
+        for (i, slot) in slots.iter().enumerate() {
+            let sx = x + PAD + i as f32 * (SLOT + GAP);
+            let sy = y + PAD;
+            self.slot(sx, sy, slot);
+        }
     }
 }

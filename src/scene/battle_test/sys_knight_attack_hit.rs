@@ -1,9 +1,9 @@
 use crate::entity::enemy::RamHead;
-use crate::entity::knight::{AttackArea, Knight, Sword};
+use crate::entity::knight::{Knight, Sword};
 use crate::entity::player::PlayerOne;
 use crate::systems::Update;
 use crate::util::attack::{did_attack, image_data_for};
-use crate::{Animation, AttackEvent, Context, EStore, EventBus};
+use crate::{Animation, AttackEvent, AttackRect, Context, EStore, EventBus};
 use macroquad::prelude::{Image, Texture2D};
 use std::rc::Rc;
 
@@ -41,7 +41,7 @@ impl Update for KnightAttackHitSystem {
             .first::<PlayerOne>()
             .and_then(|p| self.store.get_child::<Knight>(&p))
             .and_then(|k| self.store.get_child::<Sword>(&k))
-            .and_then(|s| self.store.get_child::<AttackArea>(&s))
+            .and_then(|s| self.store.get_child::<AttackRect>(&s))
         else {
             return;
         };

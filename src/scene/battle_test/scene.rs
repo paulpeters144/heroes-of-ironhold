@@ -1,4 +1,5 @@
 use super::sys_camera::CameraSystem;
+use super::sys_enemy_death::EnemyDeathSystem;
 use super::sys_hud::HudDrawSystem;
 use super::sys_knight_attack_hit::KnightAttackHitSystem;
 use super::sys_knight_dash::{outfit_dominant_color, KnightDashSystem};
@@ -13,7 +14,7 @@ use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
 use crate::entity::hero::HeroStats;
 use crate::entity::impact_frame::ImpactFrame;
-use crate::entity::knight::{AttackArea, Knight, Shield, Sword};
+use crate::entity::knight::{Knight, Shield, Sword};
 use crate::entity::player::{PlayerFactory, PlayerOne};
 use crate::entity::skills::{Skill, SkillIconKind, SkillsWidget};
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
@@ -27,9 +28,11 @@ use crate::systems::{
     KnightCombatSystem, SystemAgg, ZSortSystem,
 };
 use crate::{
-    file, font, images, shader, Animation, Assets, Config, Context, EStore, EventBus, HealthBar,
+    file, font, images, shader, Animation, Assets, AttackRect, Config, Context, EStore, EventBus,
+    HealthBar,
 };
 use macroquad::prelude::*;
+use macroquad::rand::gen_range;
 use pico_entity_store::store::{ChildSource, IntoChild};
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -45,16 +48,12 @@ pub struct BattleTestScene {
     bus: Rc<EventBus>,
     agg: SystemAgg,
     dash_color: Rc<Cell<Color>>,
-    hud: Option<HudDrawSystem>,
-    skills_bar: Option<SkillsBarDrawSystem>,
-    dash_ui: Option<KnightDashSystem>,
 }
 
 impl BattleTestScene {
     pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>, bus: Rc<EventBus>) -> Self {
         let agg = SystemAgg::new();
         agg.add_update(KnightControlSystem::new(store.clone()));
-        agg.add_update(RamHeadAiSystem::new(store.clone(), bus.clone()));
         agg.add_update(KnightCombatSystem::new(store.clone(), bus.clone()));
         agg.add_update(AnimationUpdateSystem::new(store.clone()));
         agg.add_update(KnightOffsetUpdateSystem::new(store.clone()));
@@ -72,9 +71,6 @@ impl BattleTestScene {
             bus,
             agg,
             dash_color: Rc::new(Cell::new(Color::new(1.0, 1.0, 1.0, 1.0))),
-            hud: None,
-            skills_bar: None,
-            dash_ui: None,
         }
     }
 
@@ -124,7 +120,7 @@ impl BattleTestScene {
                 parts.sword_animation.into_child(),
                 parts.thrust.into_child(),
                 parts.slash.into_child(),
-                AttackArea {
+                AttackRect {
                     rects: Vec::new(),
                     visible: false,
                 }
@@ -177,7 +173,7 @@ impl BattleTestScene {
                 HealthBar::default().into_child(),
                 EnemyStats::default().into_child(),
                 parts.impact_frame.into_child(),
-                AttackArea {
+                AttackRect {
                     rects: Vec::new(),
                     visible: false,
                 }
@@ -185,15 +181,16 @@ impl BattleTestScene {
             ],
         );
 
-        let enemy = self
+        let enemy_id = self
             .store
-            .first::<RamHead>()
-            .expect("ram head")
-            .entity_ref();
+            .all::<RamHead>()
+            .map(|e| e.entity_ref().id())
+            .last()
+            .expect("ram head just added");
 
         if let Some(impact_frame) = self
             .store
-            .get_by_id::<RamHead>(enemy.id())
+            .get_by_id::<RamHead>(enemy_id)
             .and_then(|e| self.store.get_child::<ImpactFrame>(&e))
         {
             self.store
@@ -263,15 +260,16 @@ impl Scene for BattleTestScene {
                     &font::Font::Pixellari,
                     &shader::Shader::DashFxVert,
                     &shader::Shader::DashAfterimageFrag,
+                    &shader::Shader::EvaporateFrag,
                 ])
                 .await;
 
-            self.hud = Some(HudDrawSystem::new(
+            self.agg.add_ui(HudDrawSystem::new(
                 self.cfg.clone(),
                 &self.assets,
                 self.store.clone(),
             ));
-            self.skills_bar = Some(SkillsBarDrawSystem::new(
+            self.agg.add_ui(SkillsBarDrawSystem::new(
                 self.cfg.clone(),
                 &self.assets,
                 self.store.clone(),
@@ -291,6 +289,9 @@ impl Scene for BattleTestScene {
                 .add_draw(CollisionRectSystem::new(self.store.clone()));
             self.agg
                 .add_draw(KnightAttackSystem::new(self.store.clone()));
+            let ram_ai = RamHeadAiSystem::new(self.store.clone(), self.bus.clone());
+            self.agg.add_update(ram_ai.clone());
+            self.agg.add_draw(ram_ai);
             // self.agg.add_draw(CameraOrbSystem::new(self.store.clone(), 0));
 
             self.agg.add_update(CameraSystem::new(
@@ -327,10 +328,14 @@ impl Scene for BattleTestScene {
             self.agg
                 .add_update(CollisionRectSystem::new(self.store.clone()));
             self.agg.add_draw(dash.clone());
-            self.dash_ui = Some(dash);
+            self.agg.add_ui(dash);
 
             let hit_reaction = HitReactionSystem::new(self.store.clone(), self.bus.clone());
             self.agg.add_update(hit_reaction);
+
+            let enemy_death = EnemyDeathSystem::new(self.store.clone(), self.bus.clone(), &self.assets);
+            self.agg.add_update(enemy_death.clone());
+            self.agg.add_draw(enemy_death);
 
             self.agg.add_update(HealthTextAnimationSystem::new(
                 self.store.clone(),
@@ -353,7 +358,20 @@ impl Scene for BattleTestScene {
             };
             self.store
                 .update::<Animation, _>(&anim_ref, |a| a.position = body);
-            self.spawn_ram_head(vec2(map_w * 0.5, map_h * 0.5));
+
+            let cx = map_w * 0.5;
+            let cy = map_h * 0.5;
+            let spacing = 45.0;
+            let jitter = 40.0;
+            for row in 0..2 {
+                for col in 0..5 {
+                    let offset = vec2(
+                        (col as f32 - 2.0) * spacing + gen_range(-jitter, jitter),
+                        (row as f32 - 0.5) * spacing + gen_range(-jitter, jitter),
+                    );
+                    self.spawn_ram_head(vec2(cx + offset.x, cy + offset.y));
+                }
+            }
         })
     }
 
@@ -366,14 +384,6 @@ impl Scene for BattleTestScene {
     }
 
     fn draw_ui(&self, ctx: &Context) {
-        if let Some(hud) = &self.hud {
-            hud.draw(ctx);
-        }
-        if let Some(skills_bar) = &self.skills_bar {
-            skills_bar.draw(ctx);
-        }
-        if let Some(dash_ui) = &self.dash_ui {
-            dash_ui.draw_ui(ctx);
-        }
+        self.agg.draw_ui(ctx);
     }
 }

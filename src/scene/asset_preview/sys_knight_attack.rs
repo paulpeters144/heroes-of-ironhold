@@ -1,10 +1,10 @@
 use crate::entity::knight::{
-    AttackArea, Effect, EffectKind, Facing, Knight, Sword, SWIPE_FRAME, THRUST_FRAME,
+    Effect, EffectKind, Facing, Knight, Sword, SWIPE_FRAME, THRUST_FRAME,
 };
 use crate::entity::player::PlayerOne;
 use crate::systems::{Draw, Update};
 // use crate::util::{did_attack, ImageData};
-use crate::{Animation, Context, EStore};
+use crate::{Animation, AttackRect, Context, EStore};
 use macroquad::prelude::*;
 use std::rc::Rc;
 
@@ -29,7 +29,7 @@ impl Update for KnightAttackSystem {
             .and_then(|p| self.store.get_child::<Knight>(&p))
             .and_then(|k| self.store.get_by_id::<Knight>(k.id()))
             .and_then(|k| self.store.get_child::<Sword>(&k))
-            .and_then(|s| self.store.get_child::<AttackArea>(&s))
+            .and_then(|s| self.store.get_child::<AttackRect>(&s))
             .map(|a| a.entity_ref())
         else {
             return;
@@ -105,7 +105,7 @@ impl Update for KnightAttackSystem {
         }
 
         let visible = attack.is_some();
-        self.store.update::<AttackArea, _>(&attack_ref, |area| {
+        self.store.update::<AttackRect, _>(&attack_ref, |area| {
             area.rects = rects;
             area.visible = visible;
         });
@@ -123,7 +123,7 @@ impl Draw for KnightAttackSystem {
             .and_then(|p| self.store.get_child::<Knight>(&p))
             .and_then(|k| self.store.get_by_id::<Knight>(k.id()))
             .and_then(|k| self.store.get_child::<Sword>(&k))
-            .and_then(|s| self.store.get_child::<AttackArea>(&s))
+            .and_then(|s| self.store.get_child::<AttackRect>(&s))
         else {
             return;
         };

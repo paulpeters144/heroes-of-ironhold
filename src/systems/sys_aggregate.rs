@@ -10,9 +10,14 @@ pub trait Draw: Any + 'static {
     fn draw(&self, ctx: &Context);
 }
 
+pub trait DrawUi: Any + 'static {
+    fn draw_ui(&self, ctx: &Context);
+}
+
 pub struct SystemAgg {
     updates: RefCell<Vec<Box<dyn Update>>>,
     draws: RefCell<Vec<Box<dyn Draw>>>,
+    uis: RefCell<Vec<Box<dyn DrawUi>>>,
 }
 
 impl SystemAgg {
@@ -20,6 +25,7 @@ impl SystemAgg {
         SystemAgg {
             updates: RefCell::new(Vec::new()),
             draws: RefCell::new(Vec::new()),
+            uis: RefCell::new(Vec::new()),
         }
     }
 
@@ -29,6 +35,10 @@ impl SystemAgg {
 
     pub fn add_draw<T: Draw>(&self, system: T) {
         self.draws.borrow_mut().push(Box::new(system));
+    }
+
+    pub fn add_ui<T: DrawUi>(&self, system: T) {
+        self.uis.borrow_mut().push(Box::new(system));
     }
 
     pub fn remove_update<T: Update>(&self) -> bool {
@@ -61,9 +71,25 @@ impl SystemAgg {
         }
     }
 
+    pub fn remove_ui<T: DrawUi>(&self) -> bool {
+        let target = TypeId::of::<T>();
+        if let Some(index) = self
+            .uis
+            .borrow()
+            .iter()
+            .position(|s| (**s).type_id() == target)
+        {
+            self.uis.borrow_mut().remove(index);
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn clear(&self) {
         self.updates.borrow_mut().clear();
         self.draws.borrow_mut().clear();
+        self.uis.borrow_mut().clear();
     }
 
     pub fn update(&self, ctx: &mut Context) {
@@ -75,6 +101,12 @@ impl SystemAgg {
     pub fn draw(&self, ctx: &Context) {
         for system in self.draws.borrow().iter() {
             system.draw(ctx);
+        }
+    }
+
+    pub fn draw_ui(&self, ctx: &Context) {
+        for system in self.uis.borrow().iter() {
+            system.draw_ui(ctx);
         }
     }
 }

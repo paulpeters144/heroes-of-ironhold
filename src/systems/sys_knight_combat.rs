@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::entity::enemy::{EnemyStats, RamHead};
 use crate::entity::hero::HeroStats;
 use crate::entity::knight::Knight;
-use crate::events::{AttackEvent, EnemyAttackEvent, HealthChangeEvent, HitEvent};
+use crate::events::{AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent};
 use crate::systems::Update;
 use crate::{Animation, Context, EStore, EventBus, SubCollection};
 
@@ -61,9 +61,25 @@ impl Update for KnightCombatSystem {
                     .and_then(|enemy| self.store.get_child::<EnemyStats>(&enemy))
                     .map(|stats| stats.entity_ref());
                 if let Some(stats_ref) = stats_ref {
+                    let was_alive = self
+                        .store
+                        .get_by_id::<EnemyStats>(stats_ref.id())
+                        .map(|stats| stats.hp > 0)
+                        .unwrap_or(false);
+
                     self.store.update::<EnemyStats, _>(&stats_ref, |stats| {
                         stats.hp = (stats.hp - damage).max(0);
                     });
+
+                    let is_dead = self
+                        .store
+                        .get_by_id::<EnemyStats>(stats_ref.id())
+                        .map(|stats| stats.hp <= 0)
+                        .unwrap_or(false);
+
+                    if was_alive && is_dead {
+                        self.bus.fire(&EnemyDeathEvent { enemy: target });
+                    }
 
                     let rect = self
                         .store

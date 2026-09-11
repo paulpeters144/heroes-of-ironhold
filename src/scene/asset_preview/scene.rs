@@ -13,11 +13,12 @@ use crate::entity::knight::{
 use crate::entity::player::{PlayerFactory, PlayerOne};
 use crate::input::{self, Input};
 use crate::scene::Scene;
-use crate::systems::{DrawSystem, SystemAgg, Update};
+use crate::systems::{DrawSystem, SystemAgg};
 use crate::ui::{Outlined, Style, UI};
 use crate::{images, Animation, Assets, Config, Context, EStore};
 use macroquad::prelude::*;
 use pico_entity_store::store::{ChildSource, IntoChild};
+use std::cell::Cell;
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -63,19 +64,22 @@ pub struct AssetPreviewScene {
     sword_variant: usize,
     focus: usize,
     focus_mode: FocusMode,
-    knight_control: KnightControlSystem,
+    knight_enabled: Rc<Cell<bool>>,
     agg: SystemAgg,
 }
 
 impl AssetPreviewScene {
     pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>) -> Self {
         let agg = SystemAgg::new();
+        let knight_enabled = Rc::new(Cell::new(false));
         agg.add_update(AnimationUpdateSystem::new(store.clone()));
         agg.add_update(KnightOffsetUpdateSystem::new(store.clone()));
         agg.add_update(KnightAttackEffectSystem::new(store.clone()));
+        agg.add_update(KnightControlSystem::with_enabled(
+            store.clone(),
+            knight_enabled.clone(),
+        ));
         agg.add_draw(DrawSystem::new(store.clone()));
-
-        let knight_control = KnightControlSystem::new(store.clone());
 
         Self {
             cfg,
@@ -95,7 +99,7 @@ impl AssetPreviewScene {
             sword_variant: 0,
             focus: 0,
             focus_mode: FocusMode::Boxes,
-            knight_control,
+            knight_enabled,
             agg,
         }
     }
@@ -289,9 +293,10 @@ impl Scene for AssetPreviewScene {
             }
         }
 
-        if self.focus_mode == FocusMode::Knight {
-            self.knight_control.update(ctx);
-        } else {
+        self.knight_enabled
+            .set(self.focus_mode == FocusMode::Knight);
+
+        if self.focus_mode != FocusMode::Knight {
             if input::down_once(Input::Up) {
                 self.focus = (self.focus + BOX_COUNT - 1) % BOX_COUNT;
             }

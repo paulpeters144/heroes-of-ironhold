@@ -21,7 +21,7 @@ impl Default for Config {
             win_h: 720,
             rt_overscan: 2.0,
             pixel_snap: true,
-            debug: false,
+            debug: true,
         }
     }
 }

@@ -47,6 +47,7 @@ python3 clients/web/serve.py              # serve on port 3001
 
 - `rules/store-access.md` — applies when reading entities/components from the store
 - `rules/conventions.md` — applies when writing game code (systems, frame time, assets)
+- `rules/systems.md` — applies when wiring systems into a scene (use the `SystemAgg`, no scene fields)
 - `rules/events.md` — applies when systems need to communicate with each other
 - `rules/factories.md` — applies when writing factories (pure functions, no side effects)
 - `rules/ownership.md` — applies when touching `pico_entity_store` or `src/util/estore.rs`

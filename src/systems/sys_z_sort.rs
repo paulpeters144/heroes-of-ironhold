@@ -17,6 +17,7 @@ struct Entry {
     eref: EntityRef,
     kind: Kind,
     bottom: f32,
+    x: f32,
     order: f32,
 }
 
@@ -75,6 +76,7 @@ impl Update for ZSortSystem {
                 eref: animation.entity_ref(),
                 kind: Kind::Anim,
                 bottom: rect.y + rect.h,
+                x: rect.x + rect.w * 0.5,
                 order: animation.z_idx,
             });
         }
@@ -85,6 +87,7 @@ impl Update for ZSortSystem {
                 eref: image.entity_ref(),
                 kind: Kind::Static,
                 bottom: rect.y + rect.h,
+                x: rect.x + rect.w * 0.5,
                 order: image.z_idx,
             });
         }
@@ -93,23 +96,29 @@ impl Update for ZSortSystem {
             return;
         }
 
-        let mut owners: HashMap<u64, (f32, Vec<usize>)> = HashMap::new();
+        let mut owners: HashMap<u64, (f32, f32, Vec<usize>)> = HashMap::new();
         for (idx, entry) in entries.iter().enumerate() {
             let owner = self.owner_of(&entry.eref, entry.kind);
-            let group = owners.entry(owner).or_insert((f32::MIN, Vec::new()));
+            let group = owners.entry(owner).or_insert((f32::MIN, 0.0, Vec::new()));
             if entry.bottom > group.0 {
                 group.0 = entry.bottom;
+                group.1 = entry.x;
             }
-            group.1.push(idx);
+            group.2.push(idx);
         }
 
-        let mut sorted: Vec<(u64, f32, Vec<usize>)> = owners
+        let mut sorted: Vec<(u64, f32, f32, Vec<usize>)> = owners
             .into_iter()
-            .map(|(id, (feet, idxs))| (id, feet, idxs))
+            .map(|(id, (feet, x, idxs))| (id, feet, x, idxs))
             .collect();
-        sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        sorted.sort_by(|a, b| {
+            a.1.partial_cmp(&b.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal))
+                .then(a.0.cmp(&b.0))
+        });
 
-        for (rank, (_, _, idxs)) in sorted.into_iter().enumerate() {
+        for (rank, (_, _, _, idxs)) in sorted.into_iter().enumerate() {
             let mut idxs = idxs;
             idxs.sort_by(|&a, &b| {
                 entries[a]

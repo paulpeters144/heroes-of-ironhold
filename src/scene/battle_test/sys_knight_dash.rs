@@ -2,7 +2,7 @@ use crate::entity::dash::Dash;
 use crate::entity::knight::{Knight, DOUBLE_TAP_WINDOW, IDLE_FRAME, SWIPE_FRAME, THRUST_FRAME};
 use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
-use crate::systems::{Draw, Update};
+use crate::systems::{Draw, DrawUi, Update};
 use crate::ui::draw_rounded_rect;
 use crate::util::view_scale;
 use crate::{shader, Animation, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
@@ -177,7 +177,41 @@ impl KnightDashSystem {
         gl_use_default_material();
     }
 
-    pub fn draw_ui(&self, _ctx: &Context) {
+    /// Double chevron (">>"), a dodge/dash glyph.
+    fn dash_icon(cx: f32, cy: f32, s: f32) {
+        let r = s * 0.34;
+        let gap = s * 0.16;
+        for off in [-gap, gap] {
+            let bx = cx + off + r * 0.5;
+            draw_line(bx - r, cy - r, bx, cy, 2.0, ICON_COLOR);
+            draw_line(bx, cy, bx - r, cy + r, 2.0, ICON_COLOR);
+        }
+    }
+
+    /// Darkened wedge anchored at 12 o'clock, sweeping clockwise. `frac` is
+    /// the remaining cooldown fraction: 1.0 paints a full disc, 0.0 nothing.
+    fn radial_sweep(cx: f32, cy: f32, r: f32, frac: f32, color: Color) {
+        if frac <= 0.0 {
+            return;
+        }
+        let full = frac * std::f32::consts::TAU;
+        let steps = ((32.0 * frac).ceil() as usize).max(1);
+        let start = -std::f32::consts::FRAC_PI_2;
+        for i in 0..steps {
+            let a0 = start + full * (i as f32 / steps as f32);
+            let a1 = start + full * ((i + 1) as f32 / steps as f32);
+            draw_triangle(
+                vec2(cx, cy),
+                vec2(cx + a0.cos() * r, cy + a0.sin() * r),
+                vec2(cx + a1.cos() * r, cy + a1.sin() * r),
+                color,
+            );
+        }
+    }
+}
+
+impl DrawUi for KnightDashSystem {
+    fn draw_ui(&self, _ctx: &Context) {
         let Some(dash) = self
             .store
             .first::<PlayerOne>()
@@ -238,38 +272,6 @@ impl KnightDashSystem {
             let frac = (dash.recovery / dash.cfg.recover_secs).clamp(0.0, 1.0);
             let r = (DASH_SIZE - 4.0) * 0.5;
             Self::radial_sweep(cx, cy, r, frac, SWEEP);
-        }
-    }
-
-    /// Double chevron (">>"), a dodge/dash glyph.
-    fn dash_icon(cx: f32, cy: f32, s: f32) {
-        let r = s * 0.34;
-        let gap = s * 0.16;
-        for off in [-gap, gap] {
-            let bx = cx + off + r * 0.5;
-            draw_line(bx - r, cy - r, bx, cy, 2.0, ICON_COLOR);
-            draw_line(bx, cy, bx - r, cy + r, 2.0, ICON_COLOR);
-        }
-    }
-
-    /// Darkened wedge anchored at 12 o'clock, sweeping clockwise. `frac` is
-    /// the remaining cooldown fraction: 1.0 paints a full disc, 0.0 nothing.
-    fn radial_sweep(cx: f32, cy: f32, r: f32, frac: f32, color: Color) {
-        if frac <= 0.0 {
-            return;
-        }
-        let full = frac * std::f32::consts::TAU;
-        let steps = ((32.0 * frac).ceil() as usize).max(1);
-        let start = -std::f32::consts::FRAC_PI_2;
-        for i in 0..steps {
-            let a0 = start + full * (i as f32 / steps as f32);
-            let a1 = start + full * ((i + 1) as f32 / steps as f32);
-            draw_triangle(
-                vec2(cx, cy),
-                vec2(cx + a0.cos() * r, cy + a0.sin() * r),
-                vec2(cx + a1.cos() * r, cy + a1.sin() * r),
-                color,
-            );
         }
     }
 }
