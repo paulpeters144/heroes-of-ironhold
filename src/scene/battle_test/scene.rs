@@ -260,7 +260,7 @@ impl Scene for BattleTestScene {
                     &font::Font::Pixellari,
                     &shader::Shader::DashFxVert,
                     &shader::Shader::DashAfterimageFrag,
-                    &shader::Shader::EvaporateFrag,
+                    &shader::Shader::DemonDeathFrag,
                 ])
                 .await;
 

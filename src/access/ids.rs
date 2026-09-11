@@ -107,7 +107,7 @@ pub mod shader {
         DashFxVert,
         DashAfterimageFrag,
         FlashWhiteFrag,
-        EvaporateFrag,
+        DemonDeathFrag,
     }
 
     impl AssetId for Shader {
@@ -120,7 +120,7 @@ pub mod shader {
                 Self::DashFxVert => "shaders/dash_fx.vert".to_string(),
                 Self::DashAfterimageFrag => "shaders/dash_afterimage.frag".to_string(),
                 Self::FlashWhiteFrag => "shaders/flash_white.frag".to_string(),
-                Self::EvaporateFrag => "shaders/evaporate.frag".to_string(),
+                Self::DemonDeathFrag => "shaders/demon_death.frag".to_string(),
             }
         }
 
