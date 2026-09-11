@@ -7,6 +7,8 @@ use crate::systems::Update;
 use crate::{Animation, Context, EStore};
 use std::rc::Rc;
 
+const FACE_LOCK_SECS: f32 = 0.25;
+
 pub struct KnightControlSystem {
     store: Rc<EStore>,
     walk_elapsed: f32,
@@ -17,6 +19,8 @@ pub struct KnightControlSystem {
     buffered: Option<AttackKind>,
     prev_facing: Option<Facing>,
     combo_reset: bool,
+    locked_facing: Option<Facing>,
+    lock_timer: f32,
 }
 
 impl KnightControlSystem {
@@ -31,6 +35,8 @@ impl KnightControlSystem {
             buffered: None,
             prev_facing: None,
             combo_reset: false,
+            locked_facing: None,
+            lock_timer: 0.0,
         }
     }
 
@@ -147,6 +153,8 @@ impl Update for KnightControlSystem {
                         self.phase = AttackPhase::Strike;
                         self.phase_timer =
                             self.current_attack.map(AttackKind::strike).unwrap_or(0.0);
+                        self.locked_facing = current_facing;
+                        self.lock_timer = FACE_LOCK_SECS;
                     }
                     AttackPhase::Strike => {
                         self.phase = AttackPhase::Recovery;
@@ -165,6 +173,24 @@ impl Update for KnightControlSystem {
 
         if self.phase == AttackPhase::Idle {
             self.start_next_attack();
+        }
+
+        if self.lock_timer > 0.0 {
+            self.lock_timer -= ctx.dt;
+            if let Some(locked) = self.locked_facing {
+                if current_facing != Some(locked) {
+                    let facing_ref = self
+                        .store
+                        .get_by_id::<Knight>(knight_ref.id())
+                        .and_then(|k| self.store.get_child::<Facing>(&k))
+                        .map(|f| f.entity_ref());
+                    if let Some(f) = facing_ref {
+                        self.store.update::<Facing, _>(&f, |f| *f = locked);
+                    }
+                }
+            }
+        } else {
+            self.locked_facing = current_facing;
         }
 
         let mut new_pos_x = pos_x;

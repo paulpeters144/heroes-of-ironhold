@@ -1,29 +1,19 @@
-use heroes_of_ironhold_core::{
-    EStore, Skill, SkillIcon, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsWidget,
-};
+use heroes_of_ironhold_core::{SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsParts};
 
-fn spawn_six_slot_bar(store: &EStore) {
-    SkillsFactory::spawn(
-        store,
-        &[
-            SkillSlotCfg::icon(SkillIconKind::Sword),
-            SkillSlotCfg::icon(SkillIconKind::Shield),
-            SkillSlotCfg::icon(SkillIconKind::Potion),
-            SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
-            SkillSlotCfg::icon(SkillIconKind::Crossed),
-            SkillSlotCfg::empty(),
-        ],
-    );
+fn six_slot_parts() -> SkillsParts {
+    SkillsFactory::create(&[
+        SkillSlotCfg::icon(SkillIconKind::Sword),
+        SkillSlotCfg::icon(SkillIconKind::Shield),
+        SkillSlotCfg::icon(SkillIconKind::Potion),
+        SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
+        SkillSlotCfg::icon(SkillIconKind::Crossed),
+        SkillSlotCfg::empty(),
+    ])
 }
 
 #[test]
-fn widget_has_skills_in_spawn_order() {
-    let store = EStore::new();
-    spawn_six_slot_bar(&store);
-
-    let widget = store.first::<SkillsWidget>().expect("widget");
-    let children = store.children(&widget);
-    assert_eq!(children.len(), 6);
+fn slots_match_config_order() {
+    let parts = six_slot_parts();
 
     let expected = [
         Some(SkillIconKind::Sword),
@@ -34,52 +24,41 @@ fn widget_has_skills_in_spawn_order() {
         None,
     ];
 
-    for (eref, want) in children.iter().zip(expected) {
-        let skill = store.get_by_id::<Skill>(eref.id()).expect("skill");
-        let icon = store.get_child::<SkillIcon>(&skill).map(|i| i.kind);
-        assert_eq!(icon, want);
-    }
+    let icons: Vec<Option<SkillIconKind>> = parts
+        .slots
+        .iter()
+        .map(|slot| slot.icon.map(|icon| icon.kind))
+        .collect();
+    assert_eq!(icons, expected);
 }
 
 #[test]
 fn selected_flag_is_stored_on_the_skill() {
-    let store = EStore::new();
-    spawn_six_slot_bar(&store);
+    let parts = six_slot_parts();
 
-    let widget = store.first::<SkillsWidget>().expect("widget");
-    let selected: Vec<bool> = store
-        .children(&widget)
+    let selected: Vec<bool> = parts
+        .slots
         .iter()
-        .map(|eref| store.get_by_id::<Skill>(eref.id()).unwrap().selected)
+        .map(|slot| slot.skill.selected)
         .collect();
     assert_eq!(selected, [false, false, false, true, false, false]);
 }
 
 #[test]
-fn single_skill_stays_parented() {
-    let store = EStore::new();
-    SkillsFactory::spawn(&store, &[SkillSlotCfg::icon(SkillIconKind::Sword)]);
+fn single_slot_produces_one_slot_with_icon_and_key() {
+    let parts = SkillsFactory::create(&[SkillSlotCfg::icon(SkillIconKind::Sword)]);
 
-    let widget = store.first::<SkillsWidget>().expect("widget");
-    let children = store.children(&widget);
-    assert_eq!(children.len(), 1);
-
-    let skill = store.get_by_id::<Skill>(children[0].id()).expect("skill");
-    let icon = store.get_child::<SkillIcon>(&skill).expect("icon");
-    assert_eq!(icon.kind, SkillIconKind::Sword);
+    assert_eq!(parts.slots.len(), 1);
+    let slot = &parts.slots[0];
+    assert_eq!(slot.icon.map(|icon| icon.kind), Some(SkillIconKind::Sword));
+    assert_eq!(slot.skill.key, Some('a'));
 }
 
 #[test]
 fn keys_assign_in_order_and_skip_empty_slots() {
-    let store = EStore::new();
-    spawn_six_slot_bar(&store);
+    let parts = six_slot_parts();
 
-    let widget = store.first::<SkillsWidget>().expect("widget");
-    let keys: Vec<Option<char>> = store
-        .children(&widget)
-        .iter()
-        .map(|eref| store.get_by_id::<Skill>(eref.id()).unwrap().key)
-        .collect();
+    let keys: Vec<Option<char>> = parts.slots.iter().map(|slot| slot.skill.key).collect();
     assert_eq!(
         keys,
         [Some('a'), Some('b'), Some('c'), Some('d'), Some('e'), None,]
@@ -88,14 +67,12 @@ fn keys_assign_in_order_and_skip_empty_slots() {
 
 #[test]
 fn keys_are_unique_across_real_skills() {
-    let store = EStore::new();
-    spawn_six_slot_bar(&store);
+    let parts = six_slot_parts();
 
-    let widget = store.first::<SkillsWidget>().expect("widget");
-    let mut keys: Vec<char> = store
-        .children(&widget)
+    let mut keys: Vec<char> = parts
+        .slots
         .iter()
-        .filter_map(|eref| store.get_by_id::<Skill>(eref.id()).unwrap().key)
+        .filter_map(|slot| slot.skill.key)
         .collect();
     keys.sort_unstable();
     keys.dedup();

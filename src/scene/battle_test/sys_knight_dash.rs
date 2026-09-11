@@ -42,7 +42,7 @@ struct Ghost {
 }
 
 #[derive(Clone)]
-pub struct DashSystem {
+pub struct KnightDashSystem {
     store: Rc<EStore>,
     afterimage: Rc<Option<Material>>,
     dash_color: Rc<Cell<Color>>,
@@ -125,7 +125,7 @@ fn load_afterimage_material(assets: &Assets) -> Option<Material> {
     }
 }
 
-impl DashSystem {
+impl KnightDashSystem {
     pub fn new(
         store: Rc<EStore>,
         assets: &Assets,
@@ -274,7 +274,7 @@ impl DashSystem {
     }
 }
 
-impl Update for DashSystem {
+impl Update for KnightDashSystem {
     fn update(&mut self, ctx: &mut Context) {
         self.tap_timer = (self.tap_timer - ctx.dt).max(0.0);
 
@@ -381,7 +381,7 @@ impl Update for DashSystem {
     }
 }
 
-impl Draw for DashSystem {
+impl Draw for KnightDashSystem {
     fn draw(&self, _ctx: &Context) {
         let Some(knight_id) = self
             .store

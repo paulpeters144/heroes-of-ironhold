@@ -1,6 +1,4 @@
 use crate::entity::skills::{Skill, SkillIcon, SkillIconKind, SkillsWidget};
-use crate::EStore;
-use pico_entity_store::store::{ChildSource, IntoChild};
 
 /// One slot to spawn in the skills bar. `icon: None` yields an empty slot.
 #[derive(Clone, Copy, Debug)]
@@ -30,14 +28,24 @@ impl SkillSlotCfg {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct SkillSlotParts {
+    pub skill: Skill,
+    pub icon: Option<SkillIcon>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SkillsParts {
+    pub widget: SkillsWidget,
+    pub slots: Vec<SkillSlotParts>,
+}
+
 pub struct SkillsFactory;
 
 impl SkillsFactory {
-    /// Spawns the `SkillsWidget -> Skill -> SkillIcon` hierarchy. Slot order
-    /// in the bar matches `slots` order; any count works.
-    pub fn spawn(store: &EStore, slots: &[SkillSlotCfg]) {
-        store.add(SkillsWidget, &[]);
+    pub fn create(slots: &[SkillSlotCfg]) -> SkillsParts {
         let mut next_key = 'a' as u32;
+        let mut parts = Vec::with_capacity(slots.len());
         for slot in slots {
             let key = if slot.icon.is_some() {
                 let k = char::from_u32(next_key).expect("key in range");
@@ -50,23 +58,12 @@ impl SkillsFactory {
                 selected: slot.selected,
                 key,
             };
-            match slot.icon {
-                Some(kind) => store.add(skill, &[SkillIcon { kind }.into_child()]),
-                None => store.add(skill, &[]),
-            }
-            Self::attach_last_skill(store);
+            let icon = slot.icon.map(|kind| SkillIcon { kind });
+            parts.push(SkillSlotParts { skill, icon });
         }
-    }
-
-    /// `EStore::add` discards the new entity's ref, so re-fetch the skill we
-    /// just pushed (storage is append-ordered) and link it under the widget.
-    fn attach_last_skill(store: &EStore) {
-        let skill_ref = store
-            .all::<Skill>()
-            .map(|s| s.entity_ref())
-            .last()
-            .expect("skill just added");
-        let widget = store.first::<SkillsWidget>().expect("skills widget");
-        store.add(widget, &[ChildSource::Existing(skill_ref)]);
+        SkillsParts {
+            widget: SkillsWidget,
+            slots: parts,
+        }
     }
 }

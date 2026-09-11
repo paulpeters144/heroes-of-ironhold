@@ -12,3 +12,15 @@ pub struct HealthChangeEvent {
     pub amount: i32,
     pub rect: Rect,
 }
+
+#[derive(Clone, Debug)]
+pub struct HitEvent {
+    pub victim: u64,
+    pub attacker: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnemyAttackEvent {
+    pub attacker: u64,
+    pub target: u64,
+}

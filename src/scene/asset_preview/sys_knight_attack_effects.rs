@@ -9,12 +9,12 @@ use crate::{Animation, Context, EStore};
 use macroquad::prelude::*;
 use std::rc::Rc;
 
-pub struct AttackEffectSystem {
+pub struct KnightAttackEffectSystem {
     store: Rc<EStore>,
     prev_frame: Option<usize>,
 }
 
-impl AttackEffectSystem {
+impl KnightAttackEffectSystem {
     pub fn new(store: Rc<EStore>) -> Self {
         Self {
             store,
@@ -23,7 +23,7 @@ impl AttackEffectSystem {
     }
 }
 
-impl Update for AttackEffectSystem {
+impl Update for KnightAttackEffectSystem {
     fn update(&mut self, ctx: &mut Context) {
         let Some(frame) = self
             .store
@@ -61,16 +61,6 @@ impl Update for AttackEffectSystem {
     }
 }
 
-pub struct AttackEffectDrawSystem {
-    store: Rc<EStore>,
-}
-
-impl AttackEffectDrawSystem {
-    pub fn new(store: Rc<EStore>) -> Self {
-        Self { store }
-    }
-}
-
 fn glow_envelope(t: f32) -> f32 {
     let fade_in = (t / GLOW_IN_FRACTION).clamp(0.0, 1.0).powi(2);
     let fade_out = ((t - HOLD_START) / (1.0 - HOLD_START)).clamp(0.0, 1.0);
@@ -94,7 +84,7 @@ fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32, flip_x: bool) {
     );
 }
 
-impl Draw for AttackEffectDrawSystem {
+impl Draw for KnightAttackEffectSystem {
     fn draw(&self, _ctx: &Context) {
         let Some(sword_pos) = self
             .store

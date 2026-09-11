@@ -6,11 +6,11 @@ use crate::{Animation, Context, EStore, StaticImage};
 use macroquad::prelude::Vec2;
 use std::rc::Rc;
 
-pub struct OffsetUpdateSystem {
+pub struct KnightOffsetUpdateSystem {
     store: Rc<EStore>,
 }
 
-impl OffsetUpdateSystem {
+impl KnightOffsetUpdateSystem {
     pub fn new(store: Rc<EStore>) -> Self {
         Self { store }
     }
@@ -20,7 +20,7 @@ fn mirror_x(offset_x: f32, child_w: f32) -> f32 {
     FRAME_SIZE - offset_x - child_w
 }
 
-impl Update for OffsetUpdateSystem {
+impl Update for KnightOffsetUpdateSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let Some(knight_ref) = self
             .store

@@ -9,6 +9,7 @@ pub mod factory_skills;
 pub mod floating_text;
 pub mod health_bar;
 pub mod hero;
+pub mod impact_frame;
 pub mod knight;
 pub mod player;
 pub mod skills;

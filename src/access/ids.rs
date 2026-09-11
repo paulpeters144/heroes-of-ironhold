@@ -145,6 +145,7 @@ pub mod images {
         ThrustGraphic,
         SwipeGraphic,
         Face,
+        Hit,
     }
 
     impl AssetId for Knight {
@@ -162,6 +163,7 @@ pub mod images {
                 Self::ThrustGraphic => "images/knight/static-knight-thrust-graphic.png".to_string(),
                 Self::SwipeGraphic => "images/knight/static-knight-swipe-graphic.png".to_string(),
                 Self::Face => "images/knight/static-knight-face.png".to_string(),
+                Self::Hit => "images/knight/static-knight-hit.png".to_string(),
             }
         }
 
@@ -173,12 +175,14 @@ pub mod images {
     #[derive(Clone, Copy, Debug)]
     pub enum Enemy {
         RamHead,
+        RamHeadHit,
     }
 
     impl AssetId for Enemy {
         fn path(&self) -> String {
             match self {
                 Self::RamHead => "images/enemies/anim-ram-head.png".to_string(),
+                Self::RamHeadHit => "images/enemies/static-ramhead-hit.png".to_string(),
             }
         }
 

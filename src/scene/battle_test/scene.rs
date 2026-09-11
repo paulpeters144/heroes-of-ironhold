@@ -1,32 +1,30 @@
-use super::sys_attack_hit::AttackHitSystem;
 use super::sys_camera::CameraSystem;
-use super::sys_dash::{outfit_dominant_color, DashSystem};
-use super::sys_enemy_ai::EnemyAiSystem;
-use super::sys_facing_lock::KnightFacingLockSystem;
 use super::sys_hud::HudDrawSystem;
+use super::sys_knight_attack_hit::KnightAttackHitSystem;
+use super::sys_knight_dash::{outfit_dominant_color, KnightDashSystem};
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
+use super::sys_ramhead_ai::RamHeadAiSystem;
 use super::sys_skills_bar::SkillsBarDrawSystem;
 use crate::entity::dash::Dash;
-use crate::entity::enemy::EnemyStats;
-use crate::entity::factory_enemy::EnemyFactory;
+use crate::entity::enemy::{EnemyStats, RamHead};
+use crate::entity::factory_enemy::{EnemyFactory, RamHeadCfg};
 use crate::entity::factory_hero::{HeroFactory, KnightCfg};
 use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
 use crate::entity::hero::HeroStats;
-use crate::entity::knight::{
-    AttackArea, Effect, EffectKind, Knight, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
-};
+use crate::entity::impact_frame::ImpactFrame;
+use crate::entity::knight::{AttackArea, Knight, Shield, Sword};
 use crate::entity::player::{PlayerFactory, PlayerOne};
-use crate::entity::skills::SkillIconKind;
+use crate::entity::skills::{Skill, SkillIconKind, SkillsWidget};
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
-use crate::scene::asset_preview::sys_attack_effects::{AttackEffectDrawSystem, AttackEffectSystem};
 use crate::scene::asset_preview::sys_knight_attack::KnightAttackSystem;
+use crate::scene::asset_preview::sys_knight_attack_effects::KnightAttackEffectSystem;
 use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
-use crate::scene::asset_preview::sys_offsets::OffsetUpdateSystem;
+use crate::scene::asset_preview::sys_knight_offsets::KnightOffsetUpdateSystem;
 use crate::scene::Scene;
 use crate::systems::{
-    CollisionRectSystem, DrawSystem, HandleAttackSystem, HealthBarSystem, HealthTextAnimationSystem,
-    SystemAgg, ZSortSystem,
+    CollisionRectSystem, DrawSystem, HealthBarSystem, HealthTextAnimationSystem, HitReactionSystem,
+    KnightCombatSystem, SystemAgg, ZSortSystem,
 };
 use crate::{
     file, font, images, shader, Animation, Assets, Config, Context, EStore, EventBus, HealthBar,
@@ -49,20 +47,20 @@ pub struct BattleTestScene {
     dash_color: Rc<Cell<Color>>,
     hud: Option<HudDrawSystem>,
     skills_bar: Option<SkillsBarDrawSystem>,
-    dash_ui: Option<DashSystem>,
+    dash_ui: Option<KnightDashSystem>,
 }
 
 impl BattleTestScene {
     pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>, bus: Rc<EventBus>) -> Self {
         let agg = SystemAgg::new();
         agg.add_update(KnightControlSystem::new(store.clone()));
-        agg.add_update(KnightFacingLockSystem::new(store.clone()));
-        agg.add_update(EnemyAiSystem::new(store.clone()));
+        agg.add_update(RamHeadAiSystem::new(store.clone(), bus.clone()));
+        agg.add_update(KnightCombatSystem::new(store.clone(), bus.clone()));
         agg.add_update(AnimationUpdateSystem::new(store.clone()));
-        agg.add_update(OffsetUpdateSystem::new(store.clone()));
-        agg.add_update(AttackEffectSystem::new(store.clone()));
+        agg.add_update(KnightOffsetUpdateSystem::new(store.clone()));
+        agg.add_update(KnightAttackEffectSystem::new(store.clone()));
         agg.add_update(KnightAttackSystem::new(store.clone()));
-        agg.add_update(AttackHitSystem::new(store.clone(), bus.clone()));
+        agg.add_update(KnightAttackHitSystem::new(store.clone(), bus.clone()));
         agg.add_update(CameraOrbSystem::new(store.clone()));
         agg.add_update(ZSortSystem::new(store.clone()));
         agg.add_update(HealthBarSystem::new(store.clone()));
@@ -81,50 +79,42 @@ impl BattleTestScene {
     }
 
     fn spawn_skills_widget(&self) {
-        SkillsFactory::spawn(
-            &self.store,
-            &[
-                SkillSlotCfg::icon(SkillIconKind::Sword),
-                SkillSlotCfg::icon(SkillIconKind::Shield),
-                SkillSlotCfg::icon(SkillIconKind::Potion),
-                // SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
-                SkillSlotCfg::icon(SkillIconKind::Crossed),
-                SkillSlotCfg::empty(),
-            ],
-        );
+        let parts = SkillsFactory::create(&[
+            SkillSlotCfg::icon(SkillIconKind::Sword),
+            SkillSlotCfg::icon(SkillIconKind::Shield),
+            SkillSlotCfg::icon(SkillIconKind::Potion),
+            // SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
+            SkillSlotCfg::icon(SkillIconKind::Crossed),
+            SkillSlotCfg::empty(),
+        ]);
+
+        self.store.add(parts.widget, &[]);
+
+        for slot in parts.slots {
+            match slot.icon {
+                Some(icon) => self.store.add(slot.skill, &[icon.into_child()]),
+                None => self.store.add(slot.skill, &[]),
+            }
+            let skill_ref = self
+                .store
+                .all::<Skill>()
+                .map(|s| s.entity_ref())
+                .last()
+                .expect("skill just added");
+            let widget = self.store.first::<SkillsWidget>().expect("skills widget");
+            self.store.add(widget, &[ChildSource::Existing(skill_ref)]);
+        }
     }
 
     fn spawn_player(&self) {
-        let parts = HeroFactory::new(&self.assets).create_knight(KnightCfg {
-            outfit: images::Knight::Knight1,
-            sword: images::Knight::Sword1,
-            shield: images::Knight::Shield1,
+        let parts = HeroFactory::create_knight(KnightCfg {
+            outfit: self.assets.texture(images::Knight::Knight1),
+            sword: self.assets.texture(images::Knight::Sword1),
+            shield: self.assets.texture(images::Knight::Shield1),
+            impact: self.assets.texture(images::Knight::Hit),
+            thrust: self.assets.texture(images::Knight::ThrustGraphic),
+            swipe: self.assets.texture(images::Knight::SwipeGraphic),
         });
-
-        let thrust_tex = self.assets.texture(images::Knight::ThrustGraphic);
-        let swipe_tex = self.assets.texture(images::Knight::SwipeGraphic);
-
-        let sword_rect = parts.sword_animation.rect();
-        let x = sword_rect.right() - parts.sword_animation.position.x;
-        let thrust_offset = vec2(x, (sword_rect.h - thrust_tex.height()) * 0.5);
-        let slash_offset = vec2(x + 15.0, (sword_rect.h - swipe_tex.height()) * 0.5);
-
-        let thrust = Effect {
-            kind: EffectKind::Thrust,
-            texture: thrust_tex,
-            offset: thrust_offset,
-            age: 0.0,
-            lifetime: THRUST_LIFETIME,
-            visible: false,
-        };
-        let slash = Effect {
-            kind: EffectKind::Slash,
-            texture: swipe_tex,
-            offset: slash_offset,
-            age: 0.0,
-            lifetime: SLASH_LIFETIME,
-            visible: false,
-        };
 
         self.store
             .add(parts.shield, &[parts.shield_image.into_child()]);
@@ -132,8 +122,8 @@ impl BattleTestScene {
             parts.sword,
             &[
                 parts.sword_animation.into_child(),
-                thrust.into_child(),
-                slash.into_child(),
+                parts.thrust.into_child(),
+                parts.slash.into_child(),
                 AttackArea {
                     rects: Vec::new(),
                     visible: false,
@@ -150,6 +140,7 @@ impl BattleTestScene {
                 parts.body.into_child(),
                 shield.into_child(),
                 sword.into_child(),
+                parts.impact_frame.into_child(),
                 parts.facing.into_child(),
                 parts.collision_rect.into_child(),
                 HeroStats::default().into_child(),
@@ -158,12 +149,25 @@ impl BattleTestScene {
         );
 
         let knight = self.store.first::<Knight>().expect("knight").entity_ref();
+
+        if let Some(impact_frame) = self
+            .store
+            .get_by_id::<Knight>(knight.id())
+            .and_then(|k| self.store.get_child::<ImpactFrame>(&k))
+        {
+            self.store
+                .add(impact_frame, &[parts.impact_image.into_child()]);
+        }
+
         self.store
             .add(PlayerFactory::spawn_one(), &[ChildSource::Existing(knight)]);
     }
 
     fn spawn_ram_head(&self, position: Vec2) {
-        let mut parts = EnemyFactory::new(&self.assets).create_ram_head();
+        let mut parts = EnemyFactory::create_ram_head(RamHeadCfg {
+            body: self.assets.texture(images::Enemy::RamHead),
+            impact: self.assets.texture(images::Enemy::RamHeadHit),
+        });
         parts.body.position = position;
         self.store.add(
             parts.marker,
@@ -172,8 +176,29 @@ impl BattleTestScene {
                 parts.collision_rect.into_child(),
                 HealthBar::default().into_child(),
                 EnemyStats::default().into_child(),
+                parts.impact_frame.into_child(),
+                AttackArea {
+                    rects: Vec::new(),
+                    visible: false,
+                }
+                .into_child(),
             ],
         );
+
+        let enemy = self
+            .store
+            .first::<RamHead>()
+            .expect("ram head")
+            .entity_ref();
+
+        if let Some(impact_frame) = self
+            .store
+            .get_by_id::<RamHead>(enemy.id())
+            .and_then(|e| self.store.get_child::<ImpactFrame>(&e))
+        {
+            self.store
+                .add(impact_frame, &[parts.impact_image.into_child()]);
+        }
     }
 
     fn build_map(&self) -> TiledMap {
@@ -226,17 +251,18 @@ impl Scene for BattleTestScene {
                     &images::Knight::Sword3,
                     &images::Knight::ThrustGraphic,
                     &images::Knight::SwipeGraphic,
+                    &images::Knight::Hit,
                     &file::File::TestTmx,
                     &file::File::HoiBgTsx,
                     &file::File::HoiCharsTsx,
                     &images::TilesetImage::HoiBg,
                     &images::TilesetImage::HoiChars,
                     &images::Enemy::RamHead,
+                    &images::Enemy::RamHeadHit,
                     &images::Knight::Face,
                     &font::Font::Pixellari,
                     &shader::Shader::DashFxVert,
                     &shader::Shader::DashAfterimageFrag,
-                    &shader::Shader::FlashWhiteFrag,
                 ])
                 .await;
 
@@ -260,7 +286,7 @@ impl Scene for BattleTestScene {
                 .add_draw(MapDrawSystem::new(map, self.cfg.v_width, self.cfg.v_height));
             self.agg.add_draw(DrawSystem::new(self.store.clone()));
             self.agg
-                .add_draw(AttackEffectDrawSystem::new(self.store.clone()));
+                .add_draw(KnightAttackEffectSystem::new(self.store.clone()));
             self.agg
                 .add_draw(CollisionRectSystem::new(self.store.clone()));
             self.agg
@@ -291,7 +317,7 @@ impl Scene for BattleTestScene {
             };
             self.dash_color.set(color);
 
-            let dash = DashSystem::new(
+            let dash = KnightDashSystem::new(
                 self.store.clone(),
                 &self.assets,
                 self.dash_color.clone(),
@@ -303,10 +329,8 @@ impl Scene for BattleTestScene {
             self.agg.add_draw(dash.clone());
             self.dash_ui = Some(dash);
 
-            let handle_attack =
-                HandleAttackSystem::new(self.store.clone(), &self.assets, self.bus.clone());
-            self.agg.add_update(handle_attack.clone());
-            self.agg.add_draw(handle_attack);
+            let hit_reaction = HitReactionSystem::new(self.store.clone(), self.bus.clone());
+            self.agg.add_update(hit_reaction);
 
             self.agg.add_update(HealthTextAnimationSystem::new(
                 self.store.clone(),

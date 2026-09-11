@@ -1,6 +1,9 @@
-use crate::entity::knight::{Facing, Shield, Sword};
-use crate::{images, Animation, Assets, CollisionRect, StaticImage};
-use macroquad::prelude::{Color, Rect, Vec2};
+use crate::entity::impact_frame::ImpactFrame;
+use crate::entity::knight::{
+    Effect, EffectKind, Facing, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
+};
+use crate::{Animation, CollisionRect, StaticImage};
+use macroquad::prelude::{Color, Rect, Texture2D, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;
 pub const FRAME_COUNT: usize = 6;
@@ -10,11 +13,14 @@ pub const SHIELD_SIZE: f32 = 32.0;
 pub const COLLISION_WIDTH_SCALE: f32 = 0.5;
 pub const COLLISION_HEIGHT_SCALE: f32 = 0.35;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct KnightCfg {
-    pub outfit: images::Knight,
-    pub sword: images::Knight,
-    pub shield: images::Knight,
+    pub outfit: Texture2D,
+    pub sword: Texture2D,
+    pub shield: Texture2D,
+    pub impact: Texture2D,
+    pub thrust: Texture2D,
+    pub swipe: Texture2D,
 }
 
 pub struct KnightParts {
@@ -25,20 +31,18 @@ pub struct KnightParts {
     pub sword_animation: Animation,
     pub facing: Facing,
     pub collision_rect: CollisionRect,
+    pub impact_frame: ImpactFrame,
+    pub impact_image: StaticImage,
+    pub thrust: Effect,
+    pub slash: Effect,
 }
 
-pub struct HeroFactory<'a> {
-    assets: &'a Assets,
-}
+pub struct HeroFactory;
 
-impl<'a> HeroFactory<'a> {
-    pub fn new(assets: &'a Assets) -> Self {
-        Self { assets }
-    }
-
-    pub fn create_knight(&self, cfg: KnightCfg) -> KnightParts {
+impl HeroFactory {
+    pub fn create_knight(cfg: KnightCfg) -> KnightParts {
         let body = Animation {
-            source: self.assets.texture(cfg.outfit),
+            source: cfg.outfit,
             position: Vec2::ZERO,
             frame_width: FRAME_SIZE,
             frame_height: FRAME_SIZE,
@@ -54,7 +58,7 @@ impl<'a> HeroFactory<'a> {
         };
 
         let shield_image = StaticImage {
-            source: self.assets.texture(cfg.shield),
+            source: cfg.shield,
             position: Vec2::ZERO,
             size: Vec2::new(SHIELD_SIZE, SHIELD_SIZE),
             scale: 1.0,
@@ -65,7 +69,7 @@ impl<'a> HeroFactory<'a> {
         };
 
         let sword_animation = Animation {
-            source: self.assets.texture(cfg.sword),
+            source: cfg.sword,
             position: Vec2::ZERO,
             frame_width: SWORD_FRAME_SIZE,
             frame_height: SWORD_FRAME_SIZE,
@@ -78,6 +82,39 @@ impl<'a> HeroFactory<'a> {
             scale: 1.0,
             visible: true,
             z_idx: 2.0,
+        };
+
+        let impact_image = StaticImage {
+            source: cfg.impact,
+            position: Vec2::ZERO,
+            size: Vec2::new(FRAME_SIZE, FRAME_SIZE),
+            scale: 1.0,
+            tint: Color::new(1.0, 1.0, 1.0, 1.0),
+            flip_x: false,
+            visible: false,
+            z_idx: 3.0,
+        };
+
+        let sword_rect = sword_animation.rect();
+        let x = sword_rect.right() - sword_animation.position.x;
+        let thrust_offset = Vec2::new(x, (sword_rect.h - cfg.thrust.height()) * 0.5);
+        let slash_offset = Vec2::new(x + 15.0, (sword_rect.h - cfg.swipe.height()) * 0.5);
+
+        let thrust = Effect {
+            kind: EffectKind::Thrust,
+            texture: cfg.thrust,
+            offset: thrust_offset,
+            age: 0.0,
+            lifetime: THRUST_LIFETIME,
+            visible: false,
+        };
+        let slash = Effect {
+            kind: EffectKind::Slash,
+            texture: cfg.swipe,
+            offset: slash_offset,
+            age: 0.0,
+            lifetime: SLASH_LIFETIME,
+            visible: false,
         };
 
         KnightParts {
@@ -95,6 +132,10 @@ impl<'a> HeroFactory<'a> {
                     FRAME_SIZE * COLLISION_HEIGHT_SCALE,
                 ),
             },
+            impact_frame: ImpactFrame,
+            impact_image,
+            thrust,
+            slash,
         }
     }
 }

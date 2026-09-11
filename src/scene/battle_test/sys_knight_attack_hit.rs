@@ -2,26 +2,30 @@ use crate::entity::enemy::RamHead;
 use crate::entity::knight::{AttackArea, Knight, Sword};
 use crate::entity::player::PlayerOne;
 use crate::systems::Update;
+use crate::util::attack::{did_attack, image_data_for};
 use crate::{Animation, AttackEvent, Context, EStore, EventBus};
+use macroquad::prelude::{Image, Texture2D};
 use std::rc::Rc;
 
-pub struct AttackHitSystem {
+pub struct KnightAttackHitSystem {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
     prev_visible: bool,
+    sheet_cache: Option<(Texture2D, Image)>,
 }
 
-impl AttackHitSystem {
+impl KnightAttackHitSystem {
     pub fn new(store: Rc<EStore>, bus: Rc<EventBus>) -> Self {
         Self {
             store,
             bus,
             prev_visible: false,
+            sheet_cache: None,
         }
     }
 }
 
-impl Update for AttackHitSystem {
+impl Update for KnightAttackHitSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let Some(knight) = self
             .store
@@ -45,8 +49,8 @@ impl Update for AttackHitSystem {
         let mut targets = Vec::new();
         for enemy in self.store.all::<RamHead>() {
             if let Some(body) = self.store.get_child::<Animation>(&enemy) {
-                let rect = body.rect();
-                if area.rects.iter().any(|r| r.overlaps(&rect)) {
+                let data = image_data_for(&body, &mut self.sheet_cache);
+                if area.rects.iter().any(|r| did_attack(*r, &data)) {
                     targets.push(enemy.entity_ref().id());
                 }
             }
