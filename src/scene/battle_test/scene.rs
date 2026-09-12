@@ -2,7 +2,7 @@ use super::sys_camera::CameraSystem;
 use super::sys_enemy_death::EnemyDeathSystem;
 use super::sys_hud::HudDrawSystem;
 use super::sys_knight_attack_hit::KnightAttackHitSystem;
-use super::sys_knight_dash::{outfit_dominant_color, KnightDashSystem};
+use super::sys_knight_dash::KnightDashSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
@@ -34,7 +34,6 @@ use crate::{
 use macroquad::prelude::*;
 use macroquad::rand::gen_range;
 use pico_entity_store::store::{ChildSource, IntoChild};
-use std::cell::Cell;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -47,7 +46,6 @@ pub struct BattleTestScene {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
     agg: SystemAgg,
-    dash_color: Rc<Cell<Color>>,
 }
 
 impl BattleTestScene {
@@ -60,7 +58,6 @@ impl BattleTestScene {
             store,
             bus,
             agg,
-            dash_color: Rc::new(Cell::new(Color::new(1.0, 1.0, 1.0, 1.0))),
         }
     }
 
@@ -262,20 +259,6 @@ impl Scene for BattleTestScene {
 
             self.spawn_player();
 
-            let color = {
-                let Some(player) = self.store.first::<PlayerOne>() else {
-                    return;
-                };
-                let Some(knight) = self.store.get_child::<Knight>(&player) else {
-                    return;
-                };
-                let Some(animation) = self.store.get_child::<Animation>(&knight) else {
-                    return;
-                };
-                outfit_dominant_color(&animation.source)
-            };
-            self.dash_color.set(color);
-
             let body = vec2(200.0, 160.0);
             let anim_ref = {
                 let Some(player) = self.store.first::<PlayerOne>() else {
@@ -346,12 +329,8 @@ impl Scene for BattleTestScene {
                 map_w,
                 map_h,
             ));
-            self.agg.add(KnightDashSystem::new(
-                self.store.clone(),
-                &self.assets,
-                self.dash_color.clone(),
-                self.cfg.clone(),
-            ));
+            self.agg
+                .add(KnightDashSystem::new(self.store.clone(), &self.assets, self.cfg.clone()));
             self.agg.add(CollisionRectSystem::new(self.store.clone()));
             self.agg
                 .add(HitReactionSystem::new(self.store.clone(), self.bus.clone()));

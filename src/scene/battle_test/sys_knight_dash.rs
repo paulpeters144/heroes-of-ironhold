@@ -9,7 +9,6 @@ use crate::{shader, Animation, Assets, Config, Context, EStore, FontTag, GameFon
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
 use pico_entity_store::store::IntoChild;
-use std::cell::Cell;
 use std::rc::Rc;
 
 const GHOST_COUNT: usize = 3;
@@ -44,7 +43,7 @@ struct Ghost {
 pub struct KnightDashSystem {
     store: Rc<EStore>,
     afterimage: Rc<Option<Material>>,
-    dash_color: Rc<Cell<Color>>,
+    dash_color: Color,
     font: GameFont,
     cfg: Rc<Config>,
     last_tap: Option<Input>,
@@ -125,18 +124,19 @@ fn load_afterimage_material(assets: &Assets) -> Option<Material> {
 }
 
 impl KnightDashSystem {
-    pub fn new(
-        store: Rc<EStore>,
-        assets: &Assets,
-        dash_color: Rc<Cell<Color>>,
-        cfg: Rc<Config>,
-    ) -> Self {
+    pub fn new(store: Rc<EStore>, assets: &Assets, cfg: Rc<Config>) -> Self {
         let base = assets.get_font(&TextStyle::new(FontTag::Body));
         let font = GameFont {
             size: 12,
             color: CHARGE_TEXT,
             ..base
         };
+        let dash_color = store
+            .first::<PlayerOne>()
+            .and_then(|p| store.get_child::<Knight>(&p))
+            .and_then(|k| store.get_child::<Animation>(&k))
+            .map(|a| outfit_dominant_color(&a.source))
+            .unwrap_or(Color::new(1.0, 1.0, 1.0, 1.0));
         Self {
             store,
             afterimage: Rc::new(load_afterimage_material(assets)),
@@ -409,7 +409,7 @@ impl System for KnightDashSystem {
 
         let dir = dash.dir;
         let progress = (1.0 - dash.time / dash.cfg.duration).clamp(0.0, 1.0);
-        let color = self.dash_color.get();
+        let color = self.dash_color;
         let source = Rect::new(
             animation.current_frame as f32 * animation.frame_width,
             0.0,
