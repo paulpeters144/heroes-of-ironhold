@@ -6,7 +6,7 @@ use crate::entity::enemy::{EnemyStats, RamHead};
 use crate::entity::hero::HeroStats;
 use crate::entity::knight::Knight;
 use crate::events::{AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent};
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Animation, Context, EStore, EventBus, SubCollection};
 
 pub struct KnightCombatSystem {
@@ -43,7 +43,7 @@ impl KnightCombatSystem {
     }
 }
 
-impl Update for KnightCombatSystem {
+impl System for KnightCombatSystem {
     fn update(&mut self, _ctx: &mut Context) {
         while let Some(event) = self.attack_queue.borrow_mut().pop_front() {
             let damage = self

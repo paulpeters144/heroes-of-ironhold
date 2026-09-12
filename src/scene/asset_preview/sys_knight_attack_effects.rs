@@ -4,7 +4,7 @@ use crate::entity::knight::{
     THRUST_FRAME,
 };
 use crate::entity::player::PlayerOne;
-use crate::systems::{Draw, Update};
+use crate::systems::System;
 use crate::{Animation, Context, EStore};
 use macroquad::prelude::*;
 use std::rc::Rc;
@@ -23,7 +23,30 @@ impl KnightAttackEffectSystem {
     }
 }
 
-impl Update for KnightAttackEffectSystem {
+fn glow_envelope(t: f32) -> f32 {
+    let fade_in = (t / GLOW_IN_FRACTION).clamp(0.0, 1.0).powi(2);
+    let fade_out = ((t - HOLD_START) / (1.0 - HOLD_START)).clamp(0.0, 1.0);
+    let fade_out = (1.0 - fade_out).powi(2);
+    fade_in * fade_out
+}
+
+fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32, flip_x: bool) {
+    let w = texture.width();
+    let h = texture.height();
+    draw_texture_ex(
+        texture,
+        x,
+        y,
+        WHITE.with_alpha(alpha),
+        DrawTextureParams {
+            dest_size: Some(vec2(w, h)),
+            flip_x,
+            ..Default::default()
+        },
+    );
+}
+
+impl System for KnightAttackEffectSystem {
     fn update(&mut self, ctx: &mut Context) {
         let Some(frame) = self
             .store
@@ -59,32 +82,7 @@ impl Update for KnightAttackEffectSystem {
             }
         }
     }
-}
 
-fn glow_envelope(t: f32) -> f32 {
-    let fade_in = (t / GLOW_IN_FRACTION).clamp(0.0, 1.0).powi(2);
-    let fade_out = ((t - HOLD_START) / (1.0 - HOLD_START)).clamp(0.0, 1.0);
-    let fade_out = (1.0 - fade_out).powi(2);
-    fade_in * fade_out
-}
-
-fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32, flip_x: bool) {
-    let w = texture.width();
-    let h = texture.height();
-    draw_texture_ex(
-        texture,
-        x,
-        y,
-        WHITE.with_alpha(alpha),
-        DrawTextureParams {
-            dest_size: Some(vec2(w, h)),
-            flip_x,
-            ..Default::default()
-        },
-    );
-}
-
-impl Draw for KnightAttackEffectSystem {
     fn draw(&self, _ctx: &Context) {
         let Some(sword_pos) = self
             .store

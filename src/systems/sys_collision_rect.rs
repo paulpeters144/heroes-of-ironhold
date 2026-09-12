@@ -1,4 +1,4 @@
-use crate::systems::{Draw, Update};
+use crate::systems::System;
 use crate::{Animation, CollisionRect, Context, EStore};
 use macroquad::prelude::{draw_rectangle_lines, vec2, Color, Vec2};
 use pico_entity_store::entity_ref::EntityRef;
@@ -75,7 +75,7 @@ impl CollisionRectSystem {
     }
 }
 
-impl Update for CollisionRectSystem {
+impl System for CollisionRectSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let bodies = self.collect_bodies();
         let mut colliders = self.collect_colliders(&bodies);
@@ -122,9 +122,7 @@ impl Update for CollisionRectSystem {
         }
         self.prev = next_prev;
     }
-}
 
-impl Draw for CollisionRectSystem {
     fn draw(&self, ctx: &Context) {
         if !ctx.debug {
             return;

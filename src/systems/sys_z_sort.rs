@@ -1,5 +1,5 @@
 use crate::entity::knight::{Shield, Sword};
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Animation, Context, EStore, StaticImage};
 use pico_entity_store::entity_ref::EntityRef;
 use std::collections::HashMap;
@@ -66,7 +66,7 @@ impl ZSortSystem {
     }
 }
 
-impl Update for ZSortSystem {
+impl System for ZSortSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let mut entries: Vec<Entry> = Vec::new();
 

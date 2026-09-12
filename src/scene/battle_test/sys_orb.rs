@@ -1,6 +1,6 @@
 use crate::entity::knight::{Facing, Knight};
 use crate::entity::player::PlayerOne;
-use crate::systems::{Draw, Update};
+use crate::systems::System;
 use crate::{Animation, Context, EStore};
 use macroquad::prelude::*;
 use std::rc::Rc;
@@ -33,7 +33,7 @@ impl CameraOrbSystem {
     }
 }
 
-impl Update for CameraOrbSystem {
+impl System for CameraOrbSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let Some(center) = self
             .store
@@ -57,21 +57,5 @@ impl Update for CameraOrbSystem {
         for mut orb in self.store.all_mut::<Orb>() {
             orb.pos = pos;
         }
-    }
-}
-
-impl Draw for CameraOrbSystem {
-    fn draw(&self, _ctx: &Context) {
-        let Some(orb) = self.store.first::<Orb>() else {
-            return;
-        };
-        let half = orb.size * 0.5;
-        draw_rectangle(
-            orb.pos.x - half,
-            orb.pos.y - half,
-            orb.size,
-            orb.size,
-            YELLOW,
-        );
     }
 }

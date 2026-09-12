@@ -3,7 +3,7 @@ use crate::entity::factory_enemy::{COLLISION_HEIGHT_SCALE, COLLISION_WIDTH_SCALE
 use crate::entity::knight::Knight;
 use crate::entity::player::PlayerOne;
 use crate::events::{EnemyAttackEvent, HitEvent};
-use crate::systems::{Draw, Update};
+use crate::systems::System;
 use crate::util::attack::{did_attack, image_data_for};
 use crate::{Animation, AttackRect, Context, EStore, EventBus, SubCollection};
 use macroquad::prelude::{draw_rectangle_lines, vec2, Color, Image, Rect, Texture2D, Vec2, YELLOW};
@@ -145,7 +145,6 @@ fn separate(a: &mut Vec2, b: &mut Vec2, half_a: Vec2, half_b: Vec2, move_b: bool
     }
 }
 
-#[derive(Clone)]
 pub struct RamHeadAiSystem {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
@@ -197,7 +196,7 @@ impl RamHeadAiSystem {
     }
 }
 
-impl Update for RamHeadAiSystem {
+impl System for RamHeadAiSystem {
     fn update(&mut self, ctx: &mut Context) {
         let dt = ctx.dt;
 
@@ -517,9 +516,7 @@ impl Update for RamHeadAiSystem {
             });
         }
     }
-}
 
-impl Draw for RamHeadAiSystem {
     fn draw(&self, ctx: &Context) {
         if !ctx.debug {
             return;

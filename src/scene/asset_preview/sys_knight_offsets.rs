@@ -1,7 +1,7 @@
 use crate::entity::factory_hero::{FRAME_SIZE, SHIELD_SIZE, SWORD_FRAME_SIZE};
 use crate::entity::knight::{Facing, Knight, Shield, Sword};
 use crate::entity::player::PlayerOne;
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Animation, Context, EStore, StaticImage};
 use macroquad::prelude::Vec2;
 use std::rc::Rc;
@@ -20,7 +20,7 @@ fn mirror_x(offset_x: f32, child_w: f32) -> f32 {
     FRAME_SIZE - offset_x - child_w
 }
 
-impl Update for KnightOffsetUpdateSystem {
+impl System for KnightOffsetUpdateSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let Some(knight_ref) = self
             .store

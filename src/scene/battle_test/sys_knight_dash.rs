@@ -2,7 +2,7 @@ use crate::entity::dash::Dash;
 use crate::entity::knight::{Knight, DOUBLE_TAP_WINDOW, IDLE_FRAME, SWIPE_FRAME, THRUST_FRAME};
 use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
-use crate::systems::{Draw, DrawUi, Update};
+use crate::systems::System;
 use crate::ui::draw_rounded_rect;
 use crate::util::view_scale;
 use crate::{shader, Animation, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
@@ -41,7 +41,6 @@ struct Ghost {
     flip_x: bool,
 }
 
-#[derive(Clone)]
 pub struct KnightDashSystem {
     store: Rc<EStore>,
     afterimage: Rc<Option<Material>>,
@@ -210,7 +209,7 @@ impl KnightDashSystem {
     }
 }
 
-impl DrawUi for KnightDashSystem {
+impl System for KnightDashSystem {
     fn draw_ui(&self, _ctx: &Context) {
         let Some(dash) = self
             .store
@@ -274,9 +273,7 @@ impl DrawUi for KnightDashSystem {
             Self::radial_sweep(cx, cy, r, frac, SWEEP);
         }
     }
-}
 
-impl Update for KnightDashSystem {
     fn update(&mut self, ctx: &mut Context) {
         self.tap_timer = (self.tap_timer - ctx.dt).max(0.0);
 
@@ -381,9 +378,7 @@ impl Update for KnightDashSystem {
             self.store.update::<Dash, _>(&dash_ref, |d| *d = dash);
         }
     }
-}
 
-impl Draw for KnightDashSystem {
     fn draw(&self, _ctx: &Context) {
         let Some(knight_id) = self
             .store

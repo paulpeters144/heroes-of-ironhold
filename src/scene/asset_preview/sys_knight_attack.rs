@@ -2,7 +2,7 @@ use crate::entity::knight::{
     Effect, EffectKind, Facing, Knight, Sword, SWIPE_FRAME, THRUST_FRAME,
 };
 use crate::entity::player::PlayerOne;
-use crate::systems::{Draw, Update};
+use crate::systems::System;
 // use crate::util::{did_attack, ImageData};
 use crate::{Animation, AttackRect, Context, EStore};
 use macroquad::prelude::*;
@@ -10,7 +10,6 @@ use std::rc::Rc;
 
 const ATTACK_SIZE_FRACTION: f32 = 0.75;
 
-#[derive(Clone)]
 pub struct KnightAttackSystem {
     store: Rc<EStore>,
 }
@@ -21,7 +20,7 @@ impl KnightAttackSystem {
     }
 }
 
-impl Update for KnightAttackSystem {
+impl System for KnightAttackSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let Some(attack_ref) = self
             .store
@@ -110,9 +109,7 @@ impl Update for KnightAttackSystem {
             area.visible = visible;
         });
     }
-}
 
-impl Draw for KnightAttackSystem {
     fn draw(&self, ctx: &Context) {
         if !ctx.debug {
             return;

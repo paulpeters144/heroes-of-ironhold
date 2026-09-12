@@ -72,14 +72,14 @@ impl AssetPreviewScene {
     pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>) -> Self {
         let agg = SystemAgg::new();
         let knight_enabled = Rc::new(Cell::new(false));
-        agg.add_update(AnimationUpdateSystem::new(store.clone()));
-        agg.add_update(KnightOffsetUpdateSystem::new(store.clone()));
-        agg.add_update(KnightAttackEffectSystem::new(store.clone()));
-        agg.add_update(KnightControlSystem::with_enabled(
+        agg.add(DrawSystem::new(store.clone()));
+        agg.add(AnimationUpdateSystem::new(store.clone()));
+        agg.add(KnightOffsetUpdateSystem::new(store.clone()));
+        agg.add(KnightAttackEffectSystem::new(store.clone()));
+        agg.add(KnightControlSystem::with_enabled(
             store.clone(),
             knight_enabled.clone(),
         ));
-        agg.add_draw(DrawSystem::new(store.clone()));
 
         Self {
             cfg,
@@ -250,9 +250,6 @@ impl Scene for AssetPreviewScene {
             self.thrust_tex = self.assets.texture(images::Knight::ThrustGraphic);
             self.swipe_tex = self.assets.texture(images::Knight::SwipeGraphic);
             self.impact_texture = self.assets.texture(images::Knight::Hit);
-
-            self.agg
-                .add_draw(KnightAttackEffectSystem::new(self.store.clone()));
 
             self.spawn_player(self.current_cfg());
 

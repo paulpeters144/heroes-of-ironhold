@@ -3,7 +3,7 @@
 use crate::entity::enemy::RamHead;
 use crate::entity::impact_frame::ImpactFrame;
 use crate::events::EnemyDeathEvent;
-use crate::systems::{Draw, Update};
+use crate::systems::System;
 use crate::{shader, Animation, Assets, Context, EStore, EventBus, StaticImage, SubCollection};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
@@ -68,11 +68,10 @@ struct DeathFx {
     soul: Soul,
 }
 
-#[derive(Clone)]
 pub struct EnemyDeathSystem {
     store: Rc<EStore>,
     queue: Rc<RefCell<Vec<EnemyDeathEvent>>>,
-    active: Rc<RefCell<Vec<DeathFx>>>,
+    active: Vec<DeathFx>,
     material: Option<Material>,
     _subs: Rc<SubCollection>,
 }
@@ -100,7 +99,7 @@ impl EnemyDeathSystem {
         Self {
             store,
             queue,
-            active: Rc::new(RefCell::new(Vec::new())),
+            active: Vec::new(),
             material,
             _subs: subs,
         }
@@ -181,7 +180,7 @@ impl EnemyDeathSystem {
         };
         self.store.remove(&[ram_ref]);
         self.spawn_particles(&mut fx);
-        self.active.borrow_mut().push(fx);
+        self.active.push(fx);
     }
 
     /// Embers ignite when the wavy burn front reaches their height, so the
@@ -255,14 +254,14 @@ fn load_immolation_material(assets: &Assets) -> Option<Material> {
     }
 }
 
-impl Update for EnemyDeathSystem {
+impl System for EnemyDeathSystem {
     fn update(&mut self, ctx: &mut Context) {
         let dt = ctx.dt;
         let events: Vec<EnemyDeathEvent> = self.queue.borrow_mut().drain(..).collect();
         for event in events {
             self.begin_fx(event.enemy);
         }
-        for fx in self.active.borrow_mut().iter_mut() {
+        for fx in self.active.iter_mut() {
             fx.age += dt;
             for ember in fx.embers.iter_mut() {
                 if fx.age < ember.delay {
@@ -293,13 +292,11 @@ impl Update for EnemyDeathSystem {
                 }
             }
         }
-        self.active.borrow_mut().retain(|fx| fx.age < DURATION);
+        self.active.retain(|fx| fx.age < DURATION);
     }
-}
 
-impl Draw for EnemyDeathSystem {
     fn draw(&self, _ctx: &Context) {
-        for fx in self.active.borrow().iter() {
+        for fx in self.active.iter() {
             let t = (fx.age / DURATION).clamp(0.0, 1.0);
 
             // Ground scorch: a smouldering stain that flares then fades.

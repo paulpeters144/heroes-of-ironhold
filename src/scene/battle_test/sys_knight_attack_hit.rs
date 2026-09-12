@@ -1,7 +1,7 @@
 use crate::entity::enemy::RamHead;
 use crate::entity::knight::{Knight, Sword};
 use crate::entity::player::PlayerOne;
-use crate::systems::Update;
+use crate::systems::System;
 use crate::util::attack::{did_attack, image_data_for};
 use crate::{Animation, AttackEvent, AttackRect, Context, EStore, EventBus};
 use macroquad::prelude::{Image, Texture2D};
@@ -25,7 +25,7 @@ impl KnightAttackHitSystem {
     }
 }
 
-impl Update for KnightAttackHitSystem {
+impl System for KnightAttackHitSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let Some(knight) = self
             .store

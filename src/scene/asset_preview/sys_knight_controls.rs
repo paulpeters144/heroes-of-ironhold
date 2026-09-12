@@ -3,7 +3,7 @@ use crate::entity::knight::{AttackKind, AttackPhase, Facing, Knight, IDLE_FRAME,
 use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, REVERSE_MULT, WALK_FRAME_DURATION};
 use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Animation, Context, EStore};
 use std::cell::Cell;
 use std::rc::Rc;
@@ -60,7 +60,7 @@ impl KnightControlSystem {
     }
 }
 
-impl Update for KnightControlSystem {
+impl System for KnightControlSystem {
     fn update(&mut self, ctx: &mut Context) {
         if !self.enabled.get() {
             return;

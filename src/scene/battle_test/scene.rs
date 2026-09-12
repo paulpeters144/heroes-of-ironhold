@@ -53,16 +53,6 @@ pub struct BattleTestScene {
 impl BattleTestScene {
     pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>, bus: Rc<EventBus>) -> Self {
         let agg = SystemAgg::new();
-        agg.add_update(KnightControlSystem::new(store.clone()));
-        agg.add_update(KnightCombatSystem::new(store.clone(), bus.clone()));
-        agg.add_update(AnimationUpdateSystem::new(store.clone()));
-        agg.add_update(KnightOffsetUpdateSystem::new(store.clone()));
-        agg.add_update(KnightAttackEffectSystem::new(store.clone()));
-        agg.add_update(KnightAttackSystem::new(store.clone()));
-        agg.add_update(KnightAttackHitSystem::new(store.clone(), bus.clone()));
-        agg.add_update(CameraOrbSystem::new(store.clone()));
-        agg.add_update(ZSortSystem::new(store.clone()));
-        agg.add_update(HealthBarSystem::new(store.clone()));
 
         Self {
             cfg,
@@ -264,43 +254,11 @@ impl Scene for BattleTestScene {
                 ])
                 .await;
 
-            self.agg.add_ui(HudDrawSystem::new(
-                self.cfg.clone(),
-                &self.assets,
-                self.store.clone(),
-            ));
-            self.agg.add_ui(SkillsBarDrawSystem::new(
-                self.cfg.clone(),
-                &self.assets,
-                self.store.clone(),
-            ));
             self.spawn_skills_widget();
 
             let map = self.build_map();
             let map_w = map.map_size.0 as f32 * map.tile_size.0 as f32;
             let map_h = map.map_size.1 as f32 * map.tile_size.1 as f32;
-
-            self.agg
-                .add_draw(MapDrawSystem::new(map, self.cfg.v_width, self.cfg.v_height));
-            self.agg.add_draw(DrawSystem::new(self.store.clone()));
-            self.agg
-                .add_draw(KnightAttackEffectSystem::new(self.store.clone()));
-            self.agg
-                .add_draw(CollisionRectSystem::new(self.store.clone()));
-            self.agg
-                .add_draw(KnightAttackSystem::new(self.store.clone()));
-            let ram_ai = RamHeadAiSystem::new(self.store.clone(), self.bus.clone());
-            self.agg.add_update(ram_ai.clone());
-            self.agg.add_draw(ram_ai);
-            // self.agg.add_draw(CameraOrbSystem::new(self.store.clone(), 0));
-
-            self.agg.add_update(CameraSystem::new(
-                self.store.clone(),
-                self.cfg.v_width,
-                self.cfg.v_height,
-                map_w,
-                map_h,
-            ));
 
             self.spawn_player();
 
@@ -317,31 +275,6 @@ impl Scene for BattleTestScene {
                 outfit_dominant_color(&animation.source)
             };
             self.dash_color.set(color);
-
-            let dash = KnightDashSystem::new(
-                self.store.clone(),
-                &self.assets,
-                self.dash_color.clone(),
-                self.cfg.clone(),
-            );
-            self.agg.add_update(dash.clone());
-            self.agg
-                .add_update(CollisionRectSystem::new(self.store.clone()));
-            self.agg.add_draw(dash.clone());
-            self.agg.add_ui(dash);
-
-            let hit_reaction = HitReactionSystem::new(self.store.clone(), self.bus.clone());
-            self.agg.add_update(hit_reaction);
-
-            let enemy_death = EnemyDeathSystem::new(self.store.clone(), self.bus.clone(), &self.assets);
-            self.agg.add_update(enemy_death.clone());
-            self.agg.add_draw(enemy_death);
-
-            self.agg.add_update(HealthTextAnimationSystem::new(
-                self.store.clone(),
-                self.bus.clone(),
-                &self.assets,
-            ));
 
             let body = vec2(200.0, 160.0);
             let anim_ref = {
@@ -372,6 +305,66 @@ impl Scene for BattleTestScene {
                     self.spawn_ram_head(vec2(cx + offset.x, cy + offset.y));
                 }
             }
+
+            self.agg
+                .add(MapDrawSystem::new(map, self.cfg.v_width, self.cfg.v_height));
+            self.agg.add(DrawSystem::new(self.store.clone()));
+            self.agg.add(HudDrawSystem::new(
+                self.cfg.clone(),
+                &self.assets,
+                self.store.clone(),
+            ));
+            self.agg.add(SkillsBarDrawSystem::new(
+                self.cfg.clone(),
+                &self.assets,
+                self.store.clone(),
+            ));
+            self.agg.add(KnightControlSystem::new(self.store.clone()));
+            self.agg.add(KnightCombatSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+            ));
+            self.agg.add(AnimationUpdateSystem::new(self.store.clone()));
+            self.agg
+                .add(KnightOffsetUpdateSystem::new(self.store.clone()));
+            self.agg
+                .add(KnightAttackEffectSystem::new(self.store.clone()));
+            self.agg.add(KnightAttackSystem::new(self.store.clone()));
+            self.agg.add(KnightAttackHitSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+            ));
+            self.agg.add(CameraOrbSystem::new(self.store.clone()));
+            self.agg.add(ZSortSystem::new(self.store.clone()));
+            self.agg.add(HealthBarSystem::new(self.store.clone()));
+            self.agg
+                .add(RamHeadAiSystem::new(self.store.clone(), self.bus.clone()));
+            self.agg.add(CameraSystem::new(
+                self.store.clone(),
+                self.cfg.v_width,
+                self.cfg.v_height,
+                map_w,
+                map_h,
+            ));
+            self.agg.add(KnightDashSystem::new(
+                self.store.clone(),
+                &self.assets,
+                self.dash_color.clone(),
+                self.cfg.clone(),
+            ));
+            self.agg.add(CollisionRectSystem::new(self.store.clone()));
+            self.agg
+                .add(HitReactionSystem::new(self.store.clone(), self.bus.clone()));
+            self.agg.add(EnemyDeathSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                &self.assets,
+            ));
+            self.agg.add(HealthTextAnimationSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                &self.assets,
+            ));
         })
     }
 

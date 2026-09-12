@@ -1,4 +1,4 @@
-use crate::systems::Draw;
+use crate::systems::System;
 use crate::{Animation, Context, Drawable, EStore, FloatingText, HealthBar, StaticImage};
 use std::rc::Rc;
 
@@ -24,7 +24,7 @@ impl DrawSystem {
     }
 }
 
-impl Draw for DrawSystem {
+impl System for DrawSystem {
     fn draw(&self, _ctx: &Context) {
         let mut cmds: Vec<DrawCmd> = Vec::new();
 

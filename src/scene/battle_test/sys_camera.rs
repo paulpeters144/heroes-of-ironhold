@@ -1,5 +1,5 @@
 use super::sys_orb::Orb;
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Context, EStore};
 use macroquad::prelude::Vec2;
 use std::rc::Rc;
@@ -63,7 +63,7 @@ fn step_camera(pos: Vec2, vel: Vec2, target: Vec2, zone_half: f32, dt: f32) -> (
     }
 }
 
-impl Update for CameraSystem {
+impl System for CameraSystem {
     fn update(&mut self, ctx: &mut Context) {
         let Some(orb) = self.store.first::<Orb>().map(|orb| (*orb).clone()) else {
             return;

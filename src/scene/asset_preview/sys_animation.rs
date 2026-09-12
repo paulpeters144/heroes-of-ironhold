@@ -1,4 +1,4 @@
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Animation, Context, EStore};
 use std::rc::Rc;
 
@@ -18,7 +18,7 @@ impl AnimationUpdateSystem {
     }
 }
 
-impl Update for AnimationUpdateSystem {
+impl System for AnimationUpdateSystem {
     fn update(&mut self, ctx: &mut Context) {
         self.elapsed += ctx.dt;
         if self.elapsed < FRAME_DURATION {

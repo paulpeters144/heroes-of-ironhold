@@ -1,5 +1,5 @@
 use crate::events::HealthChangeEvent;
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Assets, Context, EStore, EventBus, FloatingText, FontTag, SubCollection, TextStyle};
 use macroquad::prelude::{Color, Font};
 use pico_entity_store::entity_ref::EntityRef;
@@ -37,7 +37,7 @@ impl HealthTextAnimationSystem {
     }
 }
 
-impl Update for HealthTextAnimationSystem {
+impl System for HealthTextAnimationSystem {
     fn update(&mut self, ctx: &mut Context) {
         while let Some(event) = self.queue.borrow_mut().pop_front() {
             let (color, text) = if event.amount >= 0 {

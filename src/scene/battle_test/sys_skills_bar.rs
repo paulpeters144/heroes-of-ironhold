@@ -1,5 +1,5 @@
 use crate::entity::skills::{Skill, SkillIcon, SkillIconKind, SkillsWidget};
-use crate::systems::DrawUi;
+use crate::systems::System;
 use crate::ui::draw_rounded_rect;
 use crate::util::view_scale;
 use crate::{Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
@@ -297,7 +297,7 @@ impl SkillsBarDrawSystem {
     }
 }
 
-impl DrawUi for SkillsBarDrawSystem {
+impl System for SkillsBarDrawSystem {
     fn draw_ui(&self, _ctx: &Context) {
         let slots = self.slots();
         if slots.is_empty() {

@@ -8,7 +8,7 @@ use crate::entity::enemy::RamHead;
 use crate::entity::impact_frame::ImpactFrame;
 use crate::entity::knight::Knight;
 use crate::events::HitEvent;
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Animation, Context, EStore, EventBus, StaticImage, SubCollection};
 use macroquad::prelude::*;
 
@@ -246,7 +246,7 @@ impl HitReactionSystem {
     }
 }
 
-impl Update for HitReactionSystem {
+impl System for HitReactionSystem {
     fn update(&mut self, ctx: &mut Context) {
         while let Some(event) = self.queue.borrow_mut().pop_front() {
             let anchor = self.victim_anchor(event.victim);

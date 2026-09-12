@@ -1,4 +1,4 @@
-use crate::systems::Draw;
+use crate::systems::System;
 use crate::Context;
 use macroquad::prelude::*;
 use tiled::TiledMap;
@@ -19,7 +19,7 @@ impl MapDrawSystem {
     }
 }
 
-impl Draw for MapDrawSystem {
+impl System for MapDrawSystem {
     fn draw(&self, ctx: &Context) {
         let view = Rect::new(
             ctx.cam_target.x - self.view_w * 0.5,

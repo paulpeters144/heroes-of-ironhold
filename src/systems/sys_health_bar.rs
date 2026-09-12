@@ -1,5 +1,5 @@
 use crate::entity::enemy::{EnemyStats, RamHead};
-use crate::systems::Update;
+use crate::systems::System;
 use crate::{Animation, Context, EStore, HealthBar};
 use macroquad::prelude::*;
 use std::rc::Rc;
@@ -14,7 +14,7 @@ impl HealthBarSystem {
     }
 }
 
-impl Update for HealthBarSystem {
+impl System for HealthBarSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let mut writes: Vec<(pico_entity_store::entity_ref::EntityRef, Vec2, f32, f32)> =
             Vec::new();
