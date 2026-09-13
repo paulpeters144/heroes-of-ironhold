@@ -1,3 +1,3 @@
 mod components;
 
-pub use components::{Skill, SkillIcon, SkillIconKind, SkillsWidget};
+pub use components::{LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};

@@ -9,22 +9,39 @@ pub enum SkillIconKind {
     Crossed,
 }
 
-/// Parent marker for the skills bar. Children are `Skill` slots in bar order.
+/// Arrow direction this attack answers to while the skill selector is held.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SkillDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// Parent marker for the skills bar. Children are the four direction-tagged
+/// `Skill` attacks and a `LastUsedSkill` marker.
 #[derive(Clone, Debug)]
 pub struct SkillsWidget;
 
-/// One slot in the skills bar; child of `SkillsWidget`. A slot with no
-/// `SkillIcon` child renders as an empty slot. `key` is the letter that
-/// activates this skill (`None` for empty slots); each skill carries a
-/// distinct letter so the same key never maps to two skills.
+/// One of the four directional attacks in the skill selector; child of
+/// `SkillsWidget`. `direction` is the arrow that selects it. An attack with no
+/// `SkillIcon` child renders as an empty square.
 #[derive(Clone, Copy, Debug)]
 pub struct Skill {
-    pub selected: bool,
-    pub key: Option<char>,
+    pub direction: Option<SkillDirection>,
 }
 
 /// Icon descriptor; child of `Skill`.
 #[derive(Clone, Copy, Debug)]
 pub struct SkillIcon {
     pub kind: SkillIconKind,
+}
+
+/// Most recently fired attack, rendered in the bar's attack slot and used as
+/// the initial selection when the selector opens. `icon: None` / `direction:
+/// None` until an attack fires.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct LastUsedSkill {
+    pub icon: Option<SkillIconKind>,
+    pub direction: Option<SkillDirection>,
 }

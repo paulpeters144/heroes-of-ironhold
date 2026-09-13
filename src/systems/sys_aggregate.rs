@@ -27,12 +27,12 @@ impl SystemAgg {
 
     pub fn remove<T: System>(&self) -> bool {
         let target = TypeId::of::<T>();
-        if let Some(index) = self
+        let index = self
             .systems
             .borrow()
             .iter()
-            .position(|s| (**s).type_id() == target)
-        {
+            .position(|s| (**s).type_id() == target);
+        if let Some(index) = index {
             self.systems.borrow_mut().remove(index);
             true
         } else {

@@ -1,5 +1,5 @@
 use crate::entity::knight::{
-    Effect, EffectKind, Facing, Knight, Sword, SWIPE_FRAME, THRUST_FRAME,
+    Effect, EffectKind, Facing, Knight, KnightLock, Sword, SWIPE_FRAME, THRUST_FRAME,
 };
 use crate::entity::player::PlayerOne;
 use crate::systems::System;
@@ -22,6 +22,17 @@ impl KnightAttackSystem {
 
 impl System for KnightAttackSystem {
     fn update(&mut self, _ctx: &mut Context) {
+        // Skip the knight while a skill holds it (thrust pose is cosmetic).
+        if self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_child::<KnightLock>(&k))
+            .is_some()
+        {
+            return;
+        }
+
         let Some(attack_ref) = self
             .store
             .first::<PlayerOne>()
@@ -108,27 +119,5 @@ impl System for KnightAttackSystem {
             area.rects = rects;
             area.visible = visible;
         });
-    }
-
-    fn draw(&self, ctx: &Context) {
-        if !ctx.debug {
-            return;
-        }
-        let Some(area) = self
-            .store
-            .first::<PlayerOne>()
-            .and_then(|p| self.store.get_child::<Knight>(&p))
-            .and_then(|k| self.store.get_by_id::<Knight>(k.id()))
-            .and_then(|k| self.store.get_child::<Sword>(&k))
-            .and_then(|s| self.store.get_child::<AttackRect>(&s))
-        else {
-            return;
-        };
-        if !area.visible {
-            return;
-        }
-        for rect in &area.rects {
-            draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2.0, YELLOW);
-        }
     }
 }

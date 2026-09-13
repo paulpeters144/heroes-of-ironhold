@@ -29,11 +29,11 @@ pub use entity::floating_text::FloatingText;
 pub use entity::health_bar::HealthBar;
 pub use entity::hero::{CoreStat, HeroStats};
 pub use entity::impact_frame::ImpactFrame;
-pub use entity::knight::{Effect, EffectKind, FrameOffsets, Knight, Shield, Sword};
+pub use entity::knight::{Effect, EffectKind, FrameOffsets, Knight, KnightLock, Shield, Sword};
 pub use entity::player::{PlayerFactory, PlayerOne, PlayerTwo};
-pub use entity::skills::{Skill, SkillIcon, SkillIconKind, SkillsWidget};
+pub use entity::skills::{LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
 pub use entity::static_image::StaticImage;
-pub use events::{AttackEvent, EnemyAttackEvent, HealthChangeEvent, HitEvent};
+pub use events::{AttackEvent, EnemyAttackEvent, HealthChangeEvent, HitEvent, SkillCastEvent};
 use manager::Manager;
 pub use util::camera::GameCamera;
 

@@ -1,7 +1,7 @@
 use crate::entity::factory_hero::SWORD_FRAME_SIZE;
 use crate::entity::knight::{
-    Effect, EffectKind, Facing, Knight, Sword, GLOW_IN_FRACTION, HOLD_START, SWIPE_FRAME,
-    THRUST_FRAME,
+    Effect, EffectKind, Facing, Knight, KnightLock, Sword, GLOW_IN_FRACTION, HOLD_START,
+    SWIPE_FRAME, THRUST_FRAME,
 };
 use crate::entity::player::PlayerOne;
 use crate::systems::System;
@@ -48,6 +48,17 @@ fn draw_texture(texture: &Texture2D, x: f32, y: f32, alpha: f32, flip_x: bool) {
 
 impl System for KnightAttackEffectSystem {
     fn update(&mut self, ctx: &mut Context) {
+        // Skip the knight while a skill holds it (thrust pose is cosmetic).
+        if self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_child::<KnightLock>(&k))
+            .is_some()
+        {
+            return;
+        }
+
         let Some(frame) = self
             .store
             .first::<PlayerOne>()

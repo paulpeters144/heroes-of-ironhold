@@ -1,5 +1,5 @@
 use crate::entity::dash::Dash;
-use crate::entity::knight::{AttackKind, AttackPhase, Facing, Knight, IDLE_FRAME, WALK_FRAMES};
+use crate::entity::knight::{AttackKind, AttackPhase, Facing, Knight, KnightLock, IDLE_FRAME, WALK_FRAMES};
 use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, REVERSE_MULT, WALK_FRAME_DURATION};
 use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};
@@ -26,10 +26,6 @@ pub struct KnightControlSystem {
 }
 
 impl KnightControlSystem {
-    pub fn new(store: Rc<EStore>) -> Self {
-        Self::with_enabled(store, Rc::new(Cell::new(true)))
-    }
-
     pub fn with_enabled(store: Rc<EStore>, enabled: Rc<Cell<bool>>) -> Self {
         Self {
             store,
@@ -63,6 +59,18 @@ impl KnightControlSystem {
 impl System for KnightControlSystem {
     fn update(&mut self, ctx: &mut Context) {
         if !self.enabled.get() {
+            return;
+        }
+
+        // While a skill holds the knight (e.g. mid-swords-cast) it cannot move,
+        // attack, or write its animation frame.
+        if self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_child::<KnightLock>(&k))
+            .is_some()
+        {
             return;
         }
 

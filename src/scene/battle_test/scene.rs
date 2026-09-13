@@ -1,12 +1,14 @@
 use super::sys_camera::CameraSystem;
 use super::sys_enemy_death::EnemyDeathSystem;
+use super::sys_guardian_shield::GuardianShieldSystem;
 use super::sys_hud::HudDrawSystem;
 use super::sys_knight_attack_hit::KnightAttackHitSystem;
 use super::sys_knight_dash::KnightDashSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
-use super::sys_skills_bar::SkillsBarDrawSystem;
+use super::sys_skill::SkillSystem;
+use super::sys_swords_skill::SwordsSkillSystem;
 use crate::entity::dash::Dash;
 use crate::entity::enemy::{EnemyStats, RamHead};
 use crate::entity::factory_enemy::{EnemyFactory, RamHeadCfg};
@@ -16,7 +18,7 @@ use crate::entity::hero::HeroStats;
 use crate::entity::impact_frame::ImpactFrame;
 use crate::entity::knight::{Knight, Shield, Sword};
 use crate::entity::player::{PlayerFactory, PlayerOne};
-use crate::entity::skills::{Skill, SkillIconKind, SkillsWidget};
+use crate::entity::skills::{LastUsedSkill, Skill, SkillDirection, SkillIconKind, SkillsWidget};
 use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
 use crate::scene::asset_preview::sys_knight_attack::KnightAttackSystem;
 use crate::scene::asset_preview::sys_knight_attack_effects::KnightAttackEffectSystem;
@@ -24,8 +26,8 @@ use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
 use crate::scene::asset_preview::sys_knight_offsets::KnightOffsetUpdateSystem;
 use crate::scene::Scene;
 use crate::systems::{
-    CollisionRectSystem, DrawSystem, HealthBarSystem, HealthTextAnimationSystem, HitReactionSystem,
-    KnightCombatSystem, SystemAgg, ZSortSystem,
+    CollisionRectSystem, DebugDrawSystem, DrawSystem, HealthBarSystem, HealthTextAnimationSystem,
+    HitReactionSystem, KnightCombatSystem, SystemAgg, ZSortSystem,
 };
 use crate::{
     file, font, images, shader, Animation, Assets, AttackRect, Config, Context, EStore, EventBus,
@@ -34,6 +36,7 @@ use crate::{
 use macroquad::prelude::*;
 use macroquad::rand::gen_range;
 use pico_entity_store::store::{ChildSource, IntoChild};
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -63,12 +66,10 @@ impl BattleTestScene {
 
     fn spawn_skills_widget(&self) {
         let parts = SkillsFactory::create(&[
-            SkillSlotCfg::icon(SkillIconKind::Sword),
-            SkillSlotCfg::icon(SkillIconKind::Shield),
-            SkillSlotCfg::icon(SkillIconKind::Potion),
-            // SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
-            SkillSlotCfg::icon(SkillIconKind::Crossed),
-            SkillSlotCfg::empty(),
+            SkillSlotCfg::icon(SkillIconKind::Sword).direction(SkillDirection::Up),
+            SkillSlotCfg::icon(SkillIconKind::Shield).direction(SkillDirection::Right),
+            SkillSlotCfg::icon(SkillIconKind::Fireball).direction(SkillDirection::Down),
+            SkillSlotCfg::empty().direction(SkillDirection::Left),
         ]);
 
         self.store.add(parts.widget, &[]);
@@ -87,12 +88,16 @@ impl BattleTestScene {
             let widget = self.store.first::<SkillsWidget>().expect("skills widget");
             self.store.add(widget, &[ChildSource::Existing(skill_ref)]);
         }
+
+        let widget = self.store.first::<SkillsWidget>().expect("skills widget");
+        self.store
+            .add(widget, &[LastUsedSkill::default().into_child()]);
     }
 
     fn spawn_player(&self) {
         let parts = HeroFactory::create_knight(KnightCfg {
             outfit: self.assets.texture(images::Knight::Knight1),
-            sword: self.assets.texture(images::Knight::Sword1),
+            sword: self.assets.texture(images::Knight::Sword2),
             shield: self.assets.texture(images::Knight::Shield1),
             impact: self.assets.texture(images::Knight::Hit),
             thrust: self.assets.texture(images::Knight::ThrustGraphic),
@@ -236,6 +241,7 @@ impl Scene for BattleTestScene {
                     &images::Knight::ThrustGraphic,
                     &images::Knight::SwipeGraphic,
                     &images::Knight::Hit,
+                    &images::Knight::LgShield,
                     &file::File::TestTmx,
                     &file::File::HoiBgTsx,
                     &file::File::HoiCharsTsx,
@@ -244,10 +250,15 @@ impl Scene for BattleTestScene {
                     &images::Enemy::RamHead,
                     &images::Enemy::RamHeadHit,
                     &images::Knight::Face,
+                    &images::SkillIcon::Swords,
+                    &images::SkillIcon::Shield,
+                    &images::SkillIcon::Blast,
+                    &images::Ui::SkillSlot,
                     &font::Font::Pixellari,
                     &shader::Shader::DashFxVert,
                     &shader::Shader::DashAfterimageFrag,
                     &shader::Shader::DemonDeathFrag,
+                    &shader::Shader::SwordMagicFrag,
                 ])
                 .await;
 
@@ -297,12 +308,28 @@ impl Scene for BattleTestScene {
                 &self.assets,
                 self.store.clone(),
             ));
-            self.agg.add(SkillsBarDrawSystem::new(
+            let movement_gate = Rc::new(Cell::new(true));
+            self.agg.add(KnightControlSystem::with_enabled(
+                self.store.clone(),
+                movement_gate.clone(),
+            ));
+            self.agg.add(SkillSystem::new(
                 self.cfg.clone(),
                 &self.assets,
                 self.store.clone(),
+                self.bus.clone(),
+                movement_gate,
             ));
-            self.agg.add(KnightControlSystem::new(self.store.clone()));
+            self.agg.add(SwordsSkillSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                &self.assets,
+            ));
+            self.agg.add(GuardianShieldSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                &self.assets,
+            ));
             self.agg.add(KnightCombatSystem::new(
                 self.store.clone(),
                 self.bus.clone(),
@@ -329,9 +356,17 @@ impl Scene for BattleTestScene {
                 map_w,
                 map_h,
             ));
-            self.agg
-                .add(KnightDashSystem::new(self.store.clone(), &self.assets, self.cfg.clone()));
+
+            self.agg.add(KnightDashSystem::new(
+                self.store.clone(),
+                &self.assets,
+                self.cfg.clone(),
+            ));
+            // remove below to have the dash system.
+            // self.agg.remove::<KnightDashSystem>();
+
             self.agg.add(CollisionRectSystem::new(self.store.clone()));
+            self.agg.add(DebugDrawSystem::new(self.store.clone()));
             self.agg
                 .add(HitReactionSystem::new(self.store.clone(), self.bus.clone()));
             self.agg.add(EnemyDeathSystem::new(

@@ -1,29 +1,30 @@
-use crate::entity::skills::{Skill, SkillIcon, SkillIconKind, SkillsWidget};
+use crate::entity::skills::{Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
 
-/// One slot to spawn in the skills bar. `icon: None` yields an empty slot.
+/// Factory config for one directional attack (icon + direction). `icon: None`
+/// yields an empty square; `direction: None` is an untagged attack.
 #[derive(Clone, Copy, Debug)]
 pub struct SkillSlotCfg {
     pub icon: Option<SkillIconKind>,
-    pub selected: bool,
+    pub direction: Option<SkillDirection>,
 }
 
 impl SkillSlotCfg {
     pub fn icon(kind: SkillIconKind) -> Self {
         Self {
             icon: Some(kind),
-            selected: false,
+            direction: None,
         }
     }
 
     pub fn empty() -> Self {
         Self {
             icon: None,
-            selected: false,
+            direction: None,
         }
     }
 
-    pub fn selected(mut self, selected: bool) -> Self {
-        self.selected = selected;
+    pub fn direction(mut self, direction: SkillDirection) -> Self {
+        self.direction = Some(direction);
         self
     }
 }
@@ -44,19 +45,10 @@ pub struct SkillsFactory;
 
 impl SkillsFactory {
     pub fn create(slots: &[SkillSlotCfg]) -> SkillsParts {
-        let mut next_key = 'a' as u32;
         let mut parts = Vec::with_capacity(slots.len());
         for slot in slots {
-            let key = if slot.icon.is_some() {
-                let k = char::from_u32(next_key).expect("key in range");
-                next_key += 1;
-                Some(k)
-            } else {
-                None
-            };
             let skill = Skill {
-                selected: slot.selected,
-                key,
+                direction: slot.direction,
             };
             let icon = slot.icon.map(|kind| SkillIcon { kind });
             parts.push(SkillSlotParts { skill, icon });

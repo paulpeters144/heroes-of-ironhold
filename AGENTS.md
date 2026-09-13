@@ -51,4 +51,5 @@ python3 clients/web/serve.py              # serve on port 3001
 - `rules/events.md` — applies when systems need to communicate with each other
 - `rules/factories.md` — applies when writing factories (pure functions, no side effects)
 - `rules/ownership.md` — applies when touching `pico_entity_store` or `src/util/estore.rs`
+- `rules/attacks.md` — applies when writing anything that deals damage
 - `rules/git.md` — applies before committing changes

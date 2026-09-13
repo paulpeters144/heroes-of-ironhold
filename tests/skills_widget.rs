@@ -1,26 +1,24 @@
-use heroes_of_ironhold_core::{SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsParts};
+use heroes_of_ironhold_core::{
+    SkillDirection, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsParts,
+};
 
-fn six_slot_parts() -> SkillsParts {
+fn four_attacks() -> SkillsParts {
     SkillsFactory::create(&[
-        SkillSlotCfg::icon(SkillIconKind::Sword),
-        SkillSlotCfg::icon(SkillIconKind::Shield),
-        SkillSlotCfg::icon(SkillIconKind::Potion),
-        SkillSlotCfg::icon(SkillIconKind::Fireball).selected(true),
-        SkillSlotCfg::icon(SkillIconKind::Crossed),
-        SkillSlotCfg::empty(),
+        SkillSlotCfg::icon(SkillIconKind::Sword).direction(SkillDirection::Up),
+        SkillSlotCfg::icon(SkillIconKind::Shield).direction(SkillDirection::Right),
+        SkillSlotCfg::icon(SkillIconKind::Fireball).direction(SkillDirection::Down),
+        SkillSlotCfg::empty().direction(SkillDirection::Left),
     ])
 }
 
 #[test]
 fn slots_match_config_order() {
-    let parts = six_slot_parts();
+    let parts = four_attacks();
 
     let expected = [
         Some(SkillIconKind::Sword),
         Some(SkillIconKind::Shield),
-        Some(SkillIconKind::Potion),
         Some(SkillIconKind::Fireball),
-        Some(SkillIconKind::Crossed),
         None,
     ];
 
@@ -33,48 +31,40 @@ fn slots_match_config_order() {
 }
 
 #[test]
-fn selected_flag_is_stored_on_the_skill() {
-    let parts = six_slot_parts();
+fn directions_are_tagged_on_each_skill() {
+    let parts = four_attacks();
 
-    let selected: Vec<bool> = parts
+    let directions: Vec<Option<SkillDirection>> = parts
         .slots
         .iter()
-        .map(|slot| slot.skill.selected)
+        .map(|slot| slot.skill.direction)
         .collect();
-    assert_eq!(selected, [false, false, false, true, false, false]);
+    assert_eq!(
+        directions,
+        [
+            Some(SkillDirection::Up),
+            Some(SkillDirection::Right),
+            Some(SkillDirection::Down),
+            Some(SkillDirection::Left),
+        ]
+    );
 }
 
 #[test]
-fn single_slot_produces_one_slot_with_icon_and_key() {
+fn empty_slot_has_direction_but_no_icon() {
+    let parts = four_attacks();
+
+    let left = &parts.slots[3];
+    assert_eq!(left.icon.map(|icon| icon.kind), None);
+    assert_eq!(left.skill.direction, Some(SkillDirection::Left));
+}
+
+#[test]
+fn icon_without_direction_has_none_direction() {
     let parts = SkillsFactory::create(&[SkillSlotCfg::icon(SkillIconKind::Sword)]);
 
     assert_eq!(parts.slots.len(), 1);
     let slot = &parts.slots[0];
     assert_eq!(slot.icon.map(|icon| icon.kind), Some(SkillIconKind::Sword));
-    assert_eq!(slot.skill.key, Some('a'));
-}
-
-#[test]
-fn keys_assign_in_order_and_skip_empty_slots() {
-    let parts = six_slot_parts();
-
-    let keys: Vec<Option<char>> = parts.slots.iter().map(|slot| slot.skill.key).collect();
-    assert_eq!(
-        keys,
-        [Some('a'), Some('b'), Some('c'), Some('d'), Some('e'), None,]
-    );
-}
-
-#[test]
-fn keys_are_unique_across_real_skills() {
-    let parts = six_slot_parts();
-
-    let mut keys: Vec<char> = parts
-        .slots
-        .iter()
-        .filter_map(|slot| slot.skill.key)
-        .collect();
-    keys.sort_unstable();
-    keys.dedup();
-    assert_eq!(keys, ['a', 'b', 'c', 'd', 'e']);
+    assert_eq!(slot.skill.direction, None);
 }

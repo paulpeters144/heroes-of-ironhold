@@ -1,5 +1,5 @@
 use crate::entity::enemy::RamHead;
-use crate::entity::knight::{Knight, Sword};
+use crate::entity::knight::{Knight, KnightLock, Sword};
 use crate::entity::player::PlayerOne;
 use crate::systems::System;
 use crate::util::attack::{did_attack, image_data_for};
@@ -27,6 +27,17 @@ impl KnightAttackHitSystem {
 
 impl System for KnightAttackHitSystem {
     fn update(&mut self, _ctx: &mut Context) {
+        // Skip the knight while a skill holds it (thrust pose is cosmetic).
+        if self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|p| self.store.get_child::<Knight>(&p))
+            .and_then(|k| self.store.get_child::<KnightLock>(&k))
+            .is_some()
+        {
+            return;
+        }
+
         let Some(knight) = self
             .store
             .first::<PlayerOne>()

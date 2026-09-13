@@ -12,6 +12,7 @@ pub enum Input {
     Jump,
     Attack,
     Shift,
+    Skills,
 }
 
 #[derive(Default)]

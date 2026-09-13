@@ -1,3 +1,4 @@
+use crate::entity::skills::{SkillDirection, SkillIconKind};
 use macroquad::prelude::Rect;
 
 #[derive(Clone, Debug)]
@@ -28,4 +29,11 @@ pub struct EnemyAttackEvent {
 #[derive(Clone, Debug)]
 pub struct EnemyDeathEvent {
     pub enemy: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct SkillCastEvent {
+    pub caster: u64,
+    pub direction: SkillDirection,
+    pub kind: SkillIconKind,
 }

@@ -6,7 +6,7 @@ use crate::events::{EnemyAttackEvent, HitEvent};
 use crate::systems::System;
 use crate::util::attack::{did_attack, image_data_for};
 use crate::{Animation, AttackRect, Context, EStore, EventBus, SubCollection};
-use macroquad::prelude::{draw_rectangle_lines, vec2, Color, Image, Rect, Texture2D, Vec2, YELLOW};
+use macroquad::prelude::{vec2, Color, Image, Rect, Texture2D, Vec2};
 use pico_entity_store::prelude::EntityRef;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -514,23 +514,6 @@ impl System for RamHeadAiSystem {
                 area.rects = rects;
                 area.visible = visible;
             });
-        }
-    }
-
-    fn draw(&self, ctx: &Context) {
-        if !ctx.debug {
-            return;
-        }
-        for enemy in self.store.all::<RamHead>() {
-            let Some(area) = self.store.get_child::<AttackRect>(&enemy) else {
-                continue;
-            };
-            if !area.visible {
-                continue;
-            }
-            for rect in &area.rects {
-                draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2.0, YELLOW);
-            }
         }
     }
 }

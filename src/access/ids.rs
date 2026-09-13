@@ -108,6 +108,7 @@ pub mod shader {
         DashAfterimageFrag,
         FlashWhiteFrag,
         DemonDeathFrag,
+        SwordMagicFrag,
     }
 
     impl AssetId for Shader {
@@ -121,6 +122,7 @@ pub mod shader {
                 Self::DashAfterimageFrag => "shaders/dash_afterimage.frag".to_string(),
                 Self::FlashWhiteFrag => "shaders/flash_white.frag".to_string(),
                 Self::DemonDeathFrag => "shaders/demon_death.frag".to_string(),
+                Self::SwordMagicFrag => "shaders/sword_magic.frag".to_string(),
             }
         }
 
@@ -148,6 +150,7 @@ pub mod images {
         SwipeGraphic,
         Face,
         Hit,
+        LgShield,
     }
 
     impl AssetId for Knight {
@@ -166,6 +169,45 @@ pub mod images {
                 Self::SwipeGraphic => "images/knight/static-knight-swipe-graphic.png".to_string(),
                 Self::Face => "images/knight/static-knight-face.png".to_string(),
                 Self::Hit => "images/knight/static-knight-hit.png".to_string(),
+                Self::LgShield => "images/knight/static-knight-lg-shield.png".to_string(),
+            }
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    pub enum SkillIcon {
+        Swords,
+        Shield,
+        Blast,
+    }
+
+    impl AssetId for SkillIcon {
+        fn path(&self) -> String {
+            match self {
+                Self::Swords => "images/knight/icon-swords.png".to_string(),
+                Self::Shield => "images/knight/icon-shield.png".to_string(),
+                Self::Blast => "images/knight/icon-blast.png".to_string(),
+            }
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    pub enum Ui {
+        SkillSlot,
+    }
+
+    impl AssetId for Ui {
+        fn path(&self) -> String {
+            match self {
+                Self::SkillSlot => "images/ui/skill-slot.png".to_string(),
             }
         }
 

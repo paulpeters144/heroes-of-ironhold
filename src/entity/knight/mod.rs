@@ -5,7 +5,7 @@ mod frames;
 mod movement;
 
 pub use attack::AttackKind;
-pub use components::{Facing, Knight, Shield, Sword};
+pub use components::{Facing, Knight, KnightLock, Shield, Sword};
 pub use effect::{Effect, EffectKind};
 pub use frames::{FrameOffsets, KNIGHT_FRAME_COUNT};
 

@@ -1,6 +1,6 @@
 use crate::systems::System;
 use crate::{Animation, CollisionRect, Context, EStore};
-use macroquad::prelude::{draw_rectangle_lines, vec2, Color, Vec2};
+use macroquad::prelude::{vec2, Vec2};
 use pico_entity_store::entity_ref::EntityRef;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -121,32 +121,5 @@ impl System for CollisionRectSystem {
             });
         }
         self.prev = next_prev;
-    }
-
-    fn draw(&self, ctx: &Context) {
-        if !ctx.debug {
-            return;
-        }
-
-        let bodies = self.collect_bodies();
-        for rect in self.store.all::<CollisionRect>() {
-            let dynamic = match self.store.parent(&rect) {
-                Some(parent) => bodies.contains_key(&parent.id()),
-                None => false,
-            };
-            let color = if dynamic {
-                Color::new(1.0, 0.0, 0.0, 1.0)
-            } else {
-                Color::new(0.0, 0.0, 1.0, 1.0)
-            };
-            draw_rectangle_lines(
-                rect.rect.x,
-                rect.rect.y,
-                rect.rect.w,
-                rect.rect.h,
-                2.0,
-                color,
-            );
-        }
     }
 }

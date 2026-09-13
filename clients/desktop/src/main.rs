@@ -18,6 +18,7 @@ async fn main() {
             Input::Shift,
             is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift),
         );
+        heroes_of_ironhold_core::input::set(Input::Skills, is_key_down(KeyCode::A));
         heroes_of_ironhold_core::update(&mut game);
         heroes_of_ironhold_core::draw(&game);
         next_frame().await;
