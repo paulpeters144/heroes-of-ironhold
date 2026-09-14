@@ -53,3 +53,4 @@ python3 clients/web/serve.py              # serve on port 3001
 - `rules/ownership.md` — applies when touching `pico_entity_store` or `src/util/estore.rs`
 - `rules/attacks.md` — applies when writing anything that deals damage
 - `rules/git.md` — applies before committing changes
+- Do not use the PixelLab MCP server unless explicitly told to use it.

@@ -310,7 +310,12 @@ impl System for EnemyDeathSystem {
                 rx,
                 rx * 0.28,
                 0.0,
-                Color::new(SCORCH_DARK.r, SCORCH_DARK.g, SCORCH_DARK.b, 0.5 * grow * scorch_fade),
+                Color::new(
+                    SCORCH_DARK.r,
+                    SCORCH_DARK.g,
+                    SCORCH_DARK.b,
+                    0.5 * grow * scorch_fade,
+                ),
             );
             draw_ellipse(
                 fx.center.x,
@@ -318,7 +323,12 @@ impl System for EnemyDeathSystem {
                 rx * 0.6,
                 rx * 0.17,
                 0.0,
-                Color::new(SCORCH_HOT.r, SCORCH_HOT.g, SCORCH_HOT.b, 0.35 * grow * scorch_fade),
+                Color::new(
+                    SCORCH_HOT.r,
+                    SCORCH_HOT.g,
+                    SCORCH_HOT.b,
+                    0.35 * grow * scorch_fade,
+                ),
             );
 
             // The burning body.
@@ -358,7 +368,13 @@ impl System for EnemyDeathSystem {
                 let ease = 1.0 - (1.0 - flash) * (1.0 - flash);
                 let r = 6.0 + 34.0 * ease;
                 let a = (1.0 - flash) * 0.8;
-                draw_circle_lines(fx.center.x, fx.center.y, r, 2.0, Color::new(1.0, 0.6, 0.2, a));
+                draw_circle_lines(
+                    fx.center.x,
+                    fx.center.y,
+                    r,
+                    2.0,
+                    Color::new(1.0, 0.6, 0.2, a),
+                );
                 draw_circle(
                     fx.center.x,
                     fx.center.y,

@@ -27,3 +27,7 @@ pub struct KnightLock {
     pub by: &'static str,
 }
 
+/// Marker for the knight's active guardian-shield ward. Present in the store
+/// only while the shield is up; combat queries it to boost the knight's armor.
+#[derive(Clone, Debug)]
+pub struct GuardianShield;

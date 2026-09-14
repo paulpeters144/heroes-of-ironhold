@@ -7,9 +7,7 @@ use crate::entity::factory_hero::{
     HeroFactory, KnightCfg, FRAME_SIZE, SHIELD_SIZE, SWORD_FRAME_SIZE,
 };
 use crate::entity::hero::HeroStats;
-use crate::entity::knight::{
-    Knight, Shield, Sword, IDLE_FRAME,
-};
+use crate::entity::knight::{Knight, Shield, Sword, IDLE_FRAME};
 use crate::entity::player::{PlayerFactory, PlayerOne};
 use crate::input::{self, Input};
 use crate::scene::Scene;

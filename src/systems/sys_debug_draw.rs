@@ -1,6 +1,6 @@
 use crate::systems::System;
-use crate::{Animation, AttackRect, CollisionRect, Context, EStore};
-use macroquad::prelude::{draw_rectangle_lines, Color, YELLOW};
+use crate::{Animation, AreaRect, AttackRect, CollisionRect, Context, EStore};
+use macroquad::prelude::{draw_rectangle_lines, Color, GREEN, YELLOW};
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -18,6 +18,17 @@ impl System for DebugDrawSystem {
     fn draw(&self, ctx: &Context) {
         if !ctx.debug {
             return;
+        }
+
+        for area in self.store.all::<AreaRect>() {
+            draw_rectangle_lines(
+                area.rect.x,
+                area.rect.y,
+                area.rect.w,
+                area.rect.h,
+                2.0,
+                GREEN,
+            );
         }
 
         for area in self.store.all::<AttackRect>() {
@@ -46,7 +57,14 @@ impl System for DebugDrawSystem {
             } else {
                 Color::new(0.0, 0.0, 1.0, 1.0)
             };
-            draw_rectangle_lines(rect.rect.x, rect.rect.y, rect.rect.w, rect.rect.h, 2.0, color);
+            draw_rectangle_lines(
+                rect.rect.x,
+                rect.rect.y,
+                rect.rect.w,
+                rect.rect.h,
+                2.0,
+                color,
+            );
         }
     }
 }

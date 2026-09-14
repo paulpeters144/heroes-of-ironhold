@@ -10,6 +10,7 @@ uniform lowp float trail_dir;
 uniform lowp float flying;
 uniform lowp float appear;
 uniform lowp float fade;
+uniform lowp float alpha;
 
 void main() {
     vec4 tex = texture2D(Texture, uv);
@@ -51,5 +52,5 @@ void main() {
     color = max(color, tex.rgb * (0.75 + 0.25 * pulse + summon * 0.6));
     color = mix(color, tint.rgb * 0.2, shatter);
 
-    gl_FragColor = vec4(color, tex.a * a * f);
+    gl_FragColor = vec4(color, tex.a * a * f * alpha);
 }

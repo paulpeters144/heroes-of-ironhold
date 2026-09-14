@@ -7,6 +7,7 @@ use super::sys_knight_dash::KnightDashSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
+use super::sys_shield_cycle::ShieldCycleSystem;
 use super::sys_skill::SkillSystem;
 use super::sys_swords_skill::SwordsSkillSystem;
 use crate::entity::dash::Dash;
@@ -68,7 +69,7 @@ impl BattleTestScene {
         let parts = SkillsFactory::create(&[
             SkillSlotCfg::icon(SkillIconKind::Sword).direction(SkillDirection::Up),
             SkillSlotCfg::icon(SkillIconKind::Shield).direction(SkillDirection::Right),
-            SkillSlotCfg::icon(SkillIconKind::Fireball).direction(SkillDirection::Down),
+            SkillSlotCfg::icon(SkillIconKind::ShieldCycle).direction(SkillDirection::Down),
             SkillSlotCfg::empty().direction(SkillDirection::Left),
         ]);
 
@@ -96,9 +97,9 @@ impl BattleTestScene {
 
     fn spawn_player(&self) {
         let parts = HeroFactory::create_knight(KnightCfg {
-            outfit: self.assets.texture(images::Knight::Knight1),
-            sword: self.assets.texture(images::Knight::Sword2),
-            shield: self.assets.texture(images::Knight::Shield1),
+            outfit: self.assets.texture(images::Knight::Knight2),
+            sword: self.assets.texture(images::Knight::Sword3),
+            shield: self.assets.texture(images::Knight::Shield3),
             impact: self.assets.texture(images::Knight::Hit),
             thrust: self.assets.texture(images::Knight::ThrustGraphic),
             swipe: self.assets.texture(images::Knight::SwipeGraphic),
@@ -241,7 +242,7 @@ impl Scene for BattleTestScene {
                     &images::Knight::ThrustGraphic,
                     &images::Knight::SwipeGraphic,
                     &images::Knight::Hit,
-                    &images::Knight::LgShield,
+                    &images::Knight::SpinShield,
                     &file::File::TestTmx,
                     &file::File::HoiBgTsx,
                     &file::File::HoiCharsTsx,
@@ -258,7 +259,8 @@ impl Scene for BattleTestScene {
                     &shader::Shader::DashFxVert,
                     &shader::Shader::DashAfterimageFrag,
                     &shader::Shader::DemonDeathFrag,
-                    &shader::Shader::SwordMagicFrag,
+                    &shader::Shader::KnightGoldenGlowFrag,
+                    &shader::Shader::SpinDiscFrag,
                 ])
                 .await;
 
@@ -326,6 +328,11 @@ impl Scene for BattleTestScene {
                 &self.assets,
             ));
             self.agg.add(GuardianShieldSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                &self.assets,
+            ));
+            self.agg.add(ShieldCycleSystem::new(
                 self.store.clone(),
                 self.bus.clone(),
                 &self.assets,

@@ -261,7 +261,8 @@ impl System for RamHeadAiSystem {
 
             let enraged = self
                 .store
-                .get_by_id::<EnemyStats>(*enemy_id)
+                .get_by_id::<RamHead>(*enemy_id)
+                .and_then(|enemy| self.store.get_child::<EnemyStats>(&enemy))
                 .map(|stats| stats.hp * 2 <= stats.max_hp)
                 .unwrap_or(false);
 
@@ -396,7 +397,11 @@ impl System for RamHeadAiSystem {
                 .and_then(|enemy| self.store.get_child::<AttackRect>(&enemy))
                 .map(|area| area.entity_ref())
             {
-                let rects = if attacking { vec![charge_rect] } else { Vec::new() };
+                let rects = if attacking {
+                    vec![charge_rect]
+                } else {
+                    Vec::new()
+                };
                 area_writes.push(AttackRectWrite {
                     area_ref,
                     rects,
@@ -414,9 +419,17 @@ impl System for RamHeadAiSystem {
                             .and_then(|player| self.store.get_child::<Knight>(&player))
                             .map(|knight| knight.entity_ref().id());
                         if let Some(target) = target {
-                            self.bus.fire(&EnemyAttackEvent {
+                            let damage = self
+                                .store
+                                .get_by_id::<RamHead>(*enemy_id)
+                                .and_then(|enemy| self.store.get_child::<EnemyStats>(&enemy))
+                                .map(|stats| stats.strength)
+                                .unwrap_or(1)
+                                .max(1);
+                            self.bus.fire(&EnemyAttackEvent { target, damage });
+                            self.bus.fire(&HitEvent {
+                                victim: target,
                                 attacker: *enemy_id,
-                                target,
                             });
                         }
                         state.hit_this_charge = true;

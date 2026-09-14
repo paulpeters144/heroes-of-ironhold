@@ -19,6 +19,7 @@ pub use access::font::{FontTag, GameFont, TextStyle};
 pub use access::game_state::{DiskJsonStore, GameState, GameStateStore, SaveError};
 pub use access::ids::{file, font, images, shader, sound, texture};
 pub use entity::animation::Animation;
+pub use entity::area_rect::AreaRect;
 pub use entity::attack_rect::AttackRect;
 pub use entity::collision_rect::CollisionRect;
 pub use entity::dash::{Dash, DashCfg};
@@ -29,9 +30,13 @@ pub use entity::floating_text::FloatingText;
 pub use entity::health_bar::HealthBar;
 pub use entity::hero::{CoreStat, HeroStats};
 pub use entity::impact_frame::ImpactFrame;
-pub use entity::knight::{Effect, EffectKind, FrameOffsets, Knight, KnightLock, Shield, Sword};
+pub use entity::knight::{
+    Effect, EffectKind, FrameOffsets, GuardianShield, Knight, KnightLock, Shield, Sword,
+};
 pub use entity::player::{PlayerFactory, PlayerOne, PlayerTwo};
-pub use entity::skills::{LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
+pub use entity::skills::{
+    LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget,
+};
 pub use entity::static_image::StaticImage;
 pub use events::{AttackEvent, EnemyAttackEvent, HealthChangeEvent, HitEvent, SkillCastEvent};
 use manager::Manager;

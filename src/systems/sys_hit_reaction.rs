@@ -84,14 +84,14 @@ impl HitReactionSystem {
 
     /// The victim's drawable descendants, except the impact image, to hide during a hit.
     fn victim_visuals(&self, victim: u64, impact_id: u64) -> Vec<u64> {
-        let descendants: Vec<EntityRef> = if let Some(knight) = self.store.get_by_id::<Knight>(victim)
-        {
-            self.store.descendants(&knight)
-        } else if let Some(ram) = self.store.get_by_id::<RamHead>(victim) {
-            self.store.descendants(&ram)
-        } else {
-            return Vec::new();
-        };
+        let descendants: Vec<EntityRef> =
+            if let Some(knight) = self.store.get_by_id::<Knight>(victim) {
+                self.store.descendants(&knight)
+            } else if let Some(ram) = self.store.get_by_id::<RamHead>(victim) {
+                self.store.descendants(&ram)
+            } else {
+                return Vec::new();
+            };
 
         descendants
             .into_iter()

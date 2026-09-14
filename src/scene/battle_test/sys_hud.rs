@@ -1,8 +1,8 @@
 use crate::entity::hero::HeroStats;
 use crate::entity::knight::Knight;
 use crate::entity::player::PlayerOne;
-use crate::util::view_scale;
 use crate::systems::System;
+use crate::util::view_scale;
 use crate::{images, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
 use macroquad::prelude::*;
 use std::rc::Rc;
@@ -278,7 +278,6 @@ impl HudDrawSystem {
             cy - self.dims(&text).offset_y * 0.5,
         );
     }
-
 }
 
 impl System for HudDrawSystem {

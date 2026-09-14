@@ -6,7 +6,9 @@ use crate::entity::skills::SkillIconKind;
 use crate::events::{EnemyDeathEvent, HealthChangeEvent, HitEvent, SkillCastEvent};
 use crate::systems::System;
 use crate::util::attack::{did_attack, image_data_for};
-use crate::{shader, Animation, Assets, AttackRect, Context, EStore, EventBus, StaticImage, SubCollection};
+use crate::{
+    shader, Animation, Assets, AttackRect, Context, EStore, EventBus, StaticImage, SubCollection,
+};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
 use macroquad::rand::gen_range;
@@ -95,7 +97,7 @@ pub struct SwordsSkillSystem {
 
 fn load_sword_material(assets: &Assets) -> Option<Material> {
     let vertex = assets.shader(shader::Shader::DashFxVert);
-    let fragment = assets.shader(shader::Shader::SwordMagicFrag);
+    let fragment = assets.shader(shader::Shader::KnightGoldenGlowFrag);
 
     // Custom materials don't inherit macroquad's default alpha blend, so set it
     // explicitly or transparent pixels paint opaque black over the scene.
@@ -123,6 +125,7 @@ fn load_sword_material(assets: &Assets) -> Option<Material> {
                 UniformDesc::new("flying", UniformType::Float1),
                 UniformDesc::new("appear", UniformType::Float1),
                 UniformDesc::new("fade", UniformType::Float1),
+                UniformDesc::new("alpha", UniformType::Float1),
             ],
             ..Default::default()
         },
@@ -294,7 +297,7 @@ impl SwordsSkillSystem {
 
         // Staggered appearance: a sword materializes in place once its delay
         // elapses, then starts flying after the sparkle-in phase completes.
-for sword in self.swords.iter_mut() {
+        for sword in self.swords.iter_mut() {
             if sword.fired {
                 continue;
             }
@@ -580,8 +583,9 @@ for sword in self.swords.iter_mut() {
 
     /// Draw the knight in the sword's magic style while the cast is live, so
     /// the move reads as the knight channeling the same golden energy. The
-    /// body, shield, and sword are each rendered through the same sword_magic
-    /// material as the blades, in the same z-order as the normal draw pass.
+    /// body, shield, and sword are each rendered through the same
+    /// knight_golden_glow material as the blades, in the same z-order as the
+    /// normal draw pass.
     fn draw_knight_glow(&self) {
         if self.swords.is_empty() || self.glow_remaining <= 0.0 {
             return;
@@ -607,6 +611,7 @@ for sword in self.swords.iter_mut() {
         material.set_uniform("flying", 0.4_f32);
         material.set_uniform("appear", 1.0_f32);
         material.set_uniform("fade", 0.0_f32);
+        material.set_uniform("alpha", 1.0_f32);
 
         // Body (z0).
         if let Some(anim) = self
@@ -763,6 +768,7 @@ impl System for SwordsSkillSystem {
             material.set_uniform("flying", flying);
             material.set_uniform("appear", appear);
             material.set_uniform("fade", fade);
+            material.set_uniform("alpha", 1.0_f32);
             draw_texture_ex(
                 &anim.source,
                 pos.x,
@@ -779,4 +785,3 @@ impl System for SwordsSkillSystem {
         }
     }
 }
-

@@ -1,5 +1,7 @@
 use crate::entity::dash::Dash;
-use crate::entity::knight::{AttackKind, AttackPhase, Facing, Knight, KnightLock, IDLE_FRAME, WALK_FRAMES};
+use crate::entity::knight::{
+    AttackKind, AttackPhase, Facing, Knight, KnightLock, IDLE_FRAME, WALK_FRAMES,
+};
 use crate::entity::knight::{MOVE_SPEED, MOVE_SPEED_VERTICAL, REVERSE_MULT, WALK_FRAME_DURATION};
 use crate::entity::player::PlayerOne;
 use crate::input::{self, Input};

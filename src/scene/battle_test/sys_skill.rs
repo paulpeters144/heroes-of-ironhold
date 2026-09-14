@@ -1,4 +1,4 @@
-use crate::entity::knight::{IDLE_FRAME, Knight, KnightLock};
+use crate::entity::knight::{Knight, KnightLock, IDLE_FRAME};
 use crate::entity::player::PlayerOne;
 use crate::entity::skills::{
     LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget,
@@ -8,8 +8,8 @@ use crate::systems::System;
 use crate::ui::{draw_rounded_rect, draw_skill_slot, SkillIconTextures, SKILL_SLOT_SIZE};
 use crate::util::view_scale;
 use crate::{
-    images, Animation, Assets, Config, Context, EStore, EventBus, FontTag, GameFont, SkillCastEvent,
-    TextStyle,
+    images, Animation, Assets, Config, Context, EStore, EventBus, FontTag, GameFont,
+    SkillCastEvent, TextStyle,
 };
 use macroquad::prelude::*;
 use std::cell::Cell;
@@ -18,8 +18,8 @@ use std::rc::Rc;
 // Prototype placement: selector squares sit this far from the knight's center.
 const OFFSET: f32 = 40.0;
 
-// The selector options stay hidden until the skill button has been held this long.
-const SKILL_SELECTOR_HOLD: f32 = 0.15;
+// The selector options pop in immediately and scale from 0 to 1 over this long.
+const SKILL_SELECTOR_POP: f32 = 0.1;
 
 // The direction highlighted when the selector opens, before any input.
 const SKILL_DEFAULT_DIRECTION: SkillDirection = SkillDirection::Up;
@@ -56,7 +56,7 @@ pub struct SkillSystem {
     icons: SkillIconTextures,
     movement_gate: Rc<Cell<bool>>,
     selector_open: bool,
-    hold_time: f32,
+    selector_scale: f32,
     pending: Option<SkillDirection>,
 }
 
@@ -88,7 +88,7 @@ impl SkillSystem {
             icons,
             movement_gate,
             selector_open: false,
-            hold_time: 0.0,
+            selector_scale: 0.0,
             pending: None,
         }
     }
@@ -197,7 +197,8 @@ impl System for SkillSystem {
 
         if input::down_once(Input::Skills) {
             self.movement_gate.set(false);
-            self.hold_time = 0.0;
+            self.selector_open = true;
+            self.selector_scale = 0.0;
             if let Some(anim_ref) = self
                 .store
                 .first::<PlayerOne>()
@@ -218,12 +219,9 @@ impl System for SkillSystem {
         }
 
         if input::down(Input::Skills) {
-            self.hold_time += ctx.dt;
-            if !self.selector_open && self.hold_time >= SKILL_SELECTOR_HOLD {
-                self.selector_open = true;
-            }
-
             if self.selector_open {
+                self.selector_scale = (self.selector_scale + ctx.dt / SKILL_SELECTOR_POP).min(1.0);
+
                 if input::down_once(Input::Up) {
                     self.pending = Some(SkillDirection::Up);
                 }
@@ -242,7 +240,7 @@ impl System for SkillSystem {
         if input::up_once(Input::Skills) {
             self.movement_gate.set(true);
             self.selector_open = false;
-            self.hold_time = 0.0;
+            self.selector_scale = 0.0;
             let Some(dir) = self.pending.take() else {
                 return;
             };
@@ -273,6 +271,7 @@ impl System for SkillSystem {
         ];
 
         let selected = self.pending.unwrap_or(SKILL_DEFAULT_DIRECTION);
+        let scale = self.selector_scale;
 
         for (dir, off) in offsets {
             let icon = self
@@ -281,12 +280,14 @@ impl System for SkillSystem {
                 .find(|s| s.direction == Some(dir))
                 .and_then(|s| self.store.get_child::<SkillIcon>(&s).map(|i| i.kind));
             let pos = center + off;
+            let half = SKILL_SLOT_SIZE * 0.5 * scale;
             draw_skill_slot(
-                pos.x - SKILL_SLOT_SIZE * 0.5,
-                pos.y - SKILL_SLOT_SIZE * 0.5,
+                pos.x - half,
+                pos.y - half,
                 icon,
                 dir == selected,
                 &self.icons,
+                scale,
             );
         }
     }
@@ -321,7 +322,7 @@ impl System for SkillSystem {
             let sx = x + PAD + i as f32 * (SLOT + GAP);
             let sy = y + PAD;
             let slot_icon: Option<SkillIconKind> = if i == 0 { icon } else { None };
-            draw_skill_slot(sx, sy, slot_icon, false, &self.icons);
+            draw_skill_slot(sx, sy, slot_icon, false, &self.icons, 1.0);
             if i == 0 {
                 self.key_cap('a', sx, sy + SLOT);
             }

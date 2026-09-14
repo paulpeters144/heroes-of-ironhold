@@ -1,4 +1,5 @@
 pub mod animation;
+pub mod area_rect;
 pub mod attack_rect;
 pub mod collision_rect;
 pub mod dash;

@@ -22,8 +22,8 @@ pub struct HitEvent {
 
 #[derive(Clone, Debug)]
 pub struct EnemyAttackEvent {
-    pub attacker: u64,
     pub target: u64,
+    pub damage: i32,
 }
 
 #[derive(Clone, Debug)]

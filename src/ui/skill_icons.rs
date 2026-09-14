@@ -32,11 +32,13 @@ fn skill_texture(kind: SkillIconKind, icons: &SkillIconTextures) -> Option<&Text
         SkillIconKind::Sword => Some(&icons.sword),
         SkillIconKind::Shield => Some(&icons.shield),
         SkillIconKind::Fireball => Some(&icons.fireball),
+        SkillIconKind::ShieldCycle => Some(&icons.fireball),
         _ => None,
     }
 }
 
-/// Renders one framed slot (frame, well, glyph) with its top-left at (x, y).
+/// Renders one framed slot (frame, well, glyph) with its top-left at (x, y),
+/// scaled uniformly around its center by `scale` (1.0 draws at native size).
 /// When `highlighted`, a gold ring is drawn around the frame.
 pub fn draw_skill_slot(
     x: f32,
@@ -44,33 +46,36 @@ pub fn draw_skill_slot(
     icon: Option<SkillIconKind>,
     highlighted: bool,
     icons: &SkillIconTextures,
+    scale: f32,
 ) {
+    let size = SKILL_SLOT_SIZE * scale;
+
     if highlighted {
         draw_rounded_rect_lines(
-            x - 3.0,
-            y - 3.0,
-            SKILL_SLOT_SIZE + 6.0,
-            SKILL_SLOT_SIZE + 6.0,
-            SLOT_RADIUS + 1.0,
-            2.0,
+            x - 3.0 * scale,
+            y - 3.0 * scale,
+            size + 6.0 * scale,
+            size + 6.0 * scale,
+            (SLOT_RADIUS + 1.0) * scale,
+            2.0 * scale,
             HIGHLIGHT,
         );
     }
 
     draw_texture_ex(
         &icons.slot,
-        x - 1.0,
-        y - 1.0,
+        x - scale,
+        y - scale,
         WHITE,
         DrawTextureParams {
-            dest_size: Some(vec2(SKILL_SLOT_SIZE + 2.0, SKILL_SLOT_SIZE + 2.0)),
+            dest_size: Some(vec2(size + 2.0 * scale, size + 2.0 * scale)),
             ..Default::default()
         },
     );
 
-    let cx = x + SKILL_SLOT_SIZE * 0.5;
-    let cy = y + SKILL_SLOT_SIZE * 0.5;
-    draw_skill_icon(icon, cx, cy, SKILL_SLOT_SIZE - 10.0, icons);
+    let cx = x + size * 0.5;
+    let cy = y + size * 0.5;
+    draw_skill_icon(icon, cx, cy, (SKILL_SLOT_SIZE - 10.0) * scale, icons);
 }
 
 /// Draws the icon for a kind ("+" placeholder when `None`), preferring the

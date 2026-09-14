@@ -21,7 +21,7 @@ impl Default for EnemyStats {
             name: "Ram Head",
             hp: 60,
             max_hp: 60,
-            strength: 8,
+            strength: 18,
             armor: 0,
             evasion: 5,
             accuracy: 90,
