@@ -31,3 +31,9 @@ pub struct KnightLock {
 /// only while the shield is up; combat queries it to boost the knight's armor.
 #[derive(Clone, Debug)]
 pub struct GuardianShield;
+
+/// Marker for the knight's active divine-area healing zone. Present in the
+/// store only while the zone is on the ground; the `DivineAreaSystem` spawns
+/// it on cast and removes it when the zone expires.
+#[derive(Clone, Debug)]
+pub struct DivineArea;

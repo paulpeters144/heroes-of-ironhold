@@ -110,6 +110,7 @@ pub mod shader {
         DemonDeathFrag,
         KnightGoldenGlowFrag,
         SpinDiscFrag,
+        DivineAreaFrag,
     }
 
     impl AssetId for Shader {
@@ -125,6 +126,7 @@ pub mod shader {
                 Self::DemonDeathFrag => "shaders/demon_death.frag".to_string(),
                 Self::KnightGoldenGlowFrag => "shaders/knight_golden_glow.frag".to_string(),
                 Self::SpinDiscFrag => "shaders/spin_disc.frag".to_string(),
+                Self::DivineAreaFrag => "shaders/divine_area.frag".to_string(),
             }
         }
 

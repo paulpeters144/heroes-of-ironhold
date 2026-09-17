@@ -16,6 +16,7 @@ const POTION_RED: Color = Color::new(0.85, 0.2, 0.22, 1.0);
 const GLASS: Color = Color::new(0.65, 0.68, 0.75, 1.0);
 const BONE: Color = Color::new(0.85, 0.88, 0.95, 1.0);
 const DIM: Color = Color::new(0.4, 0.42, 0.5, 1.0);
+const DIVINE_GOLD: Color = Color::new(1.0, 0.85, 0.3, 1.0);
 
 /// Textures backing the skill icons, resolved at construction time. Kinds
 /// without a texture (Potion, Crossed, empty) fall back to procedural glyphs.
@@ -101,6 +102,7 @@ pub fn draw_skill_icon(
         ),
         (Some(SkillIconKind::Potion), None) => potion_icon(cx, cy, s),
         (Some(SkillIconKind::Crossed), None) => crossed_icon(cx, cy, s),
+        (Some(SkillIconKind::DivineArea), None) => divine_area_icon(cx, cy, s),
         _ => plus_icon(cx, cy, s),
     }
 }
@@ -123,6 +125,26 @@ fn crossed_icon(cx: f32, cy: f32, s: f32) {
     let r = s * 0.34;
     draw_line(cx - r, cy - r, cx + r, cy + r, 3.0, BONE);
     draw_line(cx - r, cy + r, cx + r, cy - r, 3.0, BONE);
+}
+
+/// Gold oval for the divine-area heal zone, with a soft bright core.
+fn divine_area_icon(cx: f32, cy: f32, s: f32) {
+    draw_ellipse(
+        cx - s * 0.34,
+        cy - s * 0.22,
+        s * 0.68,
+        s * 0.44,
+        0.0,
+        DIVINE_GOLD,
+    );
+    draw_ellipse(
+        cx - s * 0.14,
+        cy - s * 0.08,
+        s * 0.28,
+        s * 0.16,
+        0.0,
+        Color::new(1.0, 1.0, 0.75, 0.8),
+    );
 }
 
 /// Dim "+" for an empty slot.

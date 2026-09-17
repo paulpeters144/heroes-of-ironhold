@@ -142,11 +142,6 @@ impl SkillSystem {
     /// Fire the skill bound to a direction: resolve its icon and the knight's
     /// id, emit a `SkillCastEvent`, and record it as the last used skill.
     fn fire(&mut self, dir: SkillDirection) {
-        // Left is the empty placeholder slot: nothing to cast.
-        if dir == SkillDirection::Left {
-            return;
-        }
-
         let kind = self
             .store
             .all::<Skill>()

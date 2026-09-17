@@ -1,5 +1,6 @@
 mod scene;
 mod sys_camera;
+mod sys_divine_area;
 mod sys_enemy_death;
 mod sys_guardian_shield;
 mod sys_hud;

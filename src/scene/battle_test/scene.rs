@@ -1,4 +1,5 @@
 use super::sys_camera::CameraSystem;
+use super::sys_divine_area::DivineAreaSystem;
 use super::sys_enemy_death::EnemyDeathSystem;
 use super::sys_guardian_shield::GuardianShieldSystem;
 use super::sys_hud::HudDrawSystem;
@@ -70,7 +71,7 @@ impl BattleTestScene {
             SkillSlotCfg::icon(SkillIconKind::Sword).direction(SkillDirection::Up),
             SkillSlotCfg::icon(SkillIconKind::Shield).direction(SkillDirection::Right),
             SkillSlotCfg::icon(SkillIconKind::ShieldCycle).direction(SkillDirection::Down),
-            SkillSlotCfg::empty().direction(SkillDirection::Left),
+            SkillSlotCfg::icon(SkillIconKind::DivineArea).direction(SkillDirection::Left),
         ]);
 
         self.store.add(parts.widget, &[]);
@@ -97,7 +98,7 @@ impl BattleTestScene {
 
     fn spawn_player(&self) {
         let parts = HeroFactory::create_knight(KnightCfg {
-            outfit: self.assets.texture(images::Knight::Knight2),
+            outfit: self.assets.texture(images::Knight::Knight3),
             sword: self.assets.texture(images::Knight::Sword3),
             shield: self.assets.texture(images::Knight::Shield3),
             impact: self.assets.texture(images::Knight::Hit),
@@ -261,6 +262,7 @@ impl Scene for BattleTestScene {
                     &shader::Shader::DemonDeathFrag,
                     &shader::Shader::KnightGoldenGlowFrag,
                     &shader::Shader::SpinDiscFrag,
+                    &shader::Shader::DivineAreaFrag,
                 ])
                 .await;
 
@@ -304,6 +306,11 @@ impl Scene for BattleTestScene {
 
             self.agg
                 .add(MapDrawSystem::new(map, self.cfg.v_width, self.cfg.v_height));
+            self.agg.add(DivineAreaSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                &self.assets,
+            ));
             self.agg.add(DrawSystem::new(self.store.clone()));
             self.agg.add(HudDrawSystem::new(
                 self.cfg.clone(),
