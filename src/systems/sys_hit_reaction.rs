@@ -4,12 +4,9 @@ use std::rc::Rc;
 
 use pico_entity_store::prelude::EntityRef;
 
-use crate::entity::enemy::RamHead;
-use crate::entity::impact_frame::ImpactFrame;
-use crate::entity::knight::Knight;
+use crate::entity::{ImpactFrame, Knight, RamHead};
 use crate::events::HitEvent;
-use crate::systems::System;
-use crate::{Animation, Context, EStore, EventBus, StaticImage, SubCollection};
+use crate::prelude::*;
 use macroquad::prelude::*;
 
 /// Peak knockback displacement; drawn at `knockback * t²`.

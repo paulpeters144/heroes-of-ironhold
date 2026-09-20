@@ -4,43 +4,21 @@ pub mod entity;
 pub mod events;
 pub mod input;
 pub mod manager;
+pub mod prelude;
 pub mod scene;
 pub mod systems;
 pub mod ui;
-pub mod util;
-pub use di::DiContainer;
-pub use event_bus::SubCollection;
-pub use util::config::Config;
-pub use util::estore::EStore;
-pub use util::event_bus::EventBus;
+mod util;
 
-pub use access::assets::Assets;
-pub use access::font::{FontTag, GameFont, TextStyle};
-pub use access::game_state::{DiskJsonStore, GameState, GameStateStore, SaveError};
+// Infrastructure re-exports only
+pub use access::{DiskJsonStore, GameState, GameStateStore, SaveError};
+pub use access::Assets;
 pub use access::ids::{file, font, images, shader, sound, texture};
-pub use entity::animation::Animation;
-pub use entity::area_rect::AreaRect;
-pub use entity::attack_rect::AttackRect;
-pub use entity::collision_rect::CollisionRect;
-pub use entity::dash::{Dash, DashCfg};
-pub use entity::drawable::Drawable;
-pub use entity::factory_hero::{HeroFactory, KnightCfg, KnightParts};
-pub use entity::factory_skills::{SkillSlotCfg, SkillSlotParts, SkillsFactory, SkillsParts};
-pub use entity::floating_text::FloatingText;
-pub use entity::health_bar::HealthBar;
-pub use entity::hero::{CoreStat, HeroStats};
-pub use entity::impact_frame::ImpactFrame;
-pub use entity::knight::{
-    Effect, EffectKind, FrameOffsets, GuardianShield, Knight, KnightLock, Shield, Sword,
-};
-pub use entity::player::{PlayerFactory, PlayerOne, PlayerTwo};
-pub use entity::skills::{
-    LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget,
-};
-pub use entity::static_image::StaticImage;
-pub use events::{AttackEvent, EnemyAttackEvent, HealthChangeEvent, HitEvent, SkillCastEvent};
+pub use di::DiContainer;
+pub use util::Config;
+pub use util::EStore;
+pub use util::EventBus;
 use manager::Manager;
-pub use util::camera::GameCamera;
 
 pub fn window_conf() -> macroquad::prelude::Conf {
     Config::default().window_conf()

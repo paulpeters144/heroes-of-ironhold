@@ -1,7 +1,6 @@
 use crate::entity::knight::{Facing, Knight};
-use crate::entity::player::PlayerOne;
-use crate::systems::System;
-use crate::{Animation, Context, EStore};
+use crate::entity::PlayerOne;
+use crate::prelude::*;
 use macroquad::prelude::*;
 use std::rc::Rc;
 

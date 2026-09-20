@@ -1,10 +1,10 @@
-use crate::access::ids::{shader, AssetId};
+use crate::access::AssetId;
+use crate::prelude::SubCollection;
 use crate::scene::{
     ChangeSceneEvent, LoadingScene, SceneFactory, SceneFuture, SceneId, SceneState,
 };
-use crate::util::camera::GameCamera;
-use crate::util::view_scale;
-use crate::{Assets, Config, Context, DiContainer, SubCollection};
+use crate::util::{GameCamera, view_scale};
+use crate::{shader, Assets, Config, Context, DiContainer};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
 use std::cell::Cell;

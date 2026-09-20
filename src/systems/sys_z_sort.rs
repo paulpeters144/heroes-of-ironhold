@@ -1,6 +1,5 @@
-use crate::entity::knight::{Shield, Sword};
-use crate::systems::System;
-use crate::{Animation, Context, EStore, StaticImage};
+use crate::entity::{Shield, Sword};
+use crate::prelude::*;
 use pico_entity_store::entity_ref::EntityRef;
 use std::collections::HashMap;
 use std::rc::Rc;

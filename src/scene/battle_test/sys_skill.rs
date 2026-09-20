@@ -1,16 +1,14 @@
+use crate::access::{FontTag, GameFont, TextStyle};
 use crate::entity::knight::{Knight, KnightLock, IDLE_FRAME};
-use crate::entity::player::PlayerOne;
-use crate::entity::skills::{
-    LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget,
+use crate::entity::{
+    LastUsedSkill, PlayerOne, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget,
 };
+use crate::events::SkillCastEvent;
 use crate::input::{self, Input};
-use crate::systems::System;
+use crate::prelude::*;
 use crate::ui::{draw_rounded_rect, draw_skill_slot, SkillIconTextures, SKILL_SLOT_SIZE};
 use crate::util::view_scale;
-use crate::{
-    images, Animation, Assets, Config, Context, EStore, EventBus, FontTag, GameFont,
-    SkillCastEvent, TextStyle,
-};
+use crate::{images, Assets, Config};
 use macroquad::prelude::*;
 use std::cell::Cell;
 use std::rc::Rc;

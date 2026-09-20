@@ -1,4 +1,4 @@
-use crate::entity::skills::SkillIconKind;
+use crate::entity::SkillIconKind;
 use crate::ui::draw_rounded_rect_lines;
 use macroquad::prelude::*;
 

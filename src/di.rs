@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::util::camera::{GameCamera, GameRenderTarget};
+use crate::util::{GameCamera, GameRenderTarget};
 use crate::{Assets, Config, EStore, EventBus};
 
 pub struct DiContainer {

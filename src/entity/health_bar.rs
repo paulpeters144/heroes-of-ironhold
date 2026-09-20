@@ -1,4 +1,4 @@
-use crate::Drawable;
+use super::Drawable;
 use macroquad::prelude::{
     draw_texture_ex, vec2, Color, DrawTextureParams, FilterMode, Image, Rect, Texture2D, Vec2,
     WHITE,

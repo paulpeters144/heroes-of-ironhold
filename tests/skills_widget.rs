@@ -1,4 +1,4 @@
-use heroes_of_ironhold_core::{
+use heroes_of_ironhold_core::entity::{
     SkillDirection, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsParts,
 };
 

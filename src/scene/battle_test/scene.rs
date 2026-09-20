@@ -3,38 +3,30 @@ use super::sys_divine_area::DivineAreaSystem;
 use super::sys_enemy_death::EnemyDeathSystem;
 use super::sys_guardian_shield::GuardianShieldSystem;
 use super::sys_hud::HudDrawSystem;
+use super::sys_knight_attack::KnightAttackSystem;
+use super::sys_knight_attack_effects::KnightAttackEffectSystem;
 use super::sys_knight_attack_hit::KnightAttackHitSystem;
+use super::sys_knight_controls::KnightControlSystem;
 use super::sys_knight_dash::KnightDashSystem;
+use super::sys_knight_offsets::KnightOffsetUpdateSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
 use super::sys_shield_cycle::ShieldCycleSystem;
 use super::sys_skill::SkillSystem;
 use super::sys_swords_skill::SwordsSkillSystem;
-use crate::entity::dash::Dash;
-use crate::entity::enemy::{EnemyStats, RamHead};
-use crate::entity::factory_enemy::{EnemyFactory, RamHeadCfg};
-use crate::entity::factory_hero::{HeroFactory, KnightCfg};
-use crate::entity::factory_skills::{SkillSlotCfg, SkillsFactory};
-use crate::entity::hero::HeroStats;
-use crate::entity::impact_frame::ImpactFrame;
-use crate::entity::knight::{Knight, Shield, Sword};
-use crate::entity::player::{PlayerFactory, PlayerOne};
-use crate::entity::skills::{LastUsedSkill, Skill, SkillDirection, SkillIconKind, SkillsWidget};
-use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem;
-use crate::scene::asset_preview::sys_knight_attack::KnightAttackSystem;
-use crate::scene::asset_preview::sys_knight_attack_effects::KnightAttackEffectSystem;
-use crate::scene::asset_preview::sys_knight_controls::KnightControlSystem;
-use crate::scene::asset_preview::sys_knight_offsets::KnightOffsetUpdateSystem;
+use crate::entity::{
+    Dash, EnemyFactory, EnemyStats, HealthBar, HeroFactory, HeroStats, ImpactFrame, Knight,
+    KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg, Shield, Skill,
+    SkillDirection, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsWidget, Sword,
+};
+use crate::prelude::*;
 use crate::scene::Scene;
 use crate::systems::{
-    CollisionRectSystem, DebugDrawSystem, DrawSystem, HealthBarSystem, HealthTextAnimationSystem,
-    HitReactionSystem, KnightCombatSystem, SystemAgg, ZSortSystem,
+    AnimationUpdateSystem, CollisionRectSystem, DebugDrawSystem, DrawSystem, HealthBarSystem,
+    HealthTextAnimationSystem, HitReactionSystem, KnightCombatSystem, SystemAgg, ZSortSystem,
 };
-use crate::{
-    file, font, images, shader, Animation, Assets, AttackRect, Config, Context, EStore, EventBus,
-    HealthBar,
-};
+use crate::{file, font, images, shader, Assets, Config};
 use macroquad::prelude::*;
 use macroquad::rand::gen_range;
 use pico_entity_store::store::{ChildSource, IntoChild};

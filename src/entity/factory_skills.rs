@@ -1,4 +1,4 @@
-use crate::entity::skills::{Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
+use super::skills::{Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
 
 /// Factory config for one directional attack (icon + direction). `icon: None`
 /// yields an empty square; `direction: None` is an untagged attack.

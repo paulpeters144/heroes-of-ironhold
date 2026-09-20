@@ -1,10 +1,9 @@
 //! Hellfire immolation when an enemy dies: the body burns from the feet up,
 //! embers spiral out of the flames, and the demon's soul tears free and rises.
-use crate::entity::enemy::RamHead;
-use crate::entity::impact_frame::ImpactFrame;
+use crate::entity::{ImpactFrame, RamHead};
 use crate::events::EnemyDeathEvent;
-use crate::systems::System;
-use crate::{shader, Animation, Assets, Context, EStore, EventBus, StaticImage, SubCollection};
+use crate::prelude::*;
+use crate::{shader, Assets};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
 use macroquad::rand::gen_range;

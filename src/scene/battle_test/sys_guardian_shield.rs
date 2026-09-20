@@ -1,12 +1,8 @@
 use crate::entity::knight::{GuardianShield, Knight, KnightLock, Shield, IDLE_FRAME, SWIPE_FRAME};
-use crate::entity::player::PlayerOne;
-use crate::entity::skills::SkillIconKind;
+use crate::entity::{AreaRect, PlayerOne, SkillIconKind};
 use crate::events::SkillCastEvent;
-use crate::systems::System;
-use crate::{
-    images, shader, Animation, AreaRect, Assets, Context, EStore, EventBus, StaticImage,
-    SubCollection,
-};
+use crate::prelude::*;
+use crate::{images, shader, Assets};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
 use macroquad::rand::gen_range;

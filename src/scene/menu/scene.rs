@@ -1,10 +1,8 @@
-use super::sys_animation::AnimationUpdateSystem;
 use super::sys_menu_input::MenuInputSystem;
+use crate::prelude::*;
 use crate::scene::{ChangeSceneEvent, Scene};
-use crate::systems::{DrawSystem, SystemAgg};
-use crate::{
-    font, images, Animation, Assets, Config, Context, EStore, EventBus, StaticImage, SubCollection,
-};
+use crate::systems::{AnimationUpdateSystem, DrawSystem, SystemAgg};
+use crate::{font, images, Assets, Config};
 use macroquad::prelude::*;
 use std::future::Future;
 use std::pin::Pin;

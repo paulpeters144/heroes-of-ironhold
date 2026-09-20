@@ -1,5 +1,5 @@
+use crate::access::GameFont;
 use crate::util::view_scale;
-use crate::GameFont;
 use macroquad::prelude::*;
 
 pub(super) fn wrap_text(font: &GameFont, text: &str, max_width: f32, scale: f32) -> String {

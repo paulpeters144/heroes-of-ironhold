@@ -1,0 +1,47 @@
+// Entity sub-modules that expose crate-shared constants stay `pub(crate)`
+// (knight/enemy frame constants and factory size constants are used by scene
+// systems). Pure-type modules are private; their types are re-exported here.
+
+pub(crate) mod enemy;
+pub(crate) mod factory_enemy;
+pub(crate) mod factory_hero;
+pub(crate) mod knight;
+
+mod animation;
+mod area_rect;
+mod attack_rect;
+mod collision_rect;
+mod dash;
+mod drawable;
+mod factory_skills;
+mod floating_text;
+mod health_bar;
+mod hero;
+mod impact_frame;
+mod player;
+mod skills;
+mod static_image;
+
+// Barrel re-exports — the canonical import path for entity types
+pub use animation::Animation;
+pub use area_rect::AreaRect;
+pub use attack_rect::AttackRect;
+pub use collision_rect::CollisionRect;
+pub use dash::{Dash, DashCfg};
+pub use drawable::Drawable;
+pub use enemy::{EnemyStats, RamHead};
+pub use factory_enemy::{EnemyFactory, RamHeadCfg};
+pub use factory_hero::{HeroFactory, KnightCfg, KnightParts};
+pub use factory_skills::{SkillSlotCfg, SkillSlotParts, SkillsFactory, SkillsParts};
+pub use floating_text::FloatingText;
+pub use health_bar::HealthBar;
+pub use hero::{CoreStat, HeroStats};
+pub use impact_frame::ImpactFrame;
+pub use knight::{
+    Effect, EffectKind, FrameOffsets, GuardianShield, Knight, KnightLock, Shield, Sword,
+};
+pub use player::{PlayerFactory, PlayerOne, PlayerTwo};
+pub use skills::{
+    LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget,
+};
+pub use static_image::StaticImage;

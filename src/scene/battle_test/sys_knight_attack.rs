@@ -1,10 +1,8 @@
 use crate::entity::knight::{
     Effect, EffectKind, Facing, Knight, KnightLock, Sword, SWIPE_FRAME, THRUST_FRAME,
 };
-use crate::entity::player::PlayerOne;
-use crate::systems::System;
-// use crate::util::{did_attack, ImageData};
-use crate::{Animation, AttackRect, Context, EStore};
+use crate::entity::PlayerOne;
+use crate::prelude::*;
 use macroquad::prelude::*;
 use std::rc::Rc;
 

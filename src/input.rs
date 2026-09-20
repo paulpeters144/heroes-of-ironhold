@@ -90,3 +90,22 @@ pub fn down_once_every(input: Input, cooldown_ms: f32) -> bool {
         }
     })
 }
+
+/// Read host key state and push it into the input buffer.
+/// Called once per frame from the client's main loop.
+pub fn poll_input() {
+    use macroquad::prelude::{is_key_down, KeyCode};
+
+    set(Input::Enter, is_key_down(KeyCode::Enter));
+    set(Input::Up, is_key_down(KeyCode::Up));
+    set(Input::Down, is_key_down(KeyCode::Down));
+    set(Input::Left, is_key_down(KeyCode::Left));
+    set(Input::Right, is_key_down(KeyCode::Right));
+    set(Input::Jump, is_key_down(KeyCode::Space));
+    set(Input::Attack, is_key_down(KeyCode::X));
+    set(
+        Input::Shift,
+        is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift),
+    );
+    set(Input::Skills, is_key_down(KeyCode::A));
+}

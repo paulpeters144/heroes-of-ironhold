@@ -1,6 +1,5 @@
-use crate::entity::enemy::{EnemyStats, RamHead};
-use crate::systems::System;
-use crate::{Animation, Context, EStore, HealthBar};
+use crate::entity::{EnemyStats, HealthBar, RamHead};
+use crate::prelude::*;
 use macroquad::prelude::*;
 use std::rc::Rc;
 

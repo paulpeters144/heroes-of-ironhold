@@ -1,4 +1,5 @@
-use crate::{Context, GameFont};
+use crate::access::GameFont;
+use crate::Context;
 use macroquad::prelude::{Color, Texture2D};
 
 pub struct Label<'a> {

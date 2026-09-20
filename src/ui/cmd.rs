@@ -1,4 +1,4 @@
-use crate::GameFont;
+use crate::access::GameFont;
 use macroquad::prelude::*;
 
 pub(super) enum Cmd {

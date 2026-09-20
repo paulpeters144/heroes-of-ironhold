@@ -1,8 +1,8 @@
-use crate::entity::impact_frame::ImpactFrame;
-use crate::entity::knight::{
+use super::impact_frame::ImpactFrame;
+use super::knight::{
     Effect, EffectKind, Facing, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
 };
-use crate::{Animation, CollisionRect, StaticImage};
+use super::{Animation, CollisionRect, StaticImage};
 use macroquad::prelude::{Color, Rect, Texture2D, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;

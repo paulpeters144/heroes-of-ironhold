@@ -1,4 +1,4 @@
-use crate::Animation;
+use crate::entity::Animation;
 use macroquad::prelude::{Image, Rect, Texture2D, Vec2};
 
 /// A sprite sheet's CPU pixel data plus its world-space placement.

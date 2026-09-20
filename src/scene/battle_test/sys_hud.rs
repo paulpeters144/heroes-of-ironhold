@@ -1,9 +1,8 @@
-use crate::entity::hero::HeroStats;
-use crate::entity::knight::Knight;
-use crate::entity::player::PlayerOne;
-use crate::systems::System;
+use crate::access::{FontTag, GameFont, TextStyle};
+use crate::entity::{HeroStats, Knight, PlayerOne};
+use crate::prelude::*;
 use crate::util::view_scale;
-use crate::{images, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
+use crate::{images, Assets, Config};
 use macroquad::prelude::*;
 use std::rc::Rc;
 

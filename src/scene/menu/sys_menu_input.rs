@@ -1,8 +1,9 @@
+use crate::access::{FontTag, GameFont, TextStyle};
 use crate::input;
+use crate::prelude::*;
 use crate::scene::{ChangeSceneEvent, SceneId};
-use crate::systems::System;
 use crate::util::view_scale;
-use crate::{Assets, Config, Context, EventBus, FontTag, GameFont, TextStyle};
+use crate::{Assets, Config};
 use macroquad::prelude::*;
 use std::rc::Rc;
 

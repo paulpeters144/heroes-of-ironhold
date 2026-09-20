@@ -1,11 +1,11 @@
-use crate::entity::dash::Dash;
+use crate::access::{FontTag, GameFont, TextStyle};
 use crate::entity::knight::{Knight, DOUBLE_TAP_WINDOW, IDLE_FRAME, SWIPE_FRAME, THRUST_FRAME};
-use crate::entity::player::PlayerOne;
+use crate::entity::{Dash, PlayerOne};
 use crate::input::{self, Input};
-use crate::systems::System;
+use crate::prelude::*;
 use crate::ui::draw_rounded_rect;
 use crate::util::view_scale;
-use crate::{shader, Animation, Assets, Config, Context, EStore, FontTag, GameFont, TextStyle};
+use crate::{shader, Assets, Config};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;
 use pico_entity_store::store::IntoChild;

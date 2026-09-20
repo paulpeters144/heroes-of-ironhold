@@ -1,9 +1,8 @@
-use crate::entity::enemy::RamHead;
 use crate::entity::knight::{Knight, KnightLock, Sword};
-use crate::entity::player::PlayerOne;
-use crate::systems::System;
-use crate::util::attack::{did_attack, image_data_for};
-use crate::{Animation, AttackEvent, AttackRect, Context, EStore, EventBus};
+use crate::entity::{PlayerOne, RamHead};
+use crate::events::AttackEvent;
+use crate::prelude::*;
+use crate::util::{did_attack, image_data_for};
 use macroquad::prelude::{Image, Texture2D};
 use std::rc::Rc;
 

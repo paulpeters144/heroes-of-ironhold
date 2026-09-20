@@ -1,5 +1,5 @@
-use crate::systems::System;
-use crate::{Animation, AreaRect, AttackRect, CollisionRect, Context, EStore};
+use crate::entity::AreaRect;
+use crate::prelude::*;
 use macroquad::prelude::{draw_rectangle_lines, Color, GREEN, YELLOW};
 use std::collections::HashSet;
 use std::rc::Rc;

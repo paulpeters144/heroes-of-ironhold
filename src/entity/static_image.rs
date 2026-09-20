@@ -1,4 +1,4 @@
-use crate::Drawable;
+use super::Drawable;
 use macroquad::prelude::{draw_texture_ex, Color, DrawTextureParams, Rect, Texture2D, Vec2};
 
 #[derive(Clone, Debug)]

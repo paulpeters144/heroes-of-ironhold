@@ -1,4 +1,4 @@
-use crate::entity::skills::{SkillDirection, SkillIconKind};
+use crate::entity::{SkillDirection, SkillIconKind};
 use macroquad::prelude::Rect;
 
 #[derive(Clone, Debug)]

@@ -1,4 +1,5 @@
 mod sys_aggregate;
+mod sys_animation;
 mod sys_collision_rect;
 mod sys_debug_draw;
 mod sys_draw;
@@ -9,6 +10,7 @@ mod sys_knight_combat;
 mod sys_z_sort;
 
 pub use sys_aggregate::{System, SystemAgg};
+pub use sys_animation::AnimationUpdateSystem;
 pub use sys_collision_rect::CollisionRectSystem;
 pub use sys_debug_draw::DebugDrawSystem;
 pub use sys_draw::DrawSystem;

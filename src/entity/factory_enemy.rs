@@ -1,6 +1,6 @@
-use crate::entity::enemy::{RamHead, RAM_HEAD_FRAME_COUNT};
-use crate::entity::impact_frame::ImpactFrame;
-use crate::{Animation, CollisionRect, StaticImage};
+use super::enemy::{RamHead, RAM_HEAD_FRAME_COUNT};
+use super::impact_frame::ImpactFrame;
+use super::{Animation, CollisionRect, StaticImage};
 use macroquad::prelude::{Color, Rect, Texture2D, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;

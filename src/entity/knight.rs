@@ -7,7 +7,7 @@ mod movement;
 pub use attack::AttackKind;
 pub use components::{DivineArea, Facing, GuardianShield, Knight, KnightLock, Shield, Sword};
 pub use effect::{Effect, EffectKind};
-pub use frames::{FrameOffsets, KNIGHT_FRAME_COUNT};
+pub use frames::FrameOffsets;
 
 pub(crate) use attack::AttackPhase;
 pub(crate) use effect::{GLOW_IN_FRACTION, HOLD_START, SLASH_LIFETIME, THRUST_LIFETIME};

@@ -1,5 +1,4 @@
-use crate::systems::System;
-use crate::{Animation, Context, EStore};
+use crate::prelude::*;
 use std::rc::Rc;
 
 pub struct AnimationUpdateSystem {

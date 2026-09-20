@@ -52,5 +52,6 @@ python3 clients/web/serve.py              # serve on port 3001
 - `rules/factories.md` — applies when writing factories (pure functions, no side effects)
 - `rules/ownership.md` — applies when touching `pico_entity_store` or `src/util/estore.rs`
 - `rules/attacks.md` — applies when writing anything that deals damage
+- `rules/modules.md` — applies when creating or importing from modules (barrel files, one canonical path per type)
 - `rules/git.md` — applies before committing changes
 - Do not use the PixelLab MCP server unless explicitly told to use it.
