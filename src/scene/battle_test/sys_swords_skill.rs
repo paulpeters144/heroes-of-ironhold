@@ -79,6 +79,11 @@ struct FlyingSword {
     fade_time: f32,
 }
 
+/// Marker for a flying sword projectile, so its `Animation` can be recovered
+/// through the store after spawning.
+#[derive(Clone, Debug)]
+struct FlyingSwordMark;
+
 pub struct SwordsSkillSystem {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
@@ -264,6 +269,7 @@ impl SwordsSkillSystem {
                 frame_count: SWORD_FRAME_COUNT,
                 current_frame: 1,
                 running: false,
+                frame_duration: 0.12,
                 tint: WHITE,
                 flip_x: facing == Facing::Left,
                 dest_size: vec2(SWORD_FRAME_SIZE, SWORD_FRAME_SIZE),
@@ -276,7 +282,18 @@ impl SwordsSkillSystem {
                 visible: false,
             }
             .into_child();
-            let anim_ref = (&**self.store).add(anim, &[area]).expect("spawn sword");
+            self.store.add(anim, &[area, FlyingSwordMark.into_child()]);
+            let mark = self
+                .store
+                .all::<FlyingSwordMark>()
+                .map(|m| m.entity_ref())
+                .last()
+                .expect("spawn sword");
+            let anim_ref = self
+                .store
+                .get_by_id::<FlyingSwordMark>(mark.id())
+                .and_then(|m| self.store.parent(&m))
+                .expect("spawn sword");
             self.swords.push(FlyingSword {
                 anim_ref,
                 spawn_x: pos.x,

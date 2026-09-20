@@ -68,7 +68,7 @@ impl Manager {
         });
 
         let scene_factory = SceneFactory::new(di);
-        bus.fire(&ChangeSceneEvent(SceneId::BattleTest));
+        bus.fire(&ChangeSceneEvent(SceneId::Menu));
 
         let loading_scene = Box::new(LoadingScene::new(cfg.clone()));
 

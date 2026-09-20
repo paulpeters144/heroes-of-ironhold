@@ -80,7 +80,7 @@ impl BattleTestScene {
             match slot.icon {
                 Some(icon) => self.store.add(slot.skill, &[icon.into_child()]),
                 None => self.store.add(slot.skill, &[]),
-            }
+            };
             let skill_ref = self
                 .store
                 .all::<Skill>()

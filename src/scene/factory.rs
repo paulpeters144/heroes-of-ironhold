@@ -1,4 +1,4 @@
-use super::{AssetPreviewScene, BattleTestScene, Scene};
+use super::{AssetPreviewScene, BattleTestScene, MenuScene, Scene};
 use crate::DiContainer;
 use std::rc::Rc;
 
@@ -6,6 +6,7 @@ use std::rc::Rc;
 pub enum SceneId {
     AssetPreview,
     BattleTest,
+    Menu,
 }
 
 #[derive(Clone)]
@@ -30,6 +31,7 @@ impl SceneFactory {
                 store,
                 self.di.event_bus(),
             )),
+            SceneId::Menu => Box::new(MenuScene::new(cfg, assets, store, self.di.event_bus())),
         }
     }
 }

@@ -316,13 +316,8 @@ impl DivineAreaSystem {
             .store
             .get_by_id::<Knight>(knight_ref.id())
             .expect("knight alive during cast");
-        self.store.add(
-            knight,
-            &[KnightLock {
-                by: "DivineArea",
-            }
-            .into_child()],
-        );
+        self.store
+            .add(knight, &[KnightLock { by: "DivineArea" }.into_child()]);
 
         self.center = feet;
         self.active = true;
@@ -493,7 +488,8 @@ impl DivineAreaSystem {
             return None;
         }
 
-        self.store.update::<HeroStats, _>(&stats_ref, |s| s.hp += actual);
+        self.store
+            .update::<HeroStats, _>(&stats_ref, |s| s.hp += actual);
         self.bus.fire(&HealthChangeEvent {
             entity: knight_id,
             amount: actual,
@@ -535,12 +531,7 @@ impl DivineAreaSystem {
             AREA_HEIGHT * (0.4 + 0.6 * ease),
             0.0,
             (2.0 * (1.0 - t)).max(0.5),
-            Color::new(
-                SUMMON_GOLD.r,
-                SUMMON_GOLD.g,
-                SUMMON_GOLD.b,
-                0.6 * (1.0 - t),
-            ),
+            Color::new(SUMMON_GOLD.r, SUMMON_GOLD.g, SUMMON_GOLD.b, 0.6 * (1.0 - t)),
         );
 
         // Gentle drifting sparkles, twinkling as they slow.
@@ -637,7 +628,12 @@ impl DivineAreaSystem {
                     y,
                     2.0,
                     strip_h + 0.5,
-                    Color::new(SUMMON_WHITE.r, SUMMON_WHITE.g, SUMMON_WHITE.b, 0.6 * strip_a),
+                    Color::new(
+                        SUMMON_WHITE.r,
+                        SUMMON_WHITE.g,
+                        SUMMON_WHITE.b,
+                        0.6 * strip_a,
+                    ),
                 );
             }
             draw_star_sparkle(
@@ -759,7 +755,8 @@ impl System for DivineAreaSystem {
         }
 
         let appear = (self.area_life / APPEAR_SECS).min(1.0);
-        let fade_out = ((self.area_life - (AREA_SECS - FADE_OUT_SECS)) / FADE_OUT_SECS).clamp(0.0, 1.0);
+        let fade_out =
+            ((self.area_life - (AREA_SECS - FADE_OUT_SECS)) / FADE_OUT_SECS).clamp(0.0, 1.0);
         let grow = (self.area_life / GROW_SECS).min(1.0);
         let grow_ease = ease_out_cubic(grow);
         let alpha = GLOW_ALPHA * (1.0 - fade_out);

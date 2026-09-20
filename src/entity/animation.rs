@@ -10,6 +10,7 @@ pub struct Animation {
     pub frame_count: usize,
     pub current_frame: usize,
     pub running: bool,
+    pub frame_duration: f32,
     pub tint: Color,
     pub flip_x: bool,
     pub dest_size: Vec2,

@@ -33,6 +33,7 @@ impl EnemyFactory {
             frame_count: RAM_HEAD_FRAME_COUNT,
             current_frame: 0,
             running: false,
+            frame_duration: 0.12,
             tint: Color::new(1.0, 1.0, 1.0, 1.0),
             flip_x: false,
             dest_size: Vec2::new(FRAME_SIZE, FRAME_SIZE),

@@ -213,22 +213,20 @@ impl System for SkillSystem {
             self.pending = Some(last_dir.unwrap_or(SKILL_DEFAULT_DIRECTION));
         }
 
-        if input::down(Input::Skills) {
-            if self.selector_open {
-                self.selector_scale = (self.selector_scale + ctx.dt / SKILL_SELECTOR_POP).min(1.0);
+        if input::down(Input::Skills) && self.selector_open {
+            self.selector_scale = (self.selector_scale + ctx.dt / SKILL_SELECTOR_POP).min(1.0);
 
-                if input::down_once(Input::Up) {
-                    self.pending = Some(SkillDirection::Up);
-                }
-                if input::down_once(Input::Down) {
-                    self.pending = Some(SkillDirection::Down);
-                }
-                if input::down_once(Input::Left) {
-                    self.pending = Some(SkillDirection::Left);
-                }
-                if input::down_once(Input::Right) {
-                    self.pending = Some(SkillDirection::Right);
-                }
+            if input::down_once(Input::Up) {
+                self.pending = Some(SkillDirection::Up);
+            }
+            if input::down_once(Input::Down) {
+                self.pending = Some(SkillDirection::Down);
+            }
+            if input::down_once(Input::Left) {
+                self.pending = Some(SkillDirection::Left);
+            }
+            if input::down_once(Input::Right) {
+                self.pending = Some(SkillDirection::Right);
             }
         }
 

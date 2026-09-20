@@ -87,6 +87,11 @@ struct ShieldDisc {
     grind_timer: f32,
 }
 
+/// Marker for a thrown shield disc, so its `Animation` can be recovered
+/// through the store after spawning.
+#[derive(Clone, Debug)]
+struct ShieldDiscMark;
+
 pub struct ShieldCycleSystem {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
@@ -276,13 +281,8 @@ impl ShieldCycleSystem {
             .store
             .get_by_id::<Knight>(knight_ref.id())
             .expect("knight alive during cast");
-        self.store.add(
-            knight,
-            &[KnightLock {
-                by: "ShieldCycle",
-            }
-            .into_child()],
-        );
+        self.store
+            .add(knight, &[KnightLock { by: "ShieldCycle" }.into_child()]);
 
         // The disc travels along the knight's facing: purely horizontal.
         let dir_x = match facing {
@@ -310,6 +310,7 @@ impl ShieldCycleSystem {
             frame_count: 1,
             current_frame: 0,
             running: false,
+            frame_duration: 0.12,
             tint: WHITE,
             flip_x: false,
             dest_size: vec2(SHIELD_SIZE, SHIELD_SIZE),
@@ -322,7 +323,18 @@ impl ShieldCycleSystem {
             visible: false,
         }
         .into_child();
-        let anim_ref = (&**self.store).add(anim, &[area]).expect("spawn shield disc");
+        self.store.add(anim, &[area, ShieldDiscMark.into_child()]);
+        let mark = self
+            .store
+            .all::<ShieldDiscMark>()
+            .map(|m| m.entity_ref())
+            .last()
+            .expect("spawn shield disc");
+        let anim_ref = self
+            .store
+            .get_by_id::<ShieldDiscMark>(mark.id())
+            .and_then(|m| self.store.parent(&m))
+            .expect("spawn shield disc");
         let area_ref = self
             .store
             .get_by_id::<Animation>(anim_ref.id())
@@ -624,10 +636,7 @@ impl ShieldCycleSystem {
         };
 
         gl_use_material(material);
-        material.set_uniform(
-            "tint",
-            vec4(DISC_COLOR.r, DISC_COLOR.g, DISC_COLOR.b, 1.0),
-        );
+        material.set_uniform("tint", vec4(DISC_COLOR.r, DISC_COLOR.g, DISC_COLOR.b, 1.0));
         material.set_uniform("trail_dir", self.cast_dir.x);
         material.set_uniform("flying", 0.4_f32);
         material.set_uniform("appear", 1.0_f32);
@@ -761,10 +770,7 @@ impl System for ShieldCycleSystem {
 
         if let Some(material) = &self.disc_material {
             gl_use_material(material);
-            material.set_uniform(
-                "tint",
-                vec4(DISC_COLOR.r, DISC_COLOR.g, DISC_COLOR.b, 1.0),
-            );
+            material.set_uniform("tint", vec4(DISC_COLOR.r, DISC_COLOR.g, DISC_COLOR.b, 1.0));
             material.set_uniform("alpha", DISC_ALPHA);
             draw_texture_ex(
                 &anim.source,

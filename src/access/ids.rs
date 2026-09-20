@@ -306,4 +306,55 @@ pub mod images {
             AssetKind::Image
         }
     }
+
+    #[derive(Clone, Copy, Debug)]
+    pub enum Scene {
+        MenuBackground,
+        Scroll,
+        TitleText,
+        LargeRamhead,
+        RamheadWiz,
+        FireDemon1,
+        FireDemon2,
+        Ramhead,
+        AssassinDemon,
+        Bird,
+        BerserkIdle,
+        KnightIdle,
+        WizardIdle,
+        AssassinIdle,
+        ArcherIdle,
+        Flag,
+        Torch1,
+        Torch2,
+    }
+
+    impl AssetId for Scene {
+        fn path(&self) -> String {
+            match self {
+                Self::MenuBackground => "images/scenes/menu/menu-background.png".to_string(),
+                Self::Scroll => "images/scenes/menu/scroll.png".to_string(),
+                Self::TitleText => "images/scenes/menu/title-text.png".to_string(),
+                Self::LargeRamhead => "images/scenes/menu/anim-large-ramhead.png".to_string(),
+                Self::RamheadWiz => "images/scenes/menu/anim-ramhead-wiz.png".to_string(),
+                Self::FireDemon1 => "images/scenes/menu/anim-fire-demon-1.png".to_string(),
+                Self::FireDemon2 => "images/scenes/menu/anim-fire-demon-2.png".to_string(),
+                Self::Ramhead => "images/scenes/menu/anim-ramhead.png".to_string(),
+                Self::AssassinDemon => "images/scenes/menu/anim-assassin-demon.png".to_string(),
+                Self::Bird => "images/scenes/menu/anim-bird.png".to_string(),
+                Self::BerserkIdle => "images/scenes/menu/static-hero-berserk.png".to_string(),
+                Self::KnightIdle => "images/scenes/menu/static-hero-knight.png".to_string(),
+                Self::WizardIdle => "images/scenes/menu/static-hero-wizard.png".to_string(),
+                Self::AssassinIdle => "images/scenes/menu/static-hero-assassin.png".to_string(),
+                Self::ArcherIdle => "images/scenes/menu/static-hero-archer.png".to_string(),
+                Self::Flag => "images/scenes/menu/anim-flag.png".to_string(),
+                Self::Torch1 => "images/scenes/menu/anim-torch-1.png".to_string(),
+                Self::Torch2 => "images/scenes/menu/anim-torch-2.png".to_string(),
+            }
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
+        }
+    }
 }

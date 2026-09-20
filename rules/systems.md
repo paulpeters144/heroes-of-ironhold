@@ -2,6 +2,29 @@
 
 - Every system is registered with the scene's `SystemAgg` and run through it. The scene's `update` / `draw` / `draw_ui` methods do nothing but delegate to the aggregate. Never hold a system in a scene field and never call a system's methods directly.
 
+## Scenes are modular — never cross-import between them
+
+Each scene owns its systems. A system file lives under the scene that uses it (`src/scene/<name>/sys_*.rs`). Never import a system from one scene into another, even if the logic is identical. If two scenes need the same kind of system, each scene gets its own copy with its own constants and tuning. Shared infrastructure (the `SystemAgg`, `DrawSystem`, event bus, store) lives in `src/systems/` or `src/util/` — but scene-specific logic stays local.
+
+## Do: each scene has its own copy of a system
+
+```rust
+// src/scene/menu/sys_animation.rs — menu's own animation system
+const FRAME_DURATION: f32 = 0.12;
+
+pub struct AnimationUpdateSystem { ... }
+
+// src/scene/menu/scene.rs
+use super::sys_animation::AnimationUpdateSystem; // local import
+```
+
+## Not: importing a system from another scene
+
+```rust
+// src/scene/menu/scene.rs
+use crate::scene::asset_preview::sys_animation::AnimationUpdateSystem; // no — crosses scene boundary
+```
+
 ## Do: register with the aggregate, delegate from the scene
 
 ```rust
