@@ -21,7 +21,7 @@ pub struct Shield;
 #[derive(Clone, Debug)]
 pub struct Sword;
 
-/// A named lock holding the knight still while a skill (e.g. Swords) is
+/// A named lock holding the knight still while a skill (e.g. Blade Barrage) is
 /// casting. While a `KnightLock` is a child of the knight, the control system
 /// skips movement and the attack systems skip the knight.
 #[derive(Clone, Debug)]

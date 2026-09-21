@@ -4,7 +4,7 @@ use heroes_of_ironhold_core::entity::{
 
 fn four_attacks() -> SkillsParts {
     SkillsFactory::create(&[
-        SkillSlotCfg::icon(SkillIconKind::Sword).direction(SkillDirection::Up),
+        SkillSlotCfg::icon(SkillIconKind::BladeBarrage).direction(SkillDirection::Up),
         SkillSlotCfg::icon(SkillIconKind::Shield).direction(SkillDirection::Right),
         SkillSlotCfg::icon(SkillIconKind::Fireball).direction(SkillDirection::Down),
         SkillSlotCfg::empty().direction(SkillDirection::Left),
@@ -16,7 +16,7 @@ fn slots_match_config_order() {
     let parts = four_attacks();
 
     let expected = [
-        Some(SkillIconKind::Sword),
+        Some(SkillIconKind::BladeBarrage),
         Some(SkillIconKind::Shield),
         Some(SkillIconKind::Fireball),
         None,
@@ -61,10 +61,10 @@ fn empty_slot_has_direction_but_no_icon() {
 
 #[test]
 fn icon_without_direction_has_none_direction() {
-    let parts = SkillsFactory::create(&[SkillSlotCfg::icon(SkillIconKind::Sword)]);
+    let parts = SkillsFactory::create(&[SkillSlotCfg::icon(SkillIconKind::BladeBarrage)]);
 
     assert_eq!(parts.slots.len(), 1);
     let slot = &parts.slots[0];
-    assert_eq!(slot.icon.map(|icon| icon.kind), Some(SkillIconKind::Sword));
+    assert_eq!(slot.icon.map(|icon| icon.kind), Some(SkillIconKind::BladeBarrage));
     assert_eq!(slot.skill.direction, None);
 }

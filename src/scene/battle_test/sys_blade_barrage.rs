@@ -15,7 +15,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-/// How long the knight is held in the thrust pose for a Swords cast (seconds).
+/// How long the knight is held in the thrust pose for a Blade Barrage cast (seconds).
 const LOCK_SECS: f32 = 0.5;
 /// How far a sword travels from its spawn x before despawning (world units).
 const SWORD_RANGE: f32 = 400.0; // the visible view width (cfg.v_width)
@@ -81,7 +81,7 @@ struct FlyingSword {
 #[derive(Clone, Debug)]
 struct FlyingSwordMark;
 
-pub struct SwordsSkillSystem {
+pub struct BladeBarrageSkillSystem {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
     queue: Rc<RefCell<VecDeque<SkillCastEvent>>>,
@@ -140,7 +140,7 @@ fn load_sword_material(assets: &Assets) -> Option<Material> {
     }
 }
 
-impl SwordsSkillSystem {
+impl BladeBarrageSkillSystem {
     pub fn new(store: Rc<EStore>, bus: Rc<EventBus>, assets: &Assets) -> Self {
         let queue = Rc::new(RefCell::new(VecDeque::new()));
         let subs = Rc::new(SubCollection::new());
@@ -168,7 +168,7 @@ impl SwordsSkillSystem {
         if !self.swords.is_empty() {
             return;
         }
-        if event.kind != SkillIconKind::Sword {
+        if event.kind != SkillIconKind::BladeBarrage {
             return;
         }
 
@@ -233,7 +233,7 @@ impl SwordsSkillSystem {
             .get_by_id::<Knight>(knight_ref.id())
             .expect("knight alive during cast");
         self.store
-            .add(knight, &[KnightLock { by: "SwordsSkill" }.into_child()]);
+            .add(knight, &[KnightLock { by: "BladeBarrage" }.into_child()]);
 
         // Swords travel along the knight's facing: purely horizontal.
         let dir_x = match facing {
@@ -383,7 +383,7 @@ impl SwordsSkillSystem {
                     area.rects = vec![r];
                     area.visible = true;
                 });
-                SwordsSkillSystem::spawn_fx(&mut *sword, rect.center());
+                BladeBarrageSkillSystem::spawn_fx(&mut *sword, rect.center());
             }
         }
 
@@ -706,7 +706,7 @@ impl SwordsSkillSystem {
     }
 }
 
-impl System for SwordsSkillSystem {
+impl System for BladeBarrageSkillSystem {
     fn update(&mut self, ctx: &mut Context) {
         let events: Vec<SkillCastEvent> = self.queue.borrow_mut().drain(..).collect();
         for event in events {

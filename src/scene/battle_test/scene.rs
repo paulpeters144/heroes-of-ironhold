@@ -14,7 +14,7 @@ use super::sys_orb::CameraOrbSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
 use super::sys_shield_toss::ShieldTossSystem;
 use super::sys_skill::SkillSystem;
-use super::sys_swords_skill::SwordsSkillSystem;
+use super::sys_blade_barrage::BladeBarrageSkillSystem;
 use crate::entity::{
     Dash, EnemyFactory, EnemyStats, HealthBar, HeroFactory, HeroStats, ImpactFrame, Knight,
     KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg, Shield, Skill,
@@ -60,7 +60,7 @@ impl BattleTestScene {
 
     fn spawn_skills_widget(&self) {
         let parts = SkillsFactory::create(&[
-            SkillSlotCfg::icon(SkillIconKind::Sword).direction(SkillDirection::Up),
+            SkillSlotCfg::icon(SkillIconKind::BladeBarrage).direction(SkillDirection::Up),
             SkillSlotCfg::icon(SkillIconKind::Consecration).direction(SkillDirection::Right),
             SkillSlotCfg::icon(SkillIconKind::ShieldToss).direction(SkillDirection::Down),
             SkillSlotCfg::icon(SkillIconKind::DivineStance).direction(SkillDirection::Left),
@@ -244,7 +244,7 @@ impl Scene for BattleTestScene {
                     &images::Enemy::RamHead,
                     &images::Enemy::RamHeadHit,
                     &images::Knight::Face,
-                    &images::SkillIcon::Swords,
+                    &images::SkillIcon::BladeBarrage,
                     &images::SkillIcon::Shield,
                     &images::SkillIcon::Blast,
                     &images::Ui::SkillSlot,
@@ -326,7 +326,7 @@ impl Scene for BattleTestScene {
                 self.bus.clone(),
                 movement_gate,
             ));
-            self.agg.add(SwordsSkillSystem::new(
+            self.agg.add(BladeBarrageSkillSystem::new(
                 self.store.clone(),
                 self.bus.clone(),
                 &self.assets,

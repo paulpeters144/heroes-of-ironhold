@@ -24,14 +24,14 @@ const CONSECRATION_GOLD: Color = Color::new(0.95, 0.82, 0.35, 1.0);
 #[derive(Clone)]
 pub struct SkillIconTextures {
     pub slot: Texture2D,
-    pub sword: Texture2D,
+    pub blade_barrage: Texture2D,
     pub shield: Texture2D,
     pub fireball: Texture2D,
 }
 
 fn skill_texture(kind: SkillIconKind, icons: &SkillIconTextures) -> Option<&Texture2D> {
     match kind {
-        SkillIconKind::Sword => Some(&icons.sword),
+        SkillIconKind::BladeBarrage => Some(&icons.blade_barrage),
         SkillIconKind::Shield => Some(&icons.shield),
         SkillIconKind::Fireball => Some(&icons.fireball),
         SkillIconKind::ShieldToss => Some(&icons.fireball),

@@ -2,7 +2,7 @@
 /// kind to a simple procedural glyph; swap for real textures later.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SkillIconKind {
-    Sword,
+    BladeBarrage,
     Shield,
     Potion,
     Fireball,

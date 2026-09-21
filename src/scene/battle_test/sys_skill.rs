@@ -74,7 +74,7 @@ impl SkillSystem {
         };
         let icons = SkillIconTextures {
             slot: assets.texture(images::Ui::SkillSlot),
-            sword: assets.texture(images::SkillIcon::Swords),
+            blade_barrage: assets.texture(images::SkillIcon::BladeBarrage),
             shield: assets.texture(images::SkillIcon::Shield),
             fireball: assets.texture(images::SkillIcon::Blast),
         };
@@ -176,7 +176,7 @@ impl SkillSystem {
 
 impl System for SkillSystem {
     fn update(&mut self, ctx: &mut Context) {
-        // While a skill holds the knight (e.g. mid-swords-cast) the selector
+        // While a skill holds the knight (e.g. mid-blade-barrage-cast) the selector
         // stays closed and no new cast can be started.
         if self
             .store

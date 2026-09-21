@@ -184,7 +184,7 @@ pub mod images {
 
     #[derive(Clone, Copy, Debug)]
     pub enum SkillIcon {
-        Swords,
+        BladeBarrage,
         Shield,
         Blast,
     }
@@ -192,7 +192,7 @@ pub mod images {
     impl AssetId for SkillIcon {
         fn path(&self) -> String {
             match self {
-                Self::Swords => "images/knight/icon-swords.png".to_string(),
+                Self::BladeBarrage => "images/knight/icon-swords.png".to_string(),
                 Self::Shield => "images/knight/icon-shield.png".to_string(),
                 Self::Blast => "images/knight/icon-blast.png".to_string(),
             }
