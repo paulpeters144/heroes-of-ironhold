@@ -25,6 +25,8 @@ const RECT_HEIGHT: f32 = 210.0;
 const AREA_SECS: f32 = 10.0;
 /// How long the knight is held in the thrust pose (seconds).
 const LOCK_SECS: f32 = 0.5;
+/// Minimum time between Divine Stance casts (seconds).
+const COOLDOWN_SECS: f32 = 1.0;
 /// Interval between heal ticks while the knight is inside (seconds).
 const HEAL_TICK_SECS: f32 = 0.5;
 /// Fraction of max HP restored per tick.
@@ -120,6 +122,8 @@ pub struct DivineStanceSystem {
     area_life: f32,
     /// Time left holding the knight in the thrust pose (LOCK_SECS).
     lock_remaining: f32,
+    /// Time left before the skill can be cast again (COOLDOWN_SECS).
+    cooldown_remaining: f32,
     /// Time until the next heal tick (HEAL_TICK_SECS).
     heal_timer: f32,
     /// Material running the zone's procedural magic-circle shader; None if
@@ -227,6 +231,7 @@ impl DivineStanceSystem {
             center: Vec2::ZERO,
             area_life: 0.0,
             lock_remaining: 0.0,
+            cooldown_remaining: 0.0,
             heal_timer: 0.0,
             glow_material: load_glow_material(assets),
             glow_tex: make_glow_texture(),
@@ -260,7 +265,7 @@ impl DivineStanceSystem {
         if event.kind != SkillIconKind::DivineStance {
             return;
         }
-        if self.active || self.lock_remaining > 0.0 {
+        if self.active || self.lock_remaining > 0.0 || self.cooldown_remaining > 0.0 {
             return;
         }
 
@@ -319,6 +324,7 @@ impl DivineStanceSystem {
         self.active = true;
         self.area_life = 0.0;
         self.lock_remaining = LOCK_SECS;
+        self.cooldown_remaining = COOLDOWN_SECS;
         self.heal_timer = HEAL_TICK_SECS;
         self.spawn_area(feet);
         self.spawn_sparks(feet);
@@ -683,6 +689,8 @@ impl System for DivineStanceSystem {
         for event in events {
             self.begin_cast(&event);
         }
+
+        self.cooldown_remaining = (self.cooldown_remaining - ctx.dt).max(0.0);
 
         if self.lock_remaining > 0.0 {
             self.lock_remaining -= ctx.dt;

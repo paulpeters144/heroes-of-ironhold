@@ -17,6 +17,8 @@ use std::rc::Rc;
 /// How long the knight is held in the swipe pose for a Shield Cycle cast
 /// (seconds), before the lock releases and the disc continues on its own.
 const STANCE_SECS: f32 = 0.3;
+/// Minimum time between Shield Toss casts (seconds).
+const COOLDOWN_SECS: f32 = 1.0;
 /// Horizontal top travel speed of the disc (world units per second).
 const DISC_SPEED: f32 = 600.0;
 /// How far the disc travels from its spawn x before despawning if it never
@@ -96,6 +98,7 @@ pub struct ShieldTossSystem {
     disc: Option<ShieldDisc>,
     caster: u64,
     stance_remaining: f32,
+    cooldown_remaining: f32,
     cast_dir: Vec2,
     /// Time left for the knight's golden channeling glow (seconds); starts at
     /// GLOW_SECS when the cast begins and drains each frame.
@@ -205,6 +208,7 @@ impl ShieldTossSystem {
             disc: None,
             caster: 0,
             stance_remaining: 0.0,
+            cooldown_remaining: 0.0,
             cast_dir: vec2(1.0, 0.0),
             glow_remaining: 0.0,
             disc_tex,
@@ -220,7 +224,7 @@ impl ShieldTossSystem {
         if event.kind != SkillIconKind::ShieldToss {
             return;
         }
-        if self.disc.is_some() || self.stance_remaining > 0.0 {
+        if self.disc.is_some() || self.stance_remaining > 0.0 || self.cooldown_remaining > 0.0 {
             return;
         }
 
@@ -287,6 +291,7 @@ impl ShieldTossSystem {
         };
         self.caster = event.caster;
         self.stance_remaining = STANCE_SECS;
+        self.cooldown_remaining = COOLDOWN_SECS;
         self.cast_dir = vec2(dir_x, 0.0);
         self.glow_remaining = GLOW_SECS;
 
@@ -726,6 +731,8 @@ impl System for ShieldTossSystem {
         for event in events {
             self.begin_cast(&event);
         }
+
+        self.cooldown_remaining = (self.cooldown_remaining - ctx.dt).max(0.0);
 
         if self.stance_remaining > 0.0 {
             self.stance_remaining -= ctx.dt;

@@ -20,6 +20,8 @@ const RECT_WIDTH: f32 = AREA_WIDTH * 0.96;
 const RECT_HEIGHT: f32 = AREA_WIDTH * 0.96 * 0.65;
 const AREA_SECS: f32 = 24.0;
 const LOCK_SECS: f32 = 0.25;
+/// Minimum time between Consecration casts (seconds).
+const COOLDOWN_SECS: f32 = 1.0;
 
 const SHARD_SPAWN_RATE: f32 = 6.0;
 
@@ -35,6 +37,7 @@ pub struct ConsecrationSystem {
     center: Vec2,
     area_life: f32,
     lock_remaining: f32,
+    cooldown_remaining: f32,
     sparks: Vec<Spark>,
     shards: Vec<RuneShard>,
     shard_timer: f32,
@@ -61,6 +64,7 @@ impl ConsecrationSystem {
             center: Vec2::ZERO,
             area_life: 0.0,
             lock_remaining: 0.0,
+            cooldown_remaining: 0.0,
             sparks: Vec::new(),
             shards: Vec::new(),
             shard_timer: 0.0,
@@ -72,7 +76,7 @@ impl ConsecrationSystem {
         if event.kind != SkillIconKind::Consecration {
             return;
         }
-        if self.active || self.lock_remaining > 0.0 {
+        if self.active || self.lock_remaining > 0.0 || self.cooldown_remaining > 0.0 {
             return;
         }
 
@@ -128,6 +132,7 @@ impl ConsecrationSystem {
         self.active = true;
         self.area_life = 0.0;
         self.lock_remaining = LOCK_SECS;
+        self.cooldown_remaining = COOLDOWN_SECS;
         self.spawn_area(feet);
         self.spawn_burst_sparks(feet);
         self.spawn_ground_component(feet, knight_ref.id());
@@ -297,6 +302,8 @@ impl System for ConsecrationSystem {
         for event in events {
             self.begin_cast(&event);
         }
+
+        self.cooldown_remaining = (self.cooldown_remaining - ctx.dt).max(0.0);
 
         if self.lock_remaining > 0.0 {
             self.lock_remaining -= ctx.dt;

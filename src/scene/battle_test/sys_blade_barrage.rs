@@ -17,6 +17,8 @@ use std::rc::Rc;
 
 /// How long the knight is held in the thrust pose for a Blade Barrage cast (seconds).
 const LOCK_SECS: f32 = 0.5;
+/// Minimum time between Blade Barrage casts (seconds).
+const COOLDOWN_SECS: f32 = 1.0;
 /// How far a sword travels from its spawn x before despawning (world units).
 const SWORD_RANGE: f32 = 400.0; // the visible view width (cfg.v_width)
 /// Swords spawned per cast.
@@ -90,6 +92,7 @@ pub struct BladeBarrageSkillSystem {
     cast_dir: Vec2,
     caster: u64,
     lock_remaining: f32,
+    cooldown_remaining: f32,
     /// Time left for the knight's golden channeling glow (seconds); starts at
     /// GLOW_SECS when the cast begins and drains each frame.
     glow_remaining: f32,
@@ -157,6 +160,7 @@ impl BladeBarrageSkillSystem {
             cast_dir: vec2(1.0, 0.0),
             caster: 0,
             lock_remaining: 0.0,
+            cooldown_remaining: 0.0,
             glow_remaining: 0.0,
             material: load_sword_material(assets),
             sheet_cache: None,
@@ -164,11 +168,12 @@ impl BladeBarrageSkillSystem {
     }
 
     fn begin_cast(&mut self, event: &SkillCastEvent) {
-        // Ignore casts while a cast is still active (swords still flying).
-        if !self.swords.is_empty() {
+        if event.kind != SkillIconKind::BladeBarrage {
             return;
         }
-        if event.kind != SkillIconKind::BladeBarrage {
+        // Ignore casts while a cast is still active (swords still flying) or
+        // the skill is still on cooldown.
+        if !self.swords.is_empty() || self.cooldown_remaining > 0.0 {
             return;
         }
 
@@ -243,6 +248,7 @@ impl BladeBarrageSkillSystem {
         self.cast_dir = vec2(dir_x, 0.0);
         self.caster = event.caster;
         self.lock_remaining = LOCK_SECS;
+        self.cooldown_remaining = COOLDOWN_SECS;
         self.glow_remaining = GLOW_SECS;
 
         // Spawn three swords ahead of the knight, fanned vertically around its
@@ -712,6 +718,8 @@ impl System for BladeBarrageSkillSystem {
         for event in events {
             self.begin_cast(&event);
         }
+
+        self.cooldown_remaining = (self.cooldown_remaining - ctx.dt).max(0.0);
 
         if self.swords.is_empty() {
             self.lock_remaining = 0.0;
