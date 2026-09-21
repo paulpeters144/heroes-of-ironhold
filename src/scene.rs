@@ -10,5 +10,5 @@ pub use battle_test::BattleTestScene;
 pub use factory::{SceneFactory, SceneId};
 pub use menu::MenuScene;
 pub use traits::Scene;
-pub use transition::{ChangeSceneEvent, LoadingScene, SceneFuture};
 pub(crate) use transition::SceneState;
+pub use transition::{ChangeSceneEvent, LoadingScene, SceneFuture};

@@ -5,7 +5,9 @@ mod frames;
 mod movement;
 
 pub use attack::AttackKind;
-pub use components::{DivineStance, Facing, GuardianShield, Knight, KnightLock, Shield, Sword};
+pub use components::{
+    Consecration, DivineStance, Facing, GuardianShield, Knight, KnightLock, Shield, Sword,
+};
 pub use effect::{Effect, EffectKind};
 pub use frames::FrameOffsets;
 

@@ -1,7 +1,7 @@
 use super::sys_camera::CameraSystem;
+use super::sys_consecration::ConsecrationSystem;
 use super::sys_divine_stance::DivineStanceSystem;
 use super::sys_enemy_death::EnemyDeathSystem;
-use super::sys_guardian_shield::GuardianShieldSystem;
 use super::sys_hud::HudDrawSystem;
 use super::sys_knight_attack::KnightAttackSystem;
 use super::sys_knight_attack_effects::KnightAttackEffectSystem;
@@ -61,7 +61,7 @@ impl BattleTestScene {
     fn spawn_skills_widget(&self) {
         let parts = SkillsFactory::create(&[
             SkillSlotCfg::icon(SkillIconKind::Sword).direction(SkillDirection::Up),
-            SkillSlotCfg::icon(SkillIconKind::Shield).direction(SkillDirection::Right),
+            SkillSlotCfg::icon(SkillIconKind::Consecration).direction(SkillDirection::Right),
             SkillSlotCfg::icon(SkillIconKind::ShieldToss).direction(SkillDirection::Down),
             SkillSlotCfg::icon(SkillIconKind::DivineStance).direction(SkillDirection::Left),
         ]);
@@ -304,6 +304,11 @@ impl Scene for BattleTestScene {
                 &self.assets,
             ));
             self.agg.add(DrawSystem::new(self.store.clone()));
+            self.agg.add(ConsecrationSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                &self.assets,
+            ));
             self.agg.add(HudDrawSystem::new(
                 self.cfg.clone(),
                 &self.assets,
@@ -322,11 +327,6 @@ impl Scene for BattleTestScene {
                 movement_gate,
             ));
             self.agg.add(SwordsSkillSystem::new(
-                self.store.clone(),
-                self.bus.clone(),
-                &self.assets,
-            ));
-            self.agg.add(GuardianShieldSystem::new(
                 self.store.clone(),
                 self.bus.clone(),
                 &self.assets,

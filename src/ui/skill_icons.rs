@@ -17,6 +17,7 @@ const GLASS: Color = Color::new(0.65, 0.68, 0.75, 1.0);
 const BONE: Color = Color::new(0.85, 0.88, 0.95, 1.0);
 const DIM: Color = Color::new(0.4, 0.42, 0.5, 1.0);
 const DIVINE_GOLD: Color = Color::new(1.0, 0.85, 0.3, 1.0);
+const CONSECRATION_GOLD: Color = Color::new(0.95, 0.82, 0.35, 1.0);
 
 /// Textures backing the skill icons, resolved at construction time. Kinds
 /// without a texture (Potion, Crossed, empty) fall back to procedural glyphs.
@@ -103,6 +104,7 @@ pub fn draw_skill_icon(
         (Some(SkillIconKind::Potion), None) => potion_icon(cx, cy, s),
         (Some(SkillIconKind::Crossed), None) => crossed_icon(cx, cy, s),
         (Some(SkillIconKind::DivineStance), None) => divine_stance_icon(cx, cy, s),
+        (Some(SkillIconKind::Consecration), None) => consecration_icon(cx, cy, s),
         _ => plus_icon(cx, cy, s),
     }
 }
@@ -145,6 +147,45 @@ fn divine_stance_icon(cx: f32, cy: f32, s: f32) {
         0.0,
         Color::new(1.0, 1.0, 0.75, 0.8),
     );
+}
+
+/// Silver rune circle for the consecration armor zone, with a bright core
+/// and four small orbiting sparkles.
+fn consecration_icon(cx: f32, cy: f32, s: f32) {
+    let r = s * 0.38;
+    let mut pts = [Vec2::ZERO; 6];
+    for (i, pt) in pts.iter_mut().enumerate() {
+        let a = i as f32 * std::f32::consts::TAU / 6.0 - std::f32::consts::FRAC_PI_2;
+        *pt = vec2(cx + a.cos() * r, cy + a.sin() * r * 0.7);
+    }
+    for i in 0..6 {
+        let a = pts[i];
+        let b = pts[(i + 1) % 6];
+        draw_line(a.x, a.y, b.x, b.y, 1.5, CONSECRATION_GOLD);
+    }
+    let inner_r = s * 0.22;
+    let mut inner = [Vec2::ZERO; 6];
+    for (i, pt) in inner.iter_mut().enumerate() {
+        let a = i as f32 * std::f32::consts::TAU / 6.0;
+        *pt = vec2(cx + a.cos() * inner_r, cy + a.sin() * inner_r * 0.7);
+    }
+    for i in 0..6 {
+        let a = inner[i];
+        let b = inner[(i + 1) % 6];
+        draw_line(a.x, a.y, b.x, b.y, 1.0, Color::new(1.0, 0.92, 0.6, 0.7));
+    }
+    let d = s * 0.15;
+    let diamond = [
+        vec2(cx, cy - d),
+        vec2(cx + d * 0.6, cy),
+        vec2(cx, cy + d),
+        vec2(cx - d * 0.6, cy),
+    ];
+    for i in 0..4 {
+        let a = diamond[i];
+        let b = diamond[(i + 1) % 4];
+        draw_line(a.x, a.y, b.x, b.y, 1.2, Color::new(1.0, 0.92, 0.6, 0.9));
+    }
 }
 
 /// Dim "+" for an empty slot.

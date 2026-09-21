@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use crate::entity::{EnemyStats, GuardianShield, HeroStats, Knight, RamHead};
+use crate::entity::{Consecration, EnemyStats, HeroStats, Knight, RamHead};
 use crate::events::{AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent};
 use crate::prelude::*;
 
@@ -133,9 +133,10 @@ impl System for KnightCombatSystem {
                 continue;
             };
 
-            // The guardian shield doubles the knight's armor while it's up.
-            let armor = if self.store.first::<GuardianShield>().is_some() {
-                armor * 2
+            // Consecration boosts the knight's armor by 25% while standing
+            // in the holy ground.
+            let armor = if self.store.first::<Consecration>().is_some() {
+                (armor as f32 * 1.25) as i32
             } else {
                 armor
             };

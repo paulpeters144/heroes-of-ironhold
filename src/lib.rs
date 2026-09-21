@@ -11,14 +11,14 @@ pub mod ui;
 mod util;
 
 // Infrastructure re-exports only
-pub use access::{DiskJsonStore, GameState, GameStateStore, SaveError};
-pub use access::Assets;
 pub use access::ids::{file, font, images, shader, sound, texture};
+pub use access::Assets;
+pub use access::{DiskJsonStore, GameState, GameStateStore, SaveError};
 pub use di::DiContainer;
+use manager::Manager;
 pub use util::Config;
 pub use util::EStore;
 pub use util::EventBus;
-use manager::Manager;
 
 pub fn window_conf() -> macroquad::prelude::Conf {
     Config::default().window_conf()

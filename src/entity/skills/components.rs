@@ -9,6 +9,7 @@ pub enum SkillIconKind {
     Crossed,
     ShieldToss,
     DivineStance,
+    Consecration,
 }
 
 /// Arrow direction this attack answers to while the skill selector is held.

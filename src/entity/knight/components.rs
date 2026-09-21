@@ -37,3 +37,9 @@ pub struct GuardianShield;
 /// it on cast and removes it when the zone expires.
 #[derive(Clone, Debug)]
 pub struct DivineStance;
+
+/// Marker for the knight's active consecration zone. Present in the store only
+/// while the holy ground persists; combat queries it to boost the knight's
+/// armor by 25%.
+#[derive(Clone, Debug)]
+pub struct Consecration;

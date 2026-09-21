@@ -1,7 +1,5 @@
 use super::impact_frame::ImpactFrame;
-use super::knight::{
-    Effect, EffectKind, Facing, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME,
-};
+use super::knight::{Effect, EffectKind, Facing, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME};
 use super::{Animation, CollisionRect, StaticImage};
 use macroquad::prelude::{Color, Rect, Texture2D, Vec2};
 

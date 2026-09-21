@@ -3,7 +3,7 @@ use crate::prelude::SubCollection;
 use crate::scene::{
     ChangeSceneEvent, LoadingScene, SceneFactory, SceneFuture, SceneId, SceneState,
 };
-use crate::util::{GameCamera, view_scale};
+use crate::util::{view_scale, GameCamera};
 use crate::{shader, Assets, Config, Context, DiContainer};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
 use macroquad::prelude::*;

@@ -7,6 +7,7 @@ enum DrawKind {
     Static(StaticImage),
     Bar(HealthBar),
     Text(FloatingText),
+    Procedural(ProceduralDrawable),
 }
 
 struct DrawCmd {
@@ -68,6 +69,16 @@ impl System for DrawSystem {
             });
         }
 
+        for drawable in self.store.all::<ProceduralDrawable>() {
+            if !drawable.visible {
+                continue;
+            }
+            cmds.push(DrawCmd {
+                z_idx: drawable.zdx(),
+                kind: DrawKind::Procedural(drawable.clone()),
+            });
+        }
+
         cmds.sort_by(|a, b| {
             a.z_idx
                 .partial_cmp(&b.z_idx)
@@ -80,6 +91,7 @@ impl System for DrawSystem {
                 DrawKind::Static(image) => image.draw(),
                 DrawKind::Bar(bar) => bar.draw(),
                 DrawKind::Text(text) => text.draw(),
+                DrawKind::Procedural(drawable) => drawable.draw(),
             }
         }
     }

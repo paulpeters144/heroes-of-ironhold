@@ -1,8 +1,8 @@
 mod scene;
 mod sys_camera;
+mod sys_consecration;
 mod sys_divine_stance;
 mod sys_enemy_death;
-mod sys_guardian_shield;
 mod sys_hud;
 mod sys_knight_attack;
 mod sys_knight_attack_effects;

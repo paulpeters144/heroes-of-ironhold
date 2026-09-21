@@ -11,6 +11,7 @@ mod animation;
 mod area_rect;
 mod attack_rect;
 mod collision_rect;
+mod consecration_aura;
 mod dash;
 mod drawable;
 mod factory_skills;
@@ -19,6 +20,7 @@ mod health_bar;
 mod hero;
 mod impact_frame;
 mod player;
+mod procedural_drawable;
 mod skills;
 mod static_image;
 
@@ -27,6 +29,7 @@ pub use animation::Animation;
 pub use area_rect::AreaRect;
 pub use attack_rect::AttackRect;
 pub use collision_rect::CollisionRect;
+pub use consecration_aura::{load_aura_material, ConsecrationAura};
 pub use dash::{Dash, DashCfg};
 pub use drawable::Drawable;
 pub use enemy::{EnemyStats, RamHead};
@@ -38,10 +41,12 @@ pub use health_bar::HealthBar;
 pub use hero::{CoreStat, HeroStats};
 pub use impact_frame::ImpactFrame;
 pub use knight::{
-    Effect, EffectKind, FrameOffsets, GuardianShield, Knight, KnightLock, Shield, Sword,
+    Consecration, Effect, EffectKind, FrameOffsets, GuardianShield, Knight, KnightLock, Shield,
+    Sword,
 };
 pub use player::{PlayerFactory, PlayerOne, PlayerTwo};
-pub use skills::{
-    LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget,
+pub use procedural_drawable::{
+    ConsecrationData, ProceduralDrawable, ProceduralEffect, RuneShard, Spark,
 };
+pub use skills::{LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
 pub use static_image::StaticImage;

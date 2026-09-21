@@ -2,7 +2,7 @@ use super::sys_knight_attack_effects::KnightAttackEffectSystem;
 use super::sys_knight_controls::KnightControlSystem;
 use super::sys_knight_offsets::KnightOffsetUpdateSystem;
 use crate::entity::factory_hero::{
-    FRAME_SIZE, HeroFactory, KnightCfg, SHIELD_SIZE, SWORD_FRAME_SIZE,
+    HeroFactory, KnightCfg, FRAME_SIZE, SHIELD_SIZE, SWORD_FRAME_SIZE,
 };
 use crate::entity::knight::{Knight, Shield, Sword, IDLE_FRAME};
 use crate::entity::{Dash, HeroStats, PlayerFactory, PlayerOne};

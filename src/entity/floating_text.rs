@@ -1,5 +1,5 @@
-use crate::util::view_scale;
 use super::Drawable;
+use crate::util::view_scale;
 use macroquad::prelude::{
     draw_text_ex, measure_text, vec2, Color, Font, Rect, TextParams, Vec2, WHITE,
 };
