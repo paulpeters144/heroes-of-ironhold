@@ -3,14 +3,11 @@ use crate::entity::knight::{Knight, KnightLock, IDLE_FRAME};
 use crate::entity::{
     LastUsedSkill, PlayerOne, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget,
 };
-use crate::events::{
-    SkillActiveEndEvent, SkillActiveEvent, SkillCastEvent, SkillCooldownEvent,
-};
+use crate::events::{SkillActiveEndEvent, SkillActiveEvent, SkillCastEvent, SkillCooldownEvent};
 use crate::input::{self, Input};
 use crate::prelude::*;
 use crate::ui::{
-    draw_rounded_rect, draw_rounded_rect_lines, draw_skill_slot, SkillIconTextures,
-    SKILL_SLOT_SIZE,
+    draw_rounded_rect, draw_rounded_rect_lines, draw_skill_slot, SkillIconTextures, SKILL_SLOT_SIZE,
 };
 use crate::util::view_scale;
 use crate::{images, Assets, Config};
@@ -67,7 +64,6 @@ const READY_RING: Color = Color::new(1.0, 0.85, 0.35, 1.0);
 // dark cooldown sweep, with a countdown of the zone's remaining lifetime.
 const ACTIVE_RING: Color = Color::new(1.0, 0.82, 0.3, 1.0);
 const ACTIVE_WASH: Color = Color::new(1.0, 0.82, 0.3, 0.16);
-
 
 /// Remaining/total cooldown for one skill, keyed by its icon kind.
 struct SkillCooldown {
@@ -325,7 +321,8 @@ impl System for SkillSystem {
 
         // Active-zone bookkeeping: start a zone on SkillActiveEvent, drop it on
         // SkillActiveEndEvent (flashing "ready"), and tick the countdown down.
-        let active_events: Vec<SkillActiveEvent> = self.active_queue.borrow_mut().drain(..).collect();
+        let active_events: Vec<SkillActiveEvent> =
+            self.active_queue.borrow_mut().drain(..).collect();
         for event in active_events {
             self.actives.insert(
                 event.kind,

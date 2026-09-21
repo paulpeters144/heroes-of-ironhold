@@ -1,4 +1,5 @@
 mod scene;
+mod sys_blade_barrage;
 mod sys_camera;
 mod sys_consecration;
 mod sys_divine_stance;
@@ -15,6 +16,5 @@ mod sys_orb;
 mod sys_ramhead_ai;
 mod sys_shield_toss;
 mod sys_skill;
-mod sys_blade_barrage;
 
 pub use scene::BattleTestScene;

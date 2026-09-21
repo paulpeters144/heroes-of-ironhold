@@ -170,8 +170,20 @@ fn consecration_icon(cx: f32, cy: f32, s: f32) {
     }
     let cross_len = s * 0.18;
     let cross_thick = 2.0;
-    draw_rectangle(cx - cross_len * 0.5, cy - cross_thick * 0.5, cross_len, cross_thick, CONSECRATION_GOLD);
-    draw_rectangle(cx - cross_thick * 0.5, cy - cross_len * 0.5, cross_thick, cross_len, CONSECRATION_GOLD);
+    draw_rectangle(
+        cx - cross_len * 0.5,
+        cy - cross_thick * 0.5,
+        cross_len,
+        cross_thick,
+        CONSECRATION_GOLD,
+    );
+    draw_rectangle(
+        cx - cross_thick * 0.5,
+        cy - cross_len * 0.5,
+        cross_thick,
+        cross_len,
+        CONSECRATION_GOLD,
+    );
 }
 
 /// Dim "+" for an empty slot.

@@ -65,6 +65,9 @@ fn icon_without_direction_has_none_direction() {
 
     assert_eq!(parts.slots.len(), 1);
     let slot = &parts.slots[0];
-    assert_eq!(slot.icon.map(|icon| icon.kind), Some(SkillIconKind::BladeBarrage));
+    assert_eq!(
+        slot.icon.map(|icon| icon.kind),
+        Some(SkillIconKind::BladeBarrage)
+    );
     assert_eq!(slot.skill.direction, None);
 }
