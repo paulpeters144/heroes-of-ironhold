@@ -2,7 +2,9 @@ use crate::entity::enemy::{EnemyStats, RamHead};
 use crate::entity::factory_hero::SHIELD_SIZE;
 use crate::entity::knight::{Facing, Knight, KnightLock, Shield, Sword, IDLE_FRAME, SWIPE_FRAME};
 use crate::entity::{PlayerOne, SkillIconKind};
-use crate::events::{EnemyDeathEvent, HealthChangeEvent, HitEvent, SkillCastEvent};
+use crate::events::{
+    EnemyDeathEvent, HealthChangeEvent, HitEvent, SkillCastEvent, SkillCooldownEvent,
+};
 use crate::prelude::*;
 use crate::util::{did_attack, image_data_for};
 use crate::{images, shader, Assets};
@@ -294,6 +296,10 @@ impl ShieldTossSystem {
         self.cooldown_remaining = COOLDOWN_SECS;
         self.cast_dir = vec2(dir_x, 0.0);
         self.glow_remaining = GLOW_SECS;
+        self.bus.fire(&SkillCooldownEvent {
+            kind: SkillIconKind::ShieldToss,
+            duration: COOLDOWN_SECS,
+        });
 
         // The disc projects from the knight's center (thrown down very
         // slightly) and is anchored on its own center, so offset the top-left

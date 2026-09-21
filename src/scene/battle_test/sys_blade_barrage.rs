@@ -2,7 +2,9 @@ use crate::entity::enemy::{EnemyStats, RamHead};
 use crate::entity::factory_hero::{SWORD_FRAME_COUNT, SWORD_FRAME_SIZE};
 use crate::entity::knight::{Facing, Knight, KnightLock, Shield, Sword, IDLE_FRAME, THRUST_FRAME};
 use crate::entity::{PlayerOne, SkillIconKind};
-use crate::events::{EnemyDeathEvent, HealthChangeEvent, HitEvent, SkillCastEvent};
+use crate::events::{
+    EnemyDeathEvent, HealthChangeEvent, HitEvent, SkillCastEvent, SkillCooldownEvent,
+};
 use crate::prelude::*;
 use crate::util::{did_attack, image_data_for};
 use crate::{shader, Assets};
@@ -250,6 +252,10 @@ impl BladeBarrageSkillSystem {
         self.lock_remaining = LOCK_SECS;
         self.cooldown_remaining = COOLDOWN_SECS;
         self.glow_remaining = GLOW_SECS;
+        self.bus.fire(&SkillCooldownEvent {
+            kind: SkillIconKind::BladeBarrage,
+            duration: COOLDOWN_SECS,
+        });
 
         // Spawn three swords ahead of the knight, fanned vertically around its
         // center at even spacing. X stays random; each sword stays invisible

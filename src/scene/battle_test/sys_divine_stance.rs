@@ -1,6 +1,8 @@
 use crate::entity::knight::{DivineStance, Knight, KnightLock, IDLE_FRAME, THRUST_FRAME};
 use crate::entity::{AreaRect, HeroStats, PlayerOne, SkillIconKind};
-use crate::events::{HealthChangeEvent, SkillCastEvent};
+use crate::events::{
+    HealthChangeEvent, SkillActiveEndEvent, SkillActiveEvent, SkillCastEvent, SkillCooldownEvent,
+};
 use crate::prelude::*;
 use crate::{shader, Assets};
 use macroquad::miniquad::{BlendFactor, BlendState, BlendValue, Equation};
@@ -328,6 +330,14 @@ impl DivineStanceSystem {
         self.heal_timer = HEAL_TICK_SECS;
         self.spawn_area(feet);
         self.spawn_sparks(feet);
+        self.bus.fire(&SkillCooldownEvent {
+            kind: SkillIconKind::DivineStance,
+            duration: COOLDOWN_SECS,
+        });
+        self.bus.fire(&SkillActiveEvent {
+            kind: SkillIconKind::DivineStance,
+            duration: AREA_SECS,
+        });
     }
 
     fn release_lock(&mut self) {
@@ -749,6 +759,9 @@ impl System for DivineStanceSystem {
                 self.motes.clear();
                 self.pulses.clear();
                 self.remove_area();
+                self.bus.fire(&SkillActiveEndEvent {
+                    kind: SkillIconKind::DivineStance,
+                });
             }
         }
     }

@@ -3,7 +3,7 @@ use crate::entity::{
     load_aura_material, AreaRect, ConsecrationAura, ConsecrationData, PlayerOne,
     ProceduralDrawable, ProceduralEffect, RuneShard, SkillIconKind, Spark,
 };
-use crate::events::SkillCastEvent;
+use crate::events::{SkillActiveEndEvent, SkillActiveEvent, SkillCastEvent, SkillCooldownEvent};
 use crate::prelude::*;
 use crate::Assets;
 use macroquad::prelude::*;
@@ -27,6 +27,7 @@ const SHARD_SPAWN_RATE: f32 = 6.0;
 
 pub struct ConsecrationSystem {
     store: Rc<EStore>,
+    bus: Rc<EventBus>,
     queue: Rc<RefCell<VecDeque<SkillCastEvent>>>,
     _subs: Rc<SubCollection>,
     area_ref: Option<EntityRef>,
@@ -54,6 +55,7 @@ impl ConsecrationSystem {
         });
         Self {
             store,
+            bus,
             queue,
             _subs: subs,
             area_ref: None,
@@ -137,6 +139,14 @@ impl ConsecrationSystem {
         self.spawn_burst_sparks(feet);
         self.spawn_ground_component(feet, knight_ref.id());
         self.spawn_aura_component(knight_ref.id());
+        self.bus.fire(&SkillCooldownEvent {
+            kind: SkillIconKind::Consecration,
+            duration: COOLDOWN_SECS,
+        });
+        self.bus.fire(&SkillActiveEvent {
+            kind: SkillIconKind::Consecration,
+            duration: AREA_SECS,
+        });
     }
 
     fn release_lock(&mut self) {
@@ -343,6 +353,9 @@ impl System for ConsecrationSystem {
                 self.sparks.clear();
                 self.shards.clear();
                 self.remove_area();
+                self.bus.fire(&SkillActiveEndEvent {
+                    kind: SkillIconKind::Consecration,
+                });
             }
         }
     }

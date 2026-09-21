@@ -1,6 +1,6 @@
 /// Placeholder icon identities for skill slots. The draw system maps each
 /// kind to a simple procedural glyph; swap for real textures later.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SkillIconKind {
     BladeBarrage,
     Shield,
