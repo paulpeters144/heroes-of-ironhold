@@ -133,10 +133,22 @@ impl System for KnightCombatSystem {
                 continue;
             };
 
-            // Consecration boosts the knight's armor by 25% while standing
-            // in the holy ground.
-            let armor = if self.store.first::<Consecration>().is_some() {
-                (armor as f32 * 1.25) as i32
+            // Consecration boosts the knight's armor by 25% while the knight's
+            // feet stand inside the holy ground.
+            let in_consecration = self
+                .store
+                .first::<Consecration>()
+                .map(|area| {
+                    let feet_x = rect.center().x;
+                    let feet_y = rect.y + rect.h;
+                    feet_x >= area.rect.x
+                        && feet_x <= area.rect.x + area.rect.w
+                        && feet_y >= area.rect.y
+                        && feet_y <= area.rect.y + area.rect.h
+                })
+                .unwrap_or(false);
+            let armor = if in_consecration {
+                (armor as f32 * 1.5) as i32
             } else {
                 armor
             };

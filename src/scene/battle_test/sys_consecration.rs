@@ -175,7 +175,7 @@ impl ConsecrationSystem {
         self.store.add(AreaRect { rect }, &[]);
         self.area_ref = self.store.all::<AreaRect>().map(|a| a.entity_ref()).last();
 
-        self.store.add(Consecration, &[]);
+        self.store.add(Consecration { rect }, &[]);
         self.marker_ref = self
             .store
             .all::<Consecration>()

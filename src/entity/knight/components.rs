@@ -1,3 +1,5 @@
+use macroquad::prelude::Rect;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Facing {
     Left,
@@ -39,7 +41,9 @@ pub struct GuardianShield;
 pub struct DivineStance;
 
 /// Marker for the knight's active consecration zone. Present in the store only
-/// while the holy ground persists; combat queries it to boost the knight's
-/// armor by 25%.
+/// while the holy ground persists; combat queries its `rect` to boost the
+/// knight's armor by 25% while the knight stands inside it.
 #[derive(Clone, Debug)]
-pub struct Consecration;
+pub struct Consecration {
+    pub rect: Rect,
+}
