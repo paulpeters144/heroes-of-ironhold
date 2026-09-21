@@ -30,7 +30,7 @@ const RIM: Color = Color::new(0.45, 0.48, 0.56, 1.0);
 const TRACK: Color = Color::new(0.2, 0.192, 0.243, 1.0);
 const CHARGE_TEXT: Color = Color::new(0.86, 0.88, 0.96, 1.0);
 const ICON_COLOR: Color = Color::new(0.82, 0.84, 0.92, 1.0);
-const SWEEP: Color = Color::new(0.02, 0.02, 0.05, 0.55);
+const COOLDOWN_GREY: Color = Color::new(0.45, 0.47, 0.55, 0.85);
 
 struct Ghost {
     texture: Texture2D,
@@ -187,25 +187,15 @@ impl KnightDashSystem {
         }
     }
 
-    /// Darkened wedge anchored at 12 o'clock, sweeping clockwise. `frac` is
-    /// the remaining cooldown fraction: 1.0 paints a full disc, 0.0 nothing.
-    fn radial_sweep(cx: f32, cy: f32, r: f32, frac: f32, color: Color) {
+    /// Grey cooldown overlay anchored at the bottom of the well; `frac` is the
+    /// remaining cooldown fraction: 1.0 paints the full square, 0.0 nothing.
+    /// Shrinks only in height, bottom edge stays fixed.
+    fn cooldown_shrink(ix: f32, iy: f32, size: f32, frac: f32, color: Color) {
         if frac <= 0.0 {
             return;
         }
-        let full = frac * std::f32::consts::TAU;
-        let steps = ((32.0 * frac).ceil() as usize).max(1);
-        let start = -std::f32::consts::FRAC_PI_2;
-        for i in 0..steps {
-            let a0 = start + full * (i as f32 / steps as f32);
-            let a1 = start + full * ((i + 1) as f32 / steps as f32);
-            draw_triangle(
-                vec2(cx, cy),
-                vec2(cx + a0.cos() * r, cy + a0.sin() * r),
-                vec2(cx + a1.cos() * r, cy + a1.sin() * r),
-                color,
-            );
-        }
+        let h = (size * frac).max(0.0);
+        draw_rectangle(ix, iy + size - h, size, h, color);
     }
 }
 
@@ -269,8 +259,7 @@ impl System for KnightDashSystem {
 
         if dash.charges < dash.cfg.max_charges && dash.recovery > 0.0 {
             let frac = (dash.recovery / dash.cfg.recover_secs).clamp(0.0, 1.0);
-            let r = (DASH_SIZE - 4.0) * 0.5;
-            Self::radial_sweep(cx, cy, r, frac, SWEEP);
+            Self::cooldown_shrink(x + 2.0, y + 2.0, DASH_SIZE - 4.0, frac, COOLDOWN_GREY);
         }
     }
 

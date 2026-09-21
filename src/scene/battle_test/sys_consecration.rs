@@ -194,6 +194,7 @@ impl ConsecrationSystem {
         let data = ConsecrationData {
             center,
             area_life: 0.0,
+            duration: AREA_SECS,
             sparks: Vec::new(),
             shards: Vec::new(),
         };

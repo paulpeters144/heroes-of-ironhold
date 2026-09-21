@@ -9,7 +9,6 @@ const BRIGHT_GOLD: Color = Color::new(1.0, 0.92, 0.6, 1.0);
 
 const APPEAR_SECS: f32 = 0.5;
 const FADE_OUT_SECS: f32 = 0.5;
-const AREA_SECS: f32 = 12.0;
 const RUNE_ROT_SPEED: f32 = 0.4;
 const RUNE_ROT_SPEED_REVERSE: f32 = -0.25;
 
@@ -36,6 +35,7 @@ pub struct RuneShard {
 pub struct ConsecrationData {
     pub center: Vec2,
     pub area_life: f32,
+    pub duration: f32,
     pub sparks: Vec<Spark>,
     pub shards: Vec<RuneShard>,
 }
@@ -240,7 +240,7 @@ impl ConsecrationData {
     fn draw(&self) {
         let appear = (self.area_life / APPEAR_SECS).min(1.0);
         let fade_out =
-            ((self.area_life - (AREA_SECS - FADE_OUT_SECS)) / FADE_OUT_SECS).clamp(0.0, 1.0);
+            ((self.area_life - (self.duration - FADE_OUT_SECS)) / FADE_OUT_SECS).clamp(0.0, 1.0);
         let vis = appear * (1.0 - fade_out);
 
         self.draw_ground_sheen(appear, fade_out);
