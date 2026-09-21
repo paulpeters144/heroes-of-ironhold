@@ -1,4 +1,4 @@
-use crate::entity::knight::{DivineArea, Knight, KnightLock, IDLE_FRAME, THRUST_FRAME};
+use crate::entity::knight::{DivineStance, Knight, KnightLock, IDLE_FRAME, THRUST_FRAME};
 use crate::entity::{AreaRect, HeroStats, PlayerOne, SkillIconKind};
 use crate::events::{HealthChangeEvent, SkillCastEvent};
 use crate::prelude::*;
@@ -102,7 +102,7 @@ struct Mote {
     tone: f32,
 }
 
-pub struct DivineAreaSystem {
+pub struct DivineStanceSystem {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
     queue: Rc<RefCell<VecDeque<SkillCastEvent>>>,
@@ -110,7 +110,7 @@ pub struct DivineAreaSystem {
     /// The store entity holding the debug-visible oval bounding box, spawned
     /// while the zone is active and removed on despawn.
     area_ref: Option<EntityRef>,
-    /// The `DivineArea` marker entity, spawned while the zone is active.
+    /// The `DivineStance` marker entity, spawned while the zone is active.
     marker_ref: Option<EntityRef>,
     /// Whether the zone is currently on the ground.
     active: bool,
@@ -149,7 +149,7 @@ pub struct DivineAreaSystem {
 /// composites over the ground.
 fn load_glow_material(assets: &Assets) -> Option<Material> {
     let vertex = assets.shader(shader::Shader::DashFxVert);
-    let fragment = assets.shader(shader::Shader::DivineAreaFrag);
+    let fragment = assets.shader(shader::Shader::DivineStanceFrag);
 
     let alpha = BlendState::new(
         Equation::Add,
@@ -180,7 +180,7 @@ fn load_glow_material(assets: &Assets) -> Option<Material> {
     ) {
         Ok(material) => Some(material),
         Err(err) => {
-            warn!("divine area golden material failed to compile: {}", err);
+            warn!("divine stance golden material failed to compile: {}", err);
             None
         }
     }
@@ -208,7 +208,7 @@ fn make_glow_texture() -> Texture2D {
     tex
 }
 
-impl DivineAreaSystem {
+impl DivineStanceSystem {
     pub fn new(store: Rc<EStore>, bus: Rc<EventBus>, assets: &Assets) -> Self {
         let queue = Rc::new(RefCell::new(VecDeque::new()));
         let subs = Rc::new(SubCollection::new());
@@ -257,7 +257,7 @@ impl DivineAreaSystem {
     fn begin_cast(&mut self, event: &SkillCastEvent) {
         // Ignore casts for other skills, and ignore a second cast while a zone
         // is already active or the cast lock is still running.
-        if event.kind != SkillIconKind::DivineArea {
+        if event.kind != SkillIconKind::DivineStance {
             return;
         }
         if self.active || self.lock_remaining > 0.0 {
@@ -313,7 +313,7 @@ impl DivineAreaSystem {
             .get_by_id::<Knight>(knight_ref.id())
             .expect("knight alive during cast");
         self.store
-            .add(knight, &[KnightLock { by: "DivineArea" }.into_child()]);
+            .add(knight, &[KnightLock { by: "DivineStance" }.into_child()]);
 
         self.center = feet;
         self.active = true;
@@ -356,7 +356,7 @@ impl DivineAreaSystem {
     }
 
     /// Spawns the debug-visible AreaRect (a bounding box larger than the drawn
-    /// oval) and the `DivineArea` marker at `center`.
+    /// oval) and the `DivineStance` marker at `center`.
     fn spawn_area(&mut self, center: Vec2) {
         let rect = Rect::new(
             center.x - RECT_WIDTH * 0.5,
@@ -367,15 +367,15 @@ impl DivineAreaSystem {
         self.store.add(AreaRect { rect }, &[]);
         self.area_ref = self.store.all::<AreaRect>().map(|a| a.entity_ref()).last();
 
-        self.store.add(DivineArea, &[]);
+        self.store.add(DivineStance, &[]);
         self.marker_ref = self
             .store
-            .all::<DivineArea>()
+            .all::<DivineStance>()
             .map(|d| d.entity_ref())
             .last();
     }
 
-    /// Removes the AreaRect and `DivineArea` marker when the zone expires.
+    /// Removes the AreaRect and `DivineStance` marker when the zone expires.
     fn remove_area(&mut self) {
         if let Some(area_ref) = self.area_ref.take() {
             self.store.remove(&[area_ref]);
@@ -677,7 +677,7 @@ impl DivineAreaSystem {
     }
 }
 
-impl System for DivineAreaSystem {
+impl System for DivineStanceSystem {
     fn update(&mut self, ctx: &mut Context) {
         let events: Vec<SkillCastEvent> = self.queue.borrow_mut().drain(..).collect();
         for event in events {

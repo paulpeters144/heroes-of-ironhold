@@ -88,7 +88,7 @@ struct ShieldDisc {
 #[derive(Clone, Debug)]
 struct ShieldDiscMark;
 
-pub struct ShieldCycleSystem {
+pub struct ShieldTossSystem {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
     queue: Rc<RefCell<VecDeque<SkillCastEvent>>>,
@@ -188,7 +188,7 @@ fn load_disc_material(assets: &Assets) -> Option<Material> {
     }
 }
 
-impl ShieldCycleSystem {
+impl ShieldTossSystem {
     pub fn new(store: Rc<EStore>, bus: Rc<EventBus>, assets: &Assets) -> Self {
         let queue = Rc::new(RefCell::new(VecDeque::new()));
         let subs = Rc::new(SubCollection::new());
@@ -217,7 +217,7 @@ impl ShieldCycleSystem {
     fn begin_cast(&mut self, event: &SkillCastEvent) {
         // Ignore casts for other skills, and a second cast while a disc is
         // already active or a stance is already running.
-        if event.kind != SkillIconKind::ShieldCycle {
+        if event.kind != SkillIconKind::ShieldToss {
             return;
         }
         if self.disc.is_some() || self.stance_remaining > 0.0 {
@@ -278,7 +278,7 @@ impl ShieldCycleSystem {
             .get_by_id::<Knight>(knight_ref.id())
             .expect("knight alive during cast");
         self.store
-            .add(knight, &[KnightLock { by: "ShieldCycle" }.into_child()]);
+            .add(knight, &[KnightLock { by: "ShieldToss" }.into_child()]);
 
         // The disc travels along the knight's facing: purely horizontal.
         let dir_x = match facing {
@@ -720,7 +720,7 @@ impl ShieldCycleSystem {
     }
 }
 
-impl System for ShieldCycleSystem {
+impl System for ShieldTossSystem {
     fn update(&mut self, ctx: &mut Context) {
         let events: Vec<SkillCastEvent> = self.queue.borrow_mut().drain(..).collect();
         for event in events {
@@ -742,7 +742,7 @@ impl System for ShieldCycleSystem {
     }
 
     fn draw(&self, _ctx: &Context) {
-        // Golden aura around the knight while the shield cycle cast is live.
+        // Golden aura around the knight while the shield toss cast is live.
         self.draw_knight_glow();
 
         let Some(disc) = &self.disc else {

@@ -1,5 +1,5 @@
 use super::sys_camera::CameraSystem;
-use super::sys_divine_area::DivineAreaSystem;
+use super::sys_divine_stance::DivineStanceSystem;
 use super::sys_enemy_death::EnemyDeathSystem;
 use super::sys_guardian_shield::GuardianShieldSystem;
 use super::sys_hud::HudDrawSystem;
@@ -12,7 +12,7 @@ use super::sys_knight_offsets::KnightOffsetUpdateSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
-use super::sys_shield_cycle::ShieldCycleSystem;
+use super::sys_shield_toss::ShieldTossSystem;
 use super::sys_skill::SkillSystem;
 use super::sys_swords_skill::SwordsSkillSystem;
 use crate::entity::{
@@ -62,8 +62,8 @@ impl BattleTestScene {
         let parts = SkillsFactory::create(&[
             SkillSlotCfg::icon(SkillIconKind::Sword).direction(SkillDirection::Up),
             SkillSlotCfg::icon(SkillIconKind::Shield).direction(SkillDirection::Right),
-            SkillSlotCfg::icon(SkillIconKind::ShieldCycle).direction(SkillDirection::Down),
-            SkillSlotCfg::icon(SkillIconKind::DivineArea).direction(SkillDirection::Left),
+            SkillSlotCfg::icon(SkillIconKind::ShieldToss).direction(SkillDirection::Down),
+            SkillSlotCfg::icon(SkillIconKind::DivineStance).direction(SkillDirection::Left),
         ]);
 
         self.store.add(parts.widget, &[]);
@@ -254,7 +254,7 @@ impl Scene for BattleTestScene {
                     &shader::Shader::DemonDeathFrag,
                     &shader::Shader::KnightGoldenGlowFrag,
                     &shader::Shader::SpinDiscFrag,
-                    &shader::Shader::DivineAreaFrag,
+                    &shader::Shader::DivineStanceFrag,
                 ])
                 .await;
 
@@ -298,7 +298,7 @@ impl Scene for BattleTestScene {
 
             self.agg
                 .add(MapDrawSystem::new(map, self.cfg.v_width, self.cfg.v_height));
-            self.agg.add(DivineAreaSystem::new(
+            self.agg.add(DivineStanceSystem::new(
                 self.store.clone(),
                 self.bus.clone(),
                 &self.assets,
@@ -331,7 +331,7 @@ impl Scene for BattleTestScene {
                 self.bus.clone(),
                 &self.assets,
             ));
-            self.agg.add(ShieldCycleSystem::new(
+            self.agg.add(ShieldTossSystem::new(
                 self.store.clone(),
                 self.bus.clone(),
                 &self.assets,

@@ -33,7 +33,7 @@ fn skill_texture(kind: SkillIconKind, icons: &SkillIconTextures) -> Option<&Text
         SkillIconKind::Sword => Some(&icons.sword),
         SkillIconKind::Shield => Some(&icons.shield),
         SkillIconKind::Fireball => Some(&icons.fireball),
-        SkillIconKind::ShieldCycle => Some(&icons.fireball),
+        SkillIconKind::ShieldToss => Some(&icons.fireball),
         _ => None,
     }
 }
@@ -102,7 +102,7 @@ pub fn draw_skill_icon(
         ),
         (Some(SkillIconKind::Potion), None) => potion_icon(cx, cy, s),
         (Some(SkillIconKind::Crossed), None) => crossed_icon(cx, cy, s),
-        (Some(SkillIconKind::DivineArea), None) => divine_area_icon(cx, cy, s),
+        (Some(SkillIconKind::DivineStance), None) => divine_stance_icon(cx, cy, s),
         _ => plus_icon(cx, cy, s),
     }
 }
@@ -128,7 +128,7 @@ fn crossed_icon(cx: f32, cy: f32, s: f32) {
 }
 
 /// Gold oval for the divine-area heal zone, with a soft bright core.
-fn divine_area_icon(cx: f32, cy: f32, s: f32) {
+fn divine_stance_icon(cx: f32, cy: f32, s: f32) {
     draw_ellipse(
         cx - s * 0.34,
         cy - s * 0.22,

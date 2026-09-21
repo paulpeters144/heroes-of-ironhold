@@ -317,7 +317,7 @@ pub use scene::AssetPreviewScene;
 
 mod scene;
 mod sys_camera;
-mod sys_divine_area;
+mod sys_divine_stance;
 mod sys_enemy_death;
 mod sys_guardian_shield;
 mod sys_hud;
@@ -330,7 +330,7 @@ mod sys_knight_offsets;            // added: copy from asset_preview
 mod sys_map_draw;
 mod sys_orb;
 mod sys_ramhead_ai;
-mod sys_shield_cycle;
+mod sys_shield_toss;
 mod sys_skill;
 mod sys_swords_skill;
 

@@ -32,8 +32,8 @@ pub struct KnightLock {
 #[derive(Clone, Debug)]
 pub struct GuardianShield;
 
-/// Marker for the knight's active divine-area healing zone. Present in the
-/// store only while the zone is on the ground; the `DivineAreaSystem` spawns
+/// Marker for the knight's active divine-stance healing zone. Present in the
+/// store only while the zone is on the ground; the `DivineStanceSystem` spawns
 /// it on cast and removes it when the zone expires.
 #[derive(Clone, Debug)]
-pub struct DivineArea;
+pub struct DivineStance;

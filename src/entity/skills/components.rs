@@ -7,8 +7,8 @@ pub enum SkillIconKind {
     Potion,
     Fireball,
     Crossed,
-    ShieldCycle,
-    DivineArea,
+    ShieldToss,
+    DivineStance,
 }
 
 /// Arrow direction this attack answers to while the skill selector is held.
