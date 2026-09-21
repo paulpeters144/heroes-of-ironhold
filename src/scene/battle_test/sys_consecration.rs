@@ -18,8 +18,8 @@ const AREA_WIDTH: f32 = 140.0;
 const AREA_HEIGHT: f32 = 90.0;
 const RECT_WIDTH: f32 = AREA_WIDTH * 0.96;
 const RECT_HEIGHT: f32 = AREA_WIDTH * 0.96 * 0.65;
-const AREA_SECS: f32 = 12.0;
-const LOCK_SECS: f32 = 0.5;
+const AREA_SECS: f32 = 24.0;
+const LOCK_SECS: f32 = 0.25;
 
 const SHARD_SPAWN_RATE: f32 = 6.0;
 

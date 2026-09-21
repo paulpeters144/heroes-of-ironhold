@@ -1,3 +1,4 @@
+use super::sys_blade_barrage::BladeBarrageSkillSystem;
 use super::sys_camera::CameraSystem;
 use super::sys_consecration::ConsecrationSystem;
 use super::sys_divine_stance::DivineStanceSystem;
@@ -14,7 +15,6 @@ use super::sys_orb::CameraOrbSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
 use super::sys_shield_toss::ShieldTossSystem;
 use super::sys_skill::SkillSystem;
-use super::sys_blade_barrage::BladeBarrageSkillSystem;
 use crate::entity::{
     Dash, EnemyFactory, EnemyStats, HealthBar, HeroFactory, HeroStats, ImpactFrame, Knight,
     KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg, Shield, Skill,
