@@ -90,8 +90,8 @@ impl BattleTestScene {
 
     fn spawn_player(&self) {
         let parts = HeroFactory::create_knight(KnightCfg {
-            outfit: self.assets.texture(images::Knight::Knight3),
-            sword: self.assets.texture(images::Knight::Sword3),
+            outfit: self.assets.texture(images::Knight::Knight2),
+            sword: self.assets.texture(images::Knight::Sword2),
             shield: self.assets.texture(images::Knight::Shield3),
             impact: self.assets.texture(images::Knight::Hit),
             thrust: self.assets.texture(images::Knight::ThrustGraphic),
