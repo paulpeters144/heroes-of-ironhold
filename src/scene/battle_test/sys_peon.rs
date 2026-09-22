@@ -3,7 +3,8 @@ use crate::entity::peon::{
     Peon, PeonStats, PEON_ATTACK_HIT1_FRAMES, PEON_ATTACK_HIT2_FRAMES, PEON_WALK_FRAMES,
 };
 use crate::entity::{
-    AttackRect, Consecration, HealthBar, ImpactFrame, Knight, PeonCfg, PeonFactory, PlayerOne,
+    AreaRect, AttackRect, Consecration, HealthBar, ImpactFrame, Knight, PeonCfg, PeonFactory,
+    PlayerOne,
 };
 use crate::events::{
     AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent, PeonDeathEvent,
@@ -22,6 +23,7 @@ use std::rc::Rc;
 const MOVE_SPEED: f32 = 60.0;
 const WALK_FRAME_DURATION: f32 = 0.12;
 const ATTACK_RANGE: f32 = 55.0;
+const CHASE_RANGE: f32 = 300.0;
 const ATTACK_FRAME_DURATION: f32 = 0.08;
 const RECOVER_SECS: f32 = 0.4;
 const Y_BOUND_MIN: f32 = 40.0;
@@ -39,9 +41,10 @@ const DUST_MID: Color = Color::new(0.7, 0.7, 0.65, 1.0);
 const DUST_DARK: Color = Color::new(0.4, 0.4, 0.38, 1.0);
 
 const SPAWN_INTERVAL: f32 = 4.5;
-const SPAWN_X: f32 = -32.0;
-const SPAWN_Y: f32 = 200.0;
-const SPAWN_Y_JITTER: f32 = 20.0;
+const SPAWN_AREA_X: f32 = 0.0;
+const SPAWN_AREA_Y: f32 = 125.0;
+const SPAWN_AREA_W: f32 = 50.0;
+const SPAWN_AREA_H: f32 = 200.0;
 
 fn mitigated_damage(raw: i32, armor: i32) -> i32 {
     (raw - armor).max(1)
@@ -149,6 +152,13 @@ impl PeonSystem {
             dq.borrow_mut().push_back(event.clone());
         });
 
+        store.add(
+            AreaRect {
+                rect: Rect::new(SPAWN_AREA_X, SPAWN_AREA_Y, SPAWN_AREA_W, SPAWN_AREA_H),
+            },
+            &[],
+        );
+
         Self {
             store,
             bus,
@@ -170,8 +180,9 @@ impl PeonSystem {
             body: self.body.clone(),
             impact: self.impact.clone(),
         });
-        let y_jitter = gen_range(-SPAWN_Y_JITTER, SPAWN_Y_JITTER);
-        parts.body.position = vec2(SPAWN_X, SPAWN_Y + y_jitter);
+        let x = SPAWN_AREA_X + gen_range(0.0, SPAWN_AREA_W);
+        let y = SPAWN_AREA_Y + gen_range(0.0, SPAWN_AREA_H);
+        parts.body.position = vec2(x, y);
         self.store.add(
             parts.marker,
             &[
@@ -484,11 +495,23 @@ impl System for PeonSystem {
                         }
 
                         let separation_force = separation * SEPARATION_WEIGHT;
-                        let mut new_pos =
-                            peon_pos + vec2(MOVE_SPEED * dt, 0.0) + separation_force * dt;
-                        if new_pos.x < peon_pos.x {
-                            new_pos.x = peon_pos.x;
-                        }
+
+                        let move_dir = if let Some((_, enemy_pos)) = nearest_enemy {
+                            if distance_to_enemy <= CHASE_RANGE {
+                                let delta = *enemy_pos - peon_pos;
+                                if delta.length() > 0.001 {
+                                    delta.normalize()
+                                } else {
+                                    vec2(1.0, 0.0)
+                                }
+                            } else {
+                                vec2(1.0, 0.0)
+                            }
+                        } else {
+                            vec2(1.0, 0.0)
+                        };
+
+                        let mut new_pos = peon_pos + move_dir * MOVE_SPEED * dt + separation_force * dt;
                         if let Some(max_x) = knight_x.map(|kx| kx + MAX_PAST_KNIGHT) {
                             new_pos.x = new_pos.x.min(max_x);
                         }

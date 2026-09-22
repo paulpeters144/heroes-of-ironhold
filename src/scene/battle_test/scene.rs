@@ -298,7 +298,7 @@ impl Scene for BattleTestScene {
             let cy = map_h * 0.5;
             let spacing = 45.0;
             let jitter = 40.0;
-            for row in 0..2 {
+            for row in 0..1 {
                 for col in 0..5 {
                     let offset = vec2(
                         (col as f32 - 2.0) * spacing + gen_range(-jitter, jitter),
