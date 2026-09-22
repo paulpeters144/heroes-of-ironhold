@@ -1,19 +1,23 @@
-use crate::entity::{AttackRect, EnemyFactory, EnemyStats, HealthBar, ImpactFrame, RamHead, RamHeadCfg};
+use crate::entity::{
+    AreaRect, AttackRect, EnemyFactory, EnemyStats, HealthBar, ImpactFrame, RamHead, RamHeadCfg,
+};
 use crate::prelude::*;
 use crate::{images, Assets};
 use macroquad::prelude::*;
+use macroquad::rand::gen_range;
 use pico_entity_store::store::IntoChild;
 use std::rc::Rc;
 
 const SPAWN_INTERVAL: f32 = 2.0;
-const SPAWN_Y: f32 = 200.0;
-const SPAWN_OFFSET_X: f32 = 32.0;
+const SPAWN_AREA_Y: f32 = 125.0;
+const SPAWN_AREA_W: f32 = 50.0;
+const SPAWN_AREA_H: f32 = 200.0;
 
 pub struct RamHeadSpawnerSystem {
     store: Rc<EStore>,
     body: Texture2D,
     impact: Texture2D,
-    spawn_x: f32,
+    spawn_area_x: f32,
     spawn_timer: f32,
 }
 
@@ -21,11 +25,20 @@ impl RamHeadSpawnerSystem {
     pub fn new(store: Rc<EStore>, assets: &Assets, map_w: f32) -> Self {
         let body = assets.texture(images::Enemy::RamHead);
         let impact = assets.texture(images::Enemy::RamHeadHit);
+
+        let spawn_area_x = map_w - SPAWN_AREA_W;
+        store.add(
+            AreaRect {
+                rect: Rect::new(spawn_area_x, SPAWN_AREA_Y, SPAWN_AREA_W, SPAWN_AREA_H),
+            },
+            &[],
+        );
+
         Self {
             store,
             body,
             impact,
-            spawn_x: map_w + SPAWN_OFFSET_X,
+            spawn_area_x,
             spawn_timer: SPAWN_INTERVAL,
         }
     }
@@ -35,7 +48,9 @@ impl RamHeadSpawnerSystem {
             body: self.body.clone(),
             impact: self.impact.clone(),
         });
-        parts.body.position = vec2(self.spawn_x, SPAWN_Y);
+        let x = self.spawn_area_x + gen_range(0.0, SPAWN_AREA_W);
+        let y = SPAWN_AREA_Y + gen_range(0.0, SPAWN_AREA_H);
+        parts.body.position = vec2(x, y);
         self.store.add(
             parts.marker,
             &[
