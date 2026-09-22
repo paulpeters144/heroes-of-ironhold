@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2-2-geb83ddb9" orientation="orthogonal" renderorder="right-down" width="125" height="25" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="1">
+<map version="1.10" tiledversion="1.12.2-2-geb83ddb9" orientation="orthogonal" renderorder="right-down" width="125" height="25" tilewidth="16" tileheight="16" infinite="0" nextlayerid="6" nextobjectid="4">
  <tileset firstgid="1" source="hoi-bg-pixelated.tsx"/>
  <tileset firstgid="151" source="hoi-chars.tsx"/>
  <layer id="2" name="far-mountains" width="125" height="25">
@@ -89,4 +89,8 @@
 137,138,139,140,141,142,143,144,145,146,147,148,149,150,137,138,139,140,141,142,143,144,145,146,147,148,149,150,137,138,139,140,141,142,143,144,145,146,147,148,149,150,137,138,139,140,141,142,143,144,145,146,147,148,149,150,137,138,139,140,141,142,143,144,145,146,147,148,149,150,137,138,139,140,141,142,143,144,145,146,147,148,149,150,137,138,139,140,141,142,143,144,145,146,147,148,149,150,137,138,139,140,141,142,143,144,145,146,147,148,149,150,137,138,139,140,141,142,143,144,145,146,147,148,149
 </data>
  </layer>
+ <objectgroup id="5" name="collisions">
+  <object id="1" x="-1.33333" y="26.3333" width="2000" height="63.3333"/>
+  <object id="3" x="-1.33333" y="387" width="2000" height="63.3333"/>
+ </objectgroup>
 </map>

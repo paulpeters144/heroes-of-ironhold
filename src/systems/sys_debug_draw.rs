@@ -1,6 +1,6 @@
 use crate::entity::AreaRect;
 use crate::prelude::*;
-use macroquad::prelude::{draw_circle_lines, draw_rectangle_lines, vec2, Color, GREEN, YELLOW};
+use macroquad::prelude::{draw_circle_lines, draw_rectangle_lines, vec2, Color, BLUE, GREEN, YELLOW};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -60,6 +60,10 @@ impl System for DebugDrawSystem {
                 .and_then(|id| body_centers.get(&id).copied())
                 .unwrap_or(circle.center);
             draw_circle_lines(center.x, center.y, circle.radius, 2.0, color);
+        }
+
+        for rect in self.store.all::<CollisionRect>() {
+            draw_rectangle_lines(rect.rect.x, rect.rect.y, rect.rect.w, rect.rect.h, 2.0, BLUE);
         }
     }
 }

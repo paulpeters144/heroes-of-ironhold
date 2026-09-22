@@ -1,6 +1,6 @@
 use crate::entity::CollisionGroup;
 use crate::prelude::*;
-use macroquad::prelude::{vec2, Vec2};
+use macroquad::prelude::{vec2, Rect, Vec2};
 use pico_entity_store::entity_ref::EntityRef;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -32,6 +32,52 @@ fn groups_interact(a: CollisionGroup, b: CollisionGroup) -> bool {
         (a, b),
         (CollisionGroup::Hero, CollisionGroup::Peon) | (CollisionGroup::Peon, CollisionGroup::Hero)
     )
+}
+
+/// Whether a circle overlaps an axis-aligned rectangle (without moving it).
+fn circle_rect_overlap(center: Vec2, radius: f32, rect: &Rect) -> bool {
+    let closest_x = center.x.clamp(rect.x, rect.x + rect.w);
+    let closest_y = center.y.clamp(rect.y, rect.y + rect.h);
+    let dx = center.x - closest_x;
+    let dy = center.y - closest_y;
+    dx * dx + dy * dy < radius * radius
+}
+
+/// Push a circle out of an axis-aligned rectangle. Returns `true` if the circle
+/// was moved.
+fn resolve_circle_rect(center: &mut Vec2, radius: f32, rect: &Rect) -> bool {
+    let closest_x = center.x.clamp(rect.x, rect.x + rect.w);
+    let closest_y = center.y.clamp(rect.y, rect.y + rect.h);
+    let dx = center.x - closest_x;
+    let dy = center.y - closest_y;
+    let dist_sq = dx * dx + dy * dy;
+    if dist_sq >= radius * radius {
+        return false;
+    }
+
+    if dist_sq > f32::EPSILON {
+        let dist = dist_sq.sqrt();
+        let push = radius - dist;
+        center.x += dx / dist * push;
+        center.y += dy / dist * push;
+    } else {
+        // Center is inside the rect; push out along the smallest penetration axis.
+        let left = center.x - rect.x;
+        let right = rect.x + rect.w - center.x;
+        let top = center.y - rect.y;
+        let bottom = rect.y + rect.h - center.y;
+        let min = left.min(right).min(top).min(bottom);
+        if min == left {
+            center.x = rect.x - radius;
+        } else if min == right {
+            center.x = rect.x + rect.w + radius;
+        } else if min == top {
+            center.y = rect.y - radius;
+        } else {
+            center.y = rect.y + rect.h + radius;
+        }
+    }
+    true
 }
 
 pub struct CollisionCircleSystem {
@@ -82,12 +128,17 @@ impl CollisionCircleSystem {
         }
         colliders
     }
+
+    fn collect_rects(&self) -> Vec<Rect> {
+        self.store.all::<CollisionRect>().map(|r| r.rect).collect()
+    }
 }
 
 impl System for CollisionCircleSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let bodies = self.collect_bodies();
         let mut colliders = self.collect_colliders(&bodies);
+        let rects = self.collect_rects();
 
         for c in &mut colliders {
             if let Some(body) = c.body {
@@ -111,7 +162,9 @@ impl System for CollisionCircleSystem {
                 j != idx
                     && groups_interact(c.group, other.group)
                     && circles_overlap(vec2(target.x, prev.y), c.radius, other)
-            });
+            }) || rects
+                .iter()
+                .any(|r| circle_rect_overlap(vec2(target.x, prev.y), c.radius, r));
             let cx = if blocked_x { prev.x } else { target.x };
 
             let blocked_y = colliders
@@ -121,7 +174,10 @@ impl System for CollisionCircleSystem {
                     j != idx
                         && groups_interact(c.group, other.group)
                         && circles_overlap(vec2(cx, target.y), c.radius, other)
-                });
+                })
+                || rects
+                    .iter()
+                    .any(|r| circle_rect_overlap(vec2(cx, target.y), c.radius, r));
             let cy = if blocked_y { prev.y } else { target.y };
 
             let mut center = vec2(cx, cy);
@@ -142,6 +198,11 @@ impl System for CollisionCircleSystem {
                             vec2(1.0, 0.0)
                         };
                         center += dir * (min_dist - dist);
+                        pushed = true;
+                    }
+                }
+                for r in &rects {
+                    if resolve_circle_rect(&mut center, c.radius, r) {
                         pushed = true;
                     }
                 }

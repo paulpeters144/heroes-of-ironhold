@@ -18,9 +18,9 @@ use super::sys_ramhead_spawner::RamHeadSpawnerSystem;
 use super::sys_shield_toss::ShieldTossSystem;
 use super::sys_skill::SkillSystem;
 use crate::entity::{
-    AttackRect, Dash, EnemyFactory, EnemyStats, HealthBar, HeroFactory, HeroStats, ImpactFrame,
-    Knight, KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg, Shield, Skill,
-    SkillDirection, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsWidget, Sword,
+    AttackRect, CollisionRect, Dash, EnemyFactory, EnemyStats, HealthBar, HeroFactory, HeroStats,
+    ImpactFrame, Knight, KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg,
+    Shield, Skill, SkillDirection, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsWidget, Sword,
 };
 use crate::prelude::*;
 use crate::scene::Scene;
@@ -186,6 +186,12 @@ impl BattleTestScene {
         }
     }
 
+    fn spawn_collision_bounds(&self, map: &TiledMap) {
+        for collide in &map.collide_statics {
+            self.store.add(CollisionRect { rect: collide.0 }, &[]);
+        }
+    }
+
     fn build_map(&self) -> TiledMap {
         let tile_map = self.assets.file(file::File::TestTmx);
 
@@ -267,6 +273,8 @@ impl Scene for BattleTestScene {
             let map = self.build_map();
             let map_w = map.map_size.0 as f32 * map.tile_size.0 as f32;
             let map_h = map.map_size.1 as f32 * map.tile_size.1 as f32;
+
+            self.spawn_collision_bounds(&map);
 
             self.spawn_player();
 

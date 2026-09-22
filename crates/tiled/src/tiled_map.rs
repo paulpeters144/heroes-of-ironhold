@@ -107,7 +107,7 @@ impl TiledMap {
                     }
                     b"objectgroup" => {
                         let name = get_attr_string(&e, b"name").unwrap_or_default();
-                        in_collide_group = name == "collide";
+                        in_collide_group = name == "collide" || name == "collisions";
                         in_patrol_group = name == "patrol";
                     }
                     b"object" if in_collide_group => {
