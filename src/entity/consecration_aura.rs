@@ -135,24 +135,26 @@ impl ConsecrationAura {
             .and_then(|k| store.get_child::<Sword>(&k))
             .and_then(|s| store.get_child::<Animation>(&s))
         {
-            let source = Rect::new(
-                anim.current_frame as f32 * anim.frame_width,
-                0.0,
-                anim.frame_width,
-                anim.frame_height,
-            );
-            draw_texture_ex(
-                &anim.source,
-                anim.position.x,
-                anim.position.y,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(anim.dest_size * anim.scale),
-                    source: Some(source),
-                    flip_x: anim.flip_x,
-                    ..Default::default()
-                },
-            );
+            if anim.visible {
+                let source = Rect::new(
+                    anim.current_frame as f32 * anim.frame_width,
+                    0.0,
+                    anim.frame_width,
+                    anim.frame_height,
+                );
+                draw_texture_ex(
+                    &anim.source,
+                    anim.position.x,
+                    anim.position.y,
+                    WHITE,
+                    DrawTextureParams {
+                        dest_size: Some(anim.dest_size * anim.scale),
+                        source: Some(source),
+                        flip_x: anim.flip_x,
+                        ..Default::default()
+                    },
+                );
+            }
         }
 
         gl_use_default_material();
