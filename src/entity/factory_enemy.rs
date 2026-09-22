@@ -4,7 +4,7 @@ use super::{Animation, CollisionCircle, StaticImage};
 use macroquad::prelude::{Color, Texture2D, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;
-pub const COLLISION_RADIUS_SCALE: f32 = 0.1875;
+pub const COLLISION_RADIUS_SCALE: f32 = 0.095;
 
 pub struct RamHeadParts {
     pub marker: RamHead,

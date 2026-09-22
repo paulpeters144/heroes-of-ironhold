@@ -14,11 +14,11 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-const AREA_WIDTH: f32 = 140.0;
-const AREA_HEIGHT: f32 = 90.0;
+const AREA_WIDTH: f32 = 245.0;
+const AREA_HEIGHT: f32 = 157.5;
 const RECT_WIDTH: f32 = AREA_WIDTH * 0.96;
 const RECT_HEIGHT: f32 = AREA_WIDTH * 0.96 * 0.65;
-const AREA_SECS: f32 = 24.0;
+const AREA_SECS: f32 = 20.0;
 const LOCK_SECS: f32 = 0.25;
 /// Minimum time between Consecration casts (seconds).
 const COOLDOWN_SECS: f32 = 1.0;

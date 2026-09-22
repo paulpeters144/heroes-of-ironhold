@@ -2,7 +2,9 @@ use crate::entity::enemy::{EnemyStats, RamHead};
 use crate::entity::peon::{
     Peon, PeonStats, PEON_ATTACK_HIT1_FRAMES, PEON_ATTACK_HIT2_FRAMES, PEON_WALK_FRAMES,
 };
-use crate::entity::{AttackRect, HealthBar, ImpactFrame, PeonCfg, PeonFactory};
+use crate::entity::{
+    AttackRect, Consecration, HealthBar, ImpactFrame, Knight, PeonCfg, PeonFactory, PlayerOne,
+};
 use crate::events::{
     AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent, PeonDeathEvent,
 };
@@ -27,6 +29,7 @@ const Y_BOUND_MAX: f32 = 360.0;
 const SEPARATION_RADIUS: f32 = 50.0;
 const SEPARATION_WEIGHT: f32 = 120.0;
 const DESPAWN_MARGIN: f32 = 80.0;
+const MAX_PAST_KNIGHT: f32 = 100.0;
 
 const DEATH_DURATION: f32 = 0.8;
 const DEATH_PARTICLE_COUNT: usize = 16;
@@ -410,6 +413,13 @@ impl System for PeonSystem {
             })
             .collect();
 
+        let knight_x: Option<f32> = self
+            .store
+            .first::<PlayerOne>()
+            .and_then(|player| self.store.get_child::<Knight>(&player))
+            .and_then(|knight| self.store.get_child::<Animation>(&knight))
+            .map(|anim| anim.position.x);
+
         let mut anim_writes: Vec<AnimWrite> = Vec::new();
         let mut area_writes: Vec<AttackRectWrite> = Vec::new();
         let mut attack_events: Vec<AttackEvent> = Vec::new();
@@ -478,6 +488,9 @@ impl System for PeonSystem {
                             peon_pos + vec2(MOVE_SPEED * dt, 0.0) + separation_force * dt;
                         if new_pos.x < peon_pos.x {
                             new_pos.x = peon_pos.x;
+                        }
+                        if let Some(max_x) = knight_x.map(|kx| kx + MAX_PAST_KNIGHT) {
+                            new_pos.x = new_pos.x.min(max_x);
                         }
                         new_pos.y = new_pos.y.clamp(Y_BOUND_MIN, Y_BOUND_MAX);
 
@@ -704,18 +717,36 @@ impl System for PeonSystem {
         }
 
         while let Some(event) = self.enemy_attack_queue.borrow_mut().pop_front() {
-            let Some((stats_ref, rect, armor)) =
+            let Some((stats_ref, rect)) =
                 self.store.get_by_id::<Peon>(event.target).and_then(|p| {
                     let sr = self.store.get_child::<PeonStats>(&p)?.entity_ref();
-                    let armor = self.store.get_child::<PeonStats>(&p)?.armor;
                     let rect = self.store.get_child::<Animation>(&p)?.rect();
-                    Some((sr, rect, armor))
+                    Some((sr, rect))
                 })
             else {
                 continue;
             };
 
-            let damage = mitigated_damage(event.damage, armor);
+            // Consecration lets the peon deduct more armor while its feet stand
+            // inside the holy ground (same buff the knight receives).
+            let in_consecration = self
+                .store
+                .first::<Consecration>()
+                .map(|area| {
+                    let feet_x = rect.center().x;
+                    let feet_y = rect.y + rect.h;
+                    feet_x >= area.rect.x
+                        && feet_x <= area.rect.x + area.rect.w
+                        && feet_y >= area.rect.y
+                        && feet_y <= area.rect.y + area.rect.h
+                })
+                .unwrap_or(false);
+
+            let damage = self
+                .store
+                .get_by_id::<PeonStats>(stats_ref.id())
+                .map(|stats| stats.receive_damage(event.damage, in_consecration))
+                .unwrap_or(event.damage);
 
             let was_alive = self
                 .store

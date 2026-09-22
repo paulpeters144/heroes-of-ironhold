@@ -60,7 +60,8 @@ enum DiscPhase {
     Flying,
     /// Carrying forward the extra 30px after detection.
     Gliding,
-    /// Stationary, dealing damage each round.
+    /// Creeping forward slowly while dealing damage each round; resumes
+    /// flying when no enemy is in the hit box.
     Grinding,
 }
 
@@ -432,43 +433,49 @@ impl ShieldTossSystem {
                 }
             }
             DiscPhase::Grinding => {
-                // The disc keeps grinding forward in small steps while it
-                // spins, digging into its target. Keep the hit rect in step
-                // with the sprite so damage stays on the enemy.
-                disc.grind_timer += dt;
-                let mut steps = 0;
-                while disc.grind_timer >= DISC_GRIND_STEP_SECS {
-                    disc.grind_timer -= DISC_GRIND_STEP_SECS;
-                    steps += 1;
-                }
-                if steps > 0 {
-                    let advance = disc.dir * (DISC_GRIND_STEP_PX * steps as f32);
-                    self.store.update::<Animation, _>(&anim_ref, |a| {
-                        a.position += advance;
-                    });
-                    if let Some(rect) = self
-                        .store
-                        .get_by_id::<Animation>(anim_ref.id())
-                        .map(|a| a.rect())
-                    {
-                        self.store.update::<AttackRect, _>(&area_ref, |area| {
-                            area.rects = vec![rect];
-                            area.visible = true;
-                        });
+                // If the target has left the hit box (moved away or died),
+                // resume flying at full speed instead of the slow crawl.
+                if !self.hit_test(&disc) {
+                    disc.phase = DiscPhase::Flying;
+                } else {
+                    // The disc keeps grinding forward in small steps while it
+                    // spins, digging into its target. Keep the hit rect in step
+                    // with the sprite so damage stays on the enemy.
+                    disc.grind_timer += dt;
+                    let mut steps = 0;
+                    while disc.grind_timer >= DISC_GRIND_STEP_SECS {
+                        disc.grind_timer -= DISC_GRIND_STEP_SECS;
+                        steps += 1;
                     }
-                }
-                disc.tick_timer += dt;
-                let mut rounds = 0;
-                while disc.tick_timer >= DISC_TICK_SECS && disc.rounds_left > 0 {
-                    disc.tick_timer -= DISC_TICK_SECS;
-                    disc.rounds_left -= 1;
-                    rounds += 1;
-                }
-                for _ in 0..rounds {
-                    self.apply_round(area_ref.id());
-                }
-                if disc.rounds_left == 0 {
-                    despawn = true;
+                    if steps > 0 {
+                        let advance = disc.dir * (DISC_GRIND_STEP_PX * steps as f32);
+                        self.store.update::<Animation, _>(&anim_ref, |a| {
+                            a.position += advance;
+                        });
+                        if let Some(rect) = self
+                            .store
+                            .get_by_id::<Animation>(anim_ref.id())
+                            .map(|a| a.rect())
+                        {
+                            self.store.update::<AttackRect, _>(&area_ref, |area| {
+                                area.rects = vec![rect];
+                                area.visible = true;
+                            });
+                        }
+                    }
+                    disc.tick_timer += dt;
+                    let mut rounds = 0;
+                    while disc.tick_timer >= DISC_TICK_SECS && disc.rounds_left > 0 {
+                        disc.tick_timer -= DISC_TICK_SECS;
+                        disc.rounds_left -= 1;
+                        rounds += 1;
+                    }
+                    for _ in 0..rounds {
+                        self.apply_round(area_ref.id());
+                    }
+                    if disc.rounds_left == 0 {
+                        despawn = true;
+                    }
                 }
             }
         }

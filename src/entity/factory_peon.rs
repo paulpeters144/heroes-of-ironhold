@@ -5,7 +5,7 @@ use super::{Animation, StaticImage};
 use macroquad::prelude::{Color, Texture2D, Vec2};
 
 pub const PEON_FRAME_SIZE: f32 = 64.0;
-pub const PEON_COLLISION_RADIUS_SCALE: f32 = 0.1875;
+pub const PEON_COLLISION_RADIUS_SCALE: f32 = 0.095;
 
 pub struct PeonParts {
     pub marker: Peon,

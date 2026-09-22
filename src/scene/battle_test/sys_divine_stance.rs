@@ -1,5 +1,5 @@
 use crate::entity::knight::{DivineStance, Knight, KnightLock, IDLE_FRAME, THRUST_FRAME};
-use crate::entity::{AreaRect, HeroStats, PlayerOne, SkillIconKind};
+use crate::entity::{AreaRect, HeroStats, Peon, PeonStats, PlayerOne, SkillIconKind};
 use crate::events::{
     HealthChangeEvent, SkillActiveEndEvent, SkillActiveEvent, SkillCastEvent, SkillCooldownEvent,
 };
@@ -433,8 +433,24 @@ impl DivineStanceSystem {
         });
     }
 
+    /// Whether a body circle at `center` with `radius` overlaps the oval's
+    /// bounding box. A circle-vs-rect test is used so a whole footprint counts.
+    fn circle_in_area(&self, center: Vec2, radius: f32) -> bool {
+        let oval = Rect::new(
+            self.center.x - AREA_WIDTH * 0.5,
+            self.center.y - AREA_HEIGHT * 0.5,
+            AREA_WIDTH,
+            AREA_HEIGHT,
+        );
+
+        let closest_x = center.x.clamp(oval.x, oval.x + oval.w);
+        let closest_y = center.y.clamp(oval.y, oval.y + oval.h);
+        let dx = center.x - closest_x;
+        let dy = center.y - closest_y;
+        dx * dx + dy * dy < radius * radius
+    }
+
     /// Whether the knight's body circle overlaps the oval's bounding box.
-    /// A circle-vs-rect test is used so the knight's whole footprint counts.
     fn knight_in_area(&self) -> bool {
         let Some((knight_pos, knight_radius)) = self
             .store
@@ -451,18 +467,7 @@ impl DivineStanceSystem {
             return false;
         };
 
-        let oval = Rect::new(
-            self.center.x - AREA_WIDTH * 0.5,
-            self.center.y - AREA_HEIGHT * 0.5,
-            AREA_WIDTH,
-            AREA_HEIGHT,
-        );
-
-        let closest_x = knight_pos.x.clamp(oval.x, oval.x + oval.w);
-        let closest_y = knight_pos.y.clamp(oval.y, oval.y + oval.h);
-        let dx = knight_pos.x - closest_x;
-        let dy = knight_pos.y - closest_y;
-        dx * dx + dy * dy < knight_radius * knight_radius
+        self.circle_in_area(knight_pos, knight_radius)
     }
 
     /// Restores one 5% tick to the knight's `HeroStats` and fires a positive
@@ -517,6 +522,56 @@ impl DivineStanceSystem {
         });
 
         Some(vec2(rect.center().x, rect.y + rect.h))
+    }
+
+    /// Restores one 5% tick to every peon standing inside the oval, mirroring
+    /// the knight's heal. Fires a positive `HealthChangeEvent` per healed peon.
+    /// Skipped at full HP or for dead peons.
+    fn heal_peons(&self) {
+        // Collect ids up front so the `all` read lock is released before any
+        // `update` write below (the store's RwLock is not reentrant).
+        let peon_ids: Vec<u64> = self.store.all::<Peon>().map(|peon| peon.id()).collect();
+
+        for peon_id in peon_ids {
+            let Some((stats_ref, rect)) = (|| {
+                let peon = self.store.get_by_id::<Peon>(peon_id)?;
+                let stats = self.store.get_child::<PeonStats>(&peon)?;
+                let anim = self.store.get_child::<Animation>(&peon)?;
+                let circle = self.store.get_child::<CollisionCircle>(&peon)?;
+                let r = anim.rect();
+                let center = vec2(r.x + r.w / 2.0, r.y + r.h / 2.0);
+                if !self.circle_in_area(center, circle.radius) {
+                    return None;
+                }
+                Some((stats.entity_ref(), r))
+            })()
+            else {
+                continue;
+            };
+
+            let (hp, max) = self
+                .store
+                .get_by_id::<PeonStats>(stats_ref.id())
+                .map(|s| (s.hp, s.max_hp))
+                .unwrap_or((0, 0));
+            if hp <= 0 || hp >= max {
+                continue;
+            }
+
+            let heal = ((max as f32) * HEAL_PCT).round() as i32;
+            let actual = heal.min(max - hp);
+            if actual <= 0 {
+                continue;
+            }
+
+            self.store
+                .update::<PeonStats, _>(&stats_ref, |s| s.hp += actual);
+            self.bus.fire(&HealthChangeEvent {
+                entity: peon_id,
+                amount: actual,
+                rect,
+            });
+        }
     }
 
     /// The summon flash: a soft golden bloom, one expanding elliptical ring,
@@ -728,6 +783,7 @@ impl System for DivineStanceSystem {
                         self.pulses.push(HealPulse { t: 0.0, pos: feet });
                     }
                 }
+                self.heal_peons();
             }
 
             // Sparkles drift, slow, and stop once the flash window ends.

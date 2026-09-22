@@ -1,7 +1,7 @@
 use super::Drawable;
 use macroquad::prelude::*;
 
-const AREA_WIDTH: f32 = 140.0;
+const AREA_WIDTH: f32 = 245.0;
 
 const GOLD: Color = Color::new(0.95, 0.82, 0.35, 1.0);
 const AMBER: Color = Color::new(0.75, 0.55, 0.2, 1.0);
