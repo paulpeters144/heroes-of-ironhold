@@ -1,4 +1,4 @@
-use super::collision_circle::CollisionCircle;
+use super::collision_circle::{CollisionCircle, CollisionGroup};
 use super::impact_frame::ImpactFrame;
 use super::peon::{Peon, PEON_FRAME_COUNT};
 use super::{Animation, StaticImage};
@@ -59,6 +59,7 @@ impl PeonFactory {
             collision_circle: CollisionCircle {
                 radius: PEON_FRAME_SIZE * PEON_COLLISION_RADIUS_SCALE,
                 center: Vec2::ZERO,
+                group: CollisionGroup::Peon,
             },
             impact_frame: ImpactFrame,
             impact_image,

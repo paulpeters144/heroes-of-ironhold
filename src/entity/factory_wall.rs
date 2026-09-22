@@ -1,4 +1,4 @@
-use super::collision_circle::CollisionCircle;
+use super::collision_circle::{CollisionCircle, CollisionGroup};
 use macroquad::prelude::Vec2;
 
 #[derive(Clone, Debug)]
@@ -17,6 +17,7 @@ impl WallFactory {
         CollisionCircle {
             radius: cfg.radius,
             center: cfg.center,
+            group: CollisionGroup::Wall,
         }
     }
 }

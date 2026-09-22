@@ -1,6 +1,6 @@
 use super::enemy::{RamHead, RAM_HEAD_FRAME_COUNT};
 use super::impact_frame::ImpactFrame;
-use super::{Animation, CollisionCircle, StaticImage};
+use super::{Animation, CollisionCircle, CollisionGroup, StaticImage};
 use macroquad::prelude::{Color, Texture2D, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;
@@ -58,6 +58,7 @@ impl EnemyFactory {
             collision_circle: CollisionCircle {
                 radius: FRAME_SIZE * COLLISION_RADIUS_SCALE,
                 center: Vec2::ZERO,
+                group: CollisionGroup::Enemy,
             },
             impact_frame: ImpactFrame,
             impact_image,

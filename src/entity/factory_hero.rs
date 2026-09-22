@@ -1,6 +1,6 @@
 use super::impact_frame::ImpactFrame;
 use super::knight::{Effect, EffectKind, Facing, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME};
-use super::{Animation, CollisionCircle, StaticImage};
+use super::{Animation, CollisionCircle, CollisionGroup, StaticImage};
 use macroquad::prelude::{Color, Texture2D, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;
@@ -126,6 +126,7 @@ impl HeroFactory {
             collision_circle: CollisionCircle {
                 radius: FRAME_SIZE * COLLISION_RADIUS_SCALE,
                 center: Vec2::ZERO,
+                group: CollisionGroup::Hero,
             },
             impact_frame: ImpactFrame,
             impact_image,

@@ -31,7 +31,7 @@ mod static_image;
 pub use animation::Animation;
 pub use area_rect::AreaRect;
 pub use attack_rect::AttackRect;
-pub use collision_circle::CollisionCircle;
+pub use collision_circle::{CollisionCircle, CollisionGroup};
 pub use consecration_aura::{load_aura_material, ConsecrationAura};
 pub use dash::{Dash, DashCfg};
 pub use drawable::Drawable;
