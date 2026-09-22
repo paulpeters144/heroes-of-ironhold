@@ -22,8 +22,9 @@ use crate::entity::{
     ImpactFrame, Knight, KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg,
     Shield, Skill, SkillDirection, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsWidget, Sword,
 };
+use crate::events::KnightDeathEvent;
 use crate::prelude::*;
-use crate::scene::Scene;
+use crate::scene::{ChangeSceneEvent, Scene, SceneId};
 use crate::systems::{
     AnimationUpdateSystem, CollisionCircleSystem, DebugDrawSystem, DrawSystem, HealthBarSystem,
     HealthTextAnimationSystem, HitReactionSystem, KnightCombatSystem, SystemAgg, ZSortSystem,
@@ -32,12 +33,14 @@ use crate::{file, font, images, shader, Assets, Config};
 use macroquad::prelude::*;
 use macroquad::rand::gen_range;
 use pico_entity_store::store::{ChildSource, IntoChild};
-use std::cell::Cell;
-use std::collections::HashMap;
+use std::cell::{Cell, RefCell};
+use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 use tiled::{TiledMap, TiledMapCfg};
+
+const GAME_OVER_DELAY: f32 = 1.5;
 
 pub struct BattleTestScene {
     cfg: Rc<Config>,
@@ -45,11 +48,22 @@ pub struct BattleTestScene {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
     agg: SystemAgg,
+    death_queue: Rc<RefCell<VecDeque<KnightDeathEvent>>>,
+    game_over: bool,
+    game_over_timer: f32,
+    _subs: SubCollection,
 }
 
 impl BattleTestScene {
     pub fn new(cfg: Rc<Config>, assets: Assets, store: Rc<EStore>, bus: Rc<EventBus>) -> Self {
         let agg = SystemAgg::new();
+        let death_queue = Rc::new(RefCell::new(VecDeque::new()));
+        let subs = SubCollection::new();
+
+        let death_queue_for_handler = death_queue.clone();
+        subs.on::<KnightDeathEvent>(&bus, move |event: &KnightDeathEvent| {
+            death_queue_for_handler.borrow_mut().push_back(event.clone());
+        });
 
         Self {
             cfg,
@@ -57,6 +71,10 @@ impl BattleTestScene {
             store,
             bus,
             agg,
+            death_queue,
+            game_over: false,
+            game_over_timer: 0.0,
+            _subs: subs,
         }
     }
 
@@ -408,6 +426,22 @@ impl Scene for BattleTestScene {
     }
 
     fn update(&mut self, ctx: &mut Context) {
+        if self.game_over {
+            self.game_over_timer -= ctx.dt;
+            if self.game_over_timer <= 0.0 {
+                self.store.clear();
+                self.bus.fire(&ChangeSceneEvent(SceneId::Menu));
+                self.game_over = false;
+            }
+            return;
+        }
+
+        if self.death_queue.borrow_mut().pop_front().is_some() {
+            self.game_over = true;
+            self.game_over_timer = GAME_OVER_DELAY;
+            return;
+        }
+
         self.agg.update(ctx);
     }
 

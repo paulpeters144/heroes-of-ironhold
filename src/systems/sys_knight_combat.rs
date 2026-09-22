@@ -3,7 +3,9 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 
 use crate::entity::{Consecration, EnemyStats, HeroStats, Knight, RamHead};
-use crate::events::{AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent};
+use crate::events::{
+    AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent, KnightDeathEvent,
+};
 use crate::prelude::*;
 
 /// Reduces raw incoming damage by the defender's armor, flooring at 1 so a
@@ -154,9 +156,26 @@ impl System for KnightCombatSystem {
             };
             let damage = mitigated_damage(event.damage, armor);
 
+            let was_alive = self
+                .store
+                .get_by_id::<HeroStats>(stats_ref.id())
+                .map(|stats| stats.hp > 0)
+                .unwrap_or(false);
+
             self.store.update::<HeroStats, _>(&stats_ref, |stats| {
                 stats.hp = (stats.hp - damage).max(0);
             });
+
+            let is_dead = self
+                .store
+                .get_by_id::<HeroStats>(stats_ref.id())
+                .map(|stats| stats.hp <= 0)
+                .unwrap_or(false);
+
+            if was_alive && is_dead {
+                self.bus.fire(&KnightDeathEvent { knight: event.target });
+            }
+
             self.bus.fire(&HealthChangeEvent {
                 entity: event.target,
                 amount: -damage,

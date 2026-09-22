@@ -32,6 +32,11 @@ pub struct EnemyDeathEvent {
 }
 
 #[derive(Clone, Debug)]
+pub struct KnightDeathEvent {
+    pub knight: u64,
+}
+
+#[derive(Clone, Debug)]
 pub struct PeonDeathEvent {
     pub peon: u64,
 }
