@@ -433,16 +433,20 @@ impl DivineStanceSystem {
         });
     }
 
-    /// Whether the knight's body rectangle overlaps the oval's bounding box.
-    /// A rect-vs-rect test is used instead of a point-in-ellipse check so the
-    /// knight's whole footprint counts, not a single point on its edge.
+    /// Whether the knight's body circle overlaps the oval's bounding box.
+    /// A circle-vs-rect test is used so the knight's whole footprint counts.
     fn knight_in_area(&self) -> bool {
-        let Some(knight_rect) = self
+        let Some((knight_pos, knight_radius)) = self
             .store
             .first::<PlayerOne>()
             .and_then(|p| self.store.get_child::<Knight>(&p))
-            .and_then(|k| self.store.get_child::<CollisionRect>(&k))
-            .map(|c| c.rect)
+            .and_then(|k| {
+                let circle = self.store.get_child::<CollisionCircle>(&k)?;
+                let anim = self.store.get_child::<Animation>(&k)?;
+                let r = anim.rect();
+                let center = vec2(r.x + r.w / 2.0, r.y + r.h / 2.0);
+                Some((center, circle.radius))
+            })
         else {
             return false;
         };
@@ -454,7 +458,11 @@ impl DivineStanceSystem {
             AREA_HEIGHT,
         );
 
-        knight_rect.overlaps(&oval)
+        let closest_x = knight_pos.x.clamp(oval.x, oval.x + oval.w);
+        let closest_y = knight_pos.y.clamp(oval.y, oval.y + oval.h);
+        let dx = knight_pos.x - closest_x;
+        let dy = knight_pos.y - closest_y;
+        dx * dx + dy * dy < knight_radius * knight_radius
     }
 
     /// Restores one 5% tick to the knight's `HeroStats` and fires a positive

@@ -308,6 +308,25 @@ pub mod images {
     }
 
     #[derive(Clone, Copy, Debug)]
+    pub enum Npc {
+        HeroPeon,
+        HeroPeonHit,
+    }
+
+    impl AssetId for Npc {
+        fn path(&self) -> String {
+            match self {
+                Self::HeroPeon => "images/npc/anim-hero-poen.png".to_string(),
+                Self::HeroPeonHit => "images/npc/static-hero-poen-hit.png".to_string(),
+            }
+        }
+
+        fn kind(&self) -> AssetKind {
+            AssetKind::Texture
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
     pub enum Scene {
         MenuBackground,
         Scroll,

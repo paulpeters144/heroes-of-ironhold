@@ -12,18 +12,20 @@ use super::sys_knight_dash::KnightDashSystem;
 use super::sys_knight_offsets::KnightOffsetUpdateSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
+use super::sys_peon::PeonSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
+use super::sys_ramhead_spawner::RamHeadSpawnerSystem;
 use super::sys_shield_toss::ShieldTossSystem;
 use super::sys_skill::SkillSystem;
 use crate::entity::{
-    Dash, EnemyFactory, EnemyStats, HealthBar, HeroFactory, HeroStats, ImpactFrame, Knight,
-    KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg, Shield, Skill,
+    AttackRect, Dash, EnemyFactory, EnemyStats, HealthBar, HeroFactory, HeroStats, ImpactFrame,
+    Knight, KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg, Shield, Skill,
     SkillDirection, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsWidget, Sword,
 };
 use crate::prelude::*;
 use crate::scene::Scene;
 use crate::systems::{
-    AnimationUpdateSystem, CollisionRectSystem, DebugDrawSystem, DrawSystem, HealthBarSystem,
+    AnimationUpdateSystem, CollisionCircleSystem, DebugDrawSystem, DrawSystem, HealthBarSystem,
     HealthTextAnimationSystem, HitReactionSystem, KnightCombatSystem, SystemAgg, ZSortSystem,
 };
 use crate::{file, font, images, shader, Assets, Config};
@@ -124,7 +126,7 @@ impl BattleTestScene {
                 sword.into_child(),
                 parts.impact_frame.into_child(),
                 parts.facing.into_child(),
-                parts.collision_rect.into_child(),
+                parts.collision_circle.into_child(),
                 HeroStats::default().into_child(),
                 Dash::knight().into_child(),
             ],
@@ -155,7 +157,7 @@ impl BattleTestScene {
             parts.marker,
             &[
                 parts.body.into_child(),
-                parts.collision_rect.into_child(),
+                parts.collision_circle.into_child(),
                 HealthBar::default().into_child(),
                 EnemyStats::default().into_child(),
                 parts.impact_frame.into_child(),
@@ -243,6 +245,8 @@ impl Scene for BattleTestScene {
                     &images::TilesetImage::HoiChars,
                     &images::Enemy::RamHead,
                     &images::Enemy::RamHeadHit,
+                    &images::Npc::HeroPeon,
+                    &images::Npc::HeroPeonHit,
                     &images::Knight::Face,
                     &images::SkillIcon::BladeBarrage,
                     &images::SkillIcon::Shield,
@@ -355,6 +359,13 @@ impl Scene for BattleTestScene {
             self.agg.add(HealthBarSystem::new(self.store.clone()));
             self.agg
                 .add(RamHeadAiSystem::new(self.store.clone(), self.bus.clone()));
+            self.agg.add(RamHeadSpawnerSystem::new(
+                self.store.clone(),
+                &self.assets,
+                map_w,
+            ));
+            self.agg
+                .add(PeonSystem::new(self.store.clone(), self.bus.clone(), map_w, &self.assets));
             self.agg.add(CameraSystem::new(
                 self.store.clone(),
                 self.cfg.v_width,
@@ -371,7 +382,7 @@ impl Scene for BattleTestScene {
             // remove below to have the dash system.
             self.agg.remove::<KnightDashSystem>();
 
-            self.agg.add(CollisionRectSystem::new(self.store.clone()));
+            self.agg.add(CollisionCircleSystem::new(self.store.clone()));
             self.agg.add(DebugDrawSystem::new(self.store.clone()));
             self.agg
                 .add(HitReactionSystem::new(self.store.clone(), self.bus.clone()));

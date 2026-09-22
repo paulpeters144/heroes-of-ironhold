@@ -1,15 +1,14 @@
 use super::impact_frame::ImpactFrame;
 use super::knight::{Effect, EffectKind, Facing, Shield, Sword, SLASH_LIFETIME, THRUST_LIFETIME};
-use super::{Animation, CollisionRect, StaticImage};
-use macroquad::prelude::{Color, Rect, Texture2D, Vec2};
+use super::{Animation, CollisionCircle, StaticImage};
+use macroquad::prelude::{Color, Texture2D, Vec2};
 
 pub const FRAME_SIZE: f32 = 64.0;
 pub const FRAME_COUNT: usize = 6;
 pub const SWORD_FRAME_SIZE: f32 = 32.0;
 pub const SWORD_FRAME_COUNT: usize = 2;
 pub const SHIELD_SIZE: f32 = 32.0;
-pub const COLLISION_WIDTH_SCALE: f32 = 0.5;
-pub const COLLISION_HEIGHT_SCALE: f32 = 0.35;
+pub const COLLISION_RADIUS_SCALE: f32 = 0.1875;
 
 #[derive(Clone, Debug)]
 pub struct KnightCfg {
@@ -28,7 +27,7 @@ pub struct KnightParts {
     pub sword: Sword,
     pub sword_animation: Animation,
     pub facing: Facing,
-    pub collision_rect: CollisionRect,
+    pub collision_circle: CollisionCircle,
     pub impact_frame: ImpactFrame,
     pub impact_image: StaticImage,
     pub thrust: Effect,
@@ -124,13 +123,9 @@ impl HeroFactory {
             sword: Sword,
             sword_animation,
             facing: Facing::Right,
-            collision_rect: CollisionRect {
-                rect: Rect::new(
-                    0.0,
-                    0.0,
-                    FRAME_SIZE * COLLISION_WIDTH_SCALE,
-                    FRAME_SIZE * COLLISION_HEIGHT_SCALE,
-                ),
+            collision_circle: CollisionCircle {
+                radius: FRAME_SIZE * COLLISION_RADIUS_SCALE,
+                center: Vec2::ZERO,
             },
             impact_frame: ImpactFrame,
             impact_image,

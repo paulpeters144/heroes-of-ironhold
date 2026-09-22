@@ -1,7 +1,7 @@
 use crate::entity::AreaRect;
 use crate::prelude::*;
-use macroquad::prelude::{draw_rectangle_lines, Color, GREEN, YELLOW};
-use std::collections::HashSet;
+use macroquad::prelude::{draw_circle_lines, draw_rectangle_lines, vec2, Color, GREEN, YELLOW};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct DebugDrawSystem {
@@ -40,31 +40,26 @@ impl System for DebugDrawSystem {
             }
         }
 
-        let mut body_parents = HashSet::new();
+        let mut body_centers = HashMap::new();
         for anim in self.store.all::<Animation>() {
             if let Some(parent) = self.store.parent(&anim) {
-                body_parents.insert(parent.id());
+                let r = anim.rect();
+                body_centers.insert(parent.id(), vec2(r.x + r.w / 2.0, r.y + r.h / 2.0));
             }
         }
 
-        for rect in self.store.all::<CollisionRect>() {
-            let dynamic = self
-                .store
-                .parent(&rect)
-                .is_some_and(|p| body_parents.contains(&p.id()));
+        for circle in self.store.all::<CollisionCircle>() {
+            let parent_id = self.store.parent(&circle).map(|p| p.id());
+            let dynamic = parent_id.is_some_and(|id| body_centers.contains_key(&id));
             let color = if dynamic {
                 Color::new(1.0, 0.0, 0.0, 1.0)
             } else {
                 Color::new(0.0, 0.0, 1.0, 1.0)
             };
-            draw_rectangle_lines(
-                rect.rect.x,
-                rect.rect.y,
-                rect.rect.w,
-                rect.rect.h,
-                2.0,
-                color,
-            );
+            let center = parent_id
+                .and_then(|id| body_centers.get(&id).copied())
+                .unwrap_or(circle.center);
+            draw_circle_lines(center.x, center.y, circle.radius, 2.0, color);
         }
     }
 }

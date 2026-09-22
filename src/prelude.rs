@@ -7,7 +7,7 @@ pub use event_bus::SubCollection;
 
 // Core entity types used by nearly every system
 pub use crate::entity::{
-    Animation, AttackRect, CollisionRect, Drawable, FloatingText, ProceduralDrawable, StaticImage,
+    Animation, AttackRect, CollisionCircle, Drawable, FloatingText, ProceduralDrawable, StaticImage,
 };
 
 // System traits

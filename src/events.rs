@@ -32,6 +32,11 @@ pub struct EnemyDeathEvent {
 }
 
 #[derive(Clone, Debug)]
+pub struct PeonDeathEvent {
+    pub peon: u64,
+}
+
+#[derive(Clone, Debug)]
 pub struct SkillCastEvent {
     pub caster: u64,
     pub direction: SkillDirection,

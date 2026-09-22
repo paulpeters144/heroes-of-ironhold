@@ -13,24 +13,24 @@ struct Body {
 
 #[derive(Clone, Copy)]
 struct Collider {
-    rect_ref: EntityRef,
     center: Vec2,
-    rect_half: Vec2,
+    radius: f32,
     body: Option<Body>,
     parent_id: Option<u64>,
 }
 
-fn overlaps_at(center: Vec2, half: Vec2, other: &Collider) -> bool {
-    (center.x - other.center.x).abs() < half.x + other.rect_half.x
-        && (center.y - other.center.y).abs() < half.y + other.rect_half.y
+fn circles_overlap(center: Vec2, radius: f32, other: &Collider) -> bool {
+    let delta = center - other.center;
+    let dist = delta.length();
+    dist < radius + other.radius
 }
 
-pub struct CollisionRectSystem {
+pub struct CollisionCircleSystem {
     store: Rc<EStore>,
     prev: HashMap<u64, Vec2>,
 }
 
-impl CollisionRectSystem {
+impl CollisionCircleSystem {
     pub fn new(store: Rc<EStore>) -> Self {
         Self {
             store,
@@ -59,14 +59,14 @@ impl CollisionRectSystem {
 
     fn collect_colliders(&self, bodies: &HashMap<u64, Body>) -> Vec<Collider> {
         let mut colliders = Vec::new();
-        for rect in self.store.all::<CollisionRect>() {
-            let r = rect.rect;
-            let parent_id = self.store.parent(&rect).map(|p| p.id());
+        for circle in self.store.all::<CollisionCircle>() {
+            let parent_id = self.store.parent(&circle).map(|p| p.id());
+            let body = parent_id.and_then(|pid| bodies.get(&pid).copied());
+            let center = body.map(|b| b.center).unwrap_or(Vec2::ZERO);
             colliders.push(Collider {
-                rect_ref: rect.entity_ref(),
-                center: vec2(r.x + r.w / 2.0, r.y + r.h / 2.0),
-                rect_half: vec2(r.w / 2.0, r.h / 2.0),
-                body: parent_id.and_then(|pid| bodies.get(&pid).copied()),
+                center,
+                radius: circle.radius,
+                body,
                 parent_id,
             });
         }
@@ -74,7 +74,7 @@ impl CollisionRectSystem {
     }
 }
 
-impl System for CollisionRectSystem {
+impl System for CollisionCircleSystem {
     fn update(&mut self, _ctx: &mut Context) {
         let bodies = self.collect_bodies();
         let mut colliders = self.collect_colliders(&bodies);
@@ -98,26 +98,47 @@ impl System for CollisionRectSystem {
             let prev = self.prev.get(&pid).copied().unwrap_or(target);
 
             let blocked_x = colliders.iter().enumerate().any(|(j, other)| {
-                j != idx && overlaps_at(vec2(target.x, prev.y), c.rect_half, other)
+                j != idx && circles_overlap(vec2(target.x, prev.y), c.radius, other)
             });
             let cx = if blocked_x { prev.x } else { target.x };
 
             let blocked_y = colliders
                 .iter()
                 .enumerate()
-                .any(|(j, other)| j != idx && overlaps_at(vec2(cx, target.y), c.rect_half, other));
+                .any(|(j, other)| j != idx && circles_overlap(vec2(cx, target.y), c.radius, other));
             let cy = if blocked_y { prev.y } else { target.y };
 
-            let center = vec2(cx, cy);
+            let mut center = vec2(cx, cy);
+
+            for _ in 0..4 {
+                let mut pushed = false;
+                for (j, other) in colliders.iter().enumerate() {
+                    if j == idx {
+                        continue;
+                    }
+                    let delta = center - other.center;
+                    let dist = delta.length();
+                    let min_dist = c.radius + other.radius;
+                    if dist < min_dist {
+                        let dir = if dist > 0.001 {
+                            delta / dist
+                        } else {
+                            vec2(1.0, 0.0)
+                        };
+                        center += dir * (min_dist - dist);
+                        pushed = true;
+                    }
+                }
+                if !pushed {
+                    break;
+                }
+            }
+
             next_prev.insert(pid, center);
 
             let pos = vec2(center.x - body.body_half.x, center.y - body.body_half.y);
             self.store
                 .update::<Animation, _>(&body.anim_ref, |a| a.position = pos);
-            self.store.update::<CollisionRect, _>(&c.rect_ref, |r| {
-                r.rect.x = center.x - c.rect_half.x;
-                r.rect.y = center.y - c.rect_half.y;
-            });
         }
         self.prev = next_prev;
     }
