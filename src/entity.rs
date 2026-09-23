@@ -25,6 +25,7 @@ mod hero;
 mod impact_frame;
 mod player;
 mod procedural_drawable;
+mod rest_node;
 mod skills;
 mod static_image;
 
@@ -56,5 +57,6 @@ pub use player::{PlayerFactory, PlayerOne, PlayerTwo};
 pub use procedural_drawable::{
     ConsecrationData, ProceduralDrawable, ProceduralEffect, RuneShard, Spark,
 };
+pub use rest_node::RestNode;
 pub use skills::{LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
 pub use static_image::StaticImage;

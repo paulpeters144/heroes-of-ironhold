@@ -17,10 +17,11 @@ use super::sys_ramhead_ai::RamHeadAiSystem;
 use super::sys_ramhead_spawner::RamHeadSpawnerSystem;
 use super::sys_shield_toss::ShieldTossSystem;
 use super::sys_skill::SkillSystem;
+use super::sys_wave_director::{Wave, WaveDirectorSystem, WaveSchedule};
 use crate::entity::{
-    AttackRect, CollisionRect, Dash, EnemyFactory, EnemyStats, HealthBar, HeroFactory, HeroStats,
-    ImpactFrame, Knight, KnightCfg, LastUsedSkill, PlayerFactory, PlayerOne, RamHead, RamHeadCfg,
-    Shield, Skill, SkillDirection, SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsWidget, Sword,
+    AttackRect, CollisionRect, Dash, HeroFactory, HeroStats, ImpactFrame, Knight, KnightCfg,
+    LastUsedSkill, PlayerFactory, PlayerOne, RestNode, Shield, Skill, SkillDirection,
+    SkillIconKind, SkillSlotCfg, SkillsFactory, SkillsWidget, Sword,
 };
 use crate::events::KnightDeathEvent;
 use crate::prelude::*;
@@ -31,7 +32,6 @@ use crate::systems::{
 };
 use crate::{file, font, images, shader, Assets, Config};
 use macroquad::prelude::*;
-use macroquad::rand::gen_range;
 use pico_entity_store::store::{ChildSource, IntoChild};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
@@ -62,7 +62,9 @@ impl BattleTestScene {
 
         let death_queue_for_handler = death_queue.clone();
         subs.on::<KnightDeathEvent>(&bus, move |event: &KnightDeathEvent| {
-            death_queue_for_handler.borrow_mut().push_back(event.clone());
+            death_queue_for_handler
+                .borrow_mut()
+                .push_back(event.clone());
         });
 
         Self {
@@ -163,45 +165,6 @@ impl BattleTestScene {
 
         self.store
             .add(PlayerFactory::spawn_one(), &[ChildSource::Existing(knight)]);
-    }
-
-    fn spawn_ram_head(&self, position: Vec2) {
-        let mut parts = EnemyFactory::create_ram_head(RamHeadCfg {
-            body: self.assets.texture(images::Enemy::RamHead),
-            impact: self.assets.texture(images::Enemy::RamHeadHit),
-        });
-        parts.body.position = position;
-        self.store.add(
-            parts.marker,
-            &[
-                parts.body.into_child(),
-                parts.collision_circle.into_child(),
-                HealthBar::default().into_child(),
-                EnemyStats::default().into_child(),
-                parts.impact_frame.into_child(),
-                AttackRect {
-                    rects: Vec::new(),
-                    visible: false,
-                }
-                .into_child(),
-            ],
-        );
-
-        let enemy_id = self
-            .store
-            .all::<RamHead>()
-            .map(|e| e.entity_ref().id())
-            .last()
-            .expect("ram head just added");
-
-        if let Some(impact_frame) = self
-            .store
-            .get_by_id::<RamHead>(enemy_id)
-            .and_then(|e| self.store.get_child::<ImpactFrame>(&e))
-        {
-            self.store
-                .add(impact_frame, &[parts.impact_image.into_child()]);
-        }
     }
 
     fn spawn_collision_bounds(&self, map: &TiledMap) {
@@ -312,19 +275,59 @@ impl Scene for BattleTestScene {
             self.store
                 .update::<Animation, _>(&anim_ref, |a| a.position = body);
 
-            let cx = map_w * 0.5;
-            let cy = map_h * 0.5;
-            let spacing = 45.0;
-            let jitter = 40.0;
-            for row in 0..1 {
-                for col in 0..5 {
-                    let offset = vec2(
-                        (col as f32 - 2.0) * spacing + gen_range(-jitter, jitter),
-                        (row as f32 - 0.5) * spacing + gen_range(-jitter, jitter),
-                    );
-                    self.spawn_ram_head(vec2(cx + offset.x, cy + offset.y));
-                }
-            }
+            let schedule = WaveSchedule {
+                max_alive: 6,
+                waves: vec![
+                    Wave {
+                        at_x: 0.0,
+                        spawn_count: 5,
+                        spawn_interval: 0.2,
+                        gap_after: 3.0,
+                        peon_squad: 2,
+                    },
+                    Wave {
+                        at_x: 600.0,
+                        spawn_count: 4,
+                        spawn_interval: 0.4,
+                        gap_after: 4.0,
+                        peon_squad: 3,
+                    },
+                    Wave {
+                        at_x: 1000.0,
+                        spawn_count: 6,
+                        spawn_interval: 0.3,
+                        gap_after: 4.0,
+                        peon_squad: 3,
+                    },
+                    Wave {
+                        at_x: 1400.0,
+                        spawn_count: 8,
+                        spawn_interval: 0.25,
+                        gap_after: 5.0,
+                        peon_squad: 4,
+                    },
+                    Wave {
+                        at_x: 1700.0,
+                        spawn_count: 10,
+                        spawn_interval: 0.2,
+                        gap_after: 0.0,
+                        peon_squad: 0,
+                    },
+                ],
+            };
+
+            self.store.add(
+                RestNode {
+                    rect: Rect::new(820.0, 40.0, 160.0, 320.0),
+                },
+                &[],
+            );
+            self.store.add(
+                RestNode {
+                    rect: Rect::new(1260.0, 40.0, 160.0, 320.0),
+                },
+                &[],
+            );
 
             self.agg
                 .add(MapDrawSystem::new(map, self.cfg.v_width, self.cfg.v_height));
@@ -385,13 +388,23 @@ impl Scene for BattleTestScene {
             self.agg.add(HealthBarSystem::new(self.store.clone()));
             self.agg
                 .add(RamHeadAiSystem::new(self.store.clone(), self.bus.clone()));
+            self.agg.add(WaveDirectorSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                schedule,
+            ));
             self.agg.add(RamHeadSpawnerSystem::new(
                 self.store.clone(),
+                self.bus.clone(),
                 &self.assets,
                 map_w,
             ));
-            self.agg
-                .add(PeonSystem::new(self.store.clone(), self.bus.clone(), map_w, &self.assets));
+            self.agg.add(PeonSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+                map_w,
+                &self.assets,
+            ));
             self.agg.add(CameraSystem::new(
                 self.store.clone(),
                 self.cfg.v_width,
@@ -406,7 +419,7 @@ impl Scene for BattleTestScene {
                 self.cfg.clone(),
             ));
             // remove below to have the dash system.
-            self.agg.remove::<KnightDashSystem>();
+            // self.agg.remove::<KnightDashSystem>();
 
             self.agg.add(CollisionCircleSystem::new(self.store.clone()));
             self.agg.add(DebugDrawSystem::new(self.store.clone()));

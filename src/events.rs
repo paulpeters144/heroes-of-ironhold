@@ -74,3 +74,17 @@ pub struct SkillActiveEvent {
 pub struct SkillActiveEndEvent {
     pub kind: SkillIconKind,
 }
+
+/// Fired by the wave director to request a burst of ram head spawns.
+/// Only the ram head spawner subscribes.
+#[derive(Clone, Debug)]
+pub struct SpawnRamHeadEvent {
+    pub count: usize,
+}
+
+/// Fired by the wave director to request a squad of peon spawns.
+/// Only the peon system subscribes.
+#[derive(Clone, Debug)]
+pub struct SpawnPeonSquadEvent {
+    pub count: usize,
+}
