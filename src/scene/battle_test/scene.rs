@@ -419,7 +419,7 @@ impl Scene for BattleTestScene {
                 self.cfg.clone(),
             ));
             // remove below to have the dash system.
-            // self.agg.remove::<KnightDashSystem>();
+            self.agg.remove::<KnightDashSystem>();
 
             self.agg.add(CollisionCircleSystem::new(self.store.clone()));
             self.agg.add(DebugDrawSystem::new(self.store.clone()));

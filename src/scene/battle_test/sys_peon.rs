@@ -1,11 +1,11 @@
 use crate::entity::enemy::{EnemyStats, RamHead};
-use crate::entity::factory_peon::{PEON_COLLISION_RADIUS_SCALE, PEON_FRAME_SIZE};
+use crate::entity::factory_peon::PEON_FRAME_SIZE;
 use crate::entity::peon::{
     Peon, PeonStats, PEON_ATTACK_HIT1_FRAMES, PEON_ATTACK_HIT2_FRAMES, PEON_WALK_FRAMES,
 };
 use crate::entity::{
-    AreaRect, AttackRect, CollisionRect, Consecration, HealthBar, ImpactFrame, Knight, PeonCfg,
-    PeonFactory, PlayerOne,
+    AreaRect, AttackRect, Consecration, HealthBar, ImpactFrame, Knight, PeonCfg, PeonFactory,
+    PlayerOne,
 };
 use crate::events::{
     AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent, PeonDeathEvent,
@@ -23,20 +23,24 @@ use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
 const MOVE_SPEED: f32 = 60.0;
+const ACCEL: f32 = 500.0;
 const WALK_FRAME_DURATION: f32 = 0.12;
+const WALK_ANIM_MIN_SPEED: f32 = 8.0;
 const ATTACK_RANGE: f32 = 55.0;
+const ENGAGE_DIST: f32 = 40.0;
 const CHASE_RANGE: f32 = 300.0;
+const SLOW_RADIUS: f32 = 60.0;
 const ATTACK_FRAME_DURATION: f32 = 0.08;
 const RECOVER_SECS: f32 = 0.4;
 const Y_BOUND_MIN: f32 = 40.0;
 const Y_BOUND_MAX: f32 = 360.0;
-const SEPARATION_RADIUS: f32 = 46.0;
-const SEPARATION_WEIGHT: f32 = 120.0;
-const SEPARATION_DEADZONE: f32 = 0.75;
-const RALLY_X_OFFSET: f32 = 100.0;
-const RALLY_STOP_RADIUS: f32 = 24.0;
-const FORWARD_PROBE_DIST: f32 = 8.0;
-const PEON_RADIUS: f32 = PEON_FRAME_SIZE * PEON_COLLISION_RADIUS_SCALE;
+const SEPARATION_RADIUS: f32 = 40.0;
+const SEPARATION_WEIGHT: f32 = 130.0;
+const FORMATION_X_OFFSET: f32 = 100.0;
+const FORMATION_COLS: usize = 3;
+const FORMATION_COL_SPACING: f32 = 42.0;
+const FORMATION_ROW_SPACING: f32 = 36.0;
+const SLOT_ARRIVE_RADIUS: f32 = 20.0;
 const DESPAWN_MARGIN: f32 = 80.0;
 const MAX_PAST_KNIGHT: f32 = 200.0;
 
@@ -74,6 +78,7 @@ struct PeonAiState {
     attack_step: usize,
     facing_right: bool,
     hit_this_attack: bool,
+    vel: Vec2,
 }
 
 impl Default for PeonAiState {
@@ -86,6 +91,7 @@ impl Default for PeonAiState {
             attack_step: 0,
             facing_right: true,
             hit_this_attack: false,
+            vel: Vec2::ZERO,
         }
     }
 }
@@ -238,23 +244,112 @@ impl PeonSystem {
         }
     }
 
-    fn forward_blocked(
-        center: Vec2,
-        dir: Vec2,
-        self_id: u64,
+    /// Deterministic per-peon pace variance (0.9..1.1) so the squad doesn't
+    /// march in lockstep.
+    fn speed_scale(id: u64) -> f32 {
+        0.9 + (id % 5) as f32 * 0.05
+    }
+
+    /// Ease `current` toward `target`, moving at most `max_delta`.
+    fn move_toward(current: Vec2, target: Vec2, max_delta: f32) -> Vec2 {
+        let delta = target - current;
+        let dist = delta.length();
+        if dist <= max_delta || dist < f32::EPSILON {
+            target
+        } else {
+            current + delta / dist * max_delta
+        }
+    }
+
+    /// Stable warband slot for the peon's sorted-id index: a staggered grid
+    /// anchored in front of the knight so each peon owns a spot instead of
+    /// fighting over a single rally pixel.
+    fn formation_slot(index: usize, knight_pos: Vec2) -> Vec2 {
+        let row = index / FORMATION_COLS;
+        let col = index % FORMATION_COLS;
+        let centered = col as f32 - (FORMATION_COLS as f32 - 1.0) / 2.0;
+        let stagger = if row.is_multiple_of(2) {
+            0.0
+        } else {
+            FORMATION_COL_SPACING * 0.5
+        };
+        vec2(
+            knight_pos.x + FORMATION_X_OFFSET + row as f32 * FORMATION_ROW_SPACING,
+            (knight_pos.y + centered * FORMATION_COL_SPACING + stagger)
+                .clamp(Y_BOUND_MIN + 16.0, Y_BOUND_MAX - 16.0),
+        )
+    }
+
+    /// One frame of steering locomotion: seek `target` (point + stop distance)
+    /// with arrival slowdown, add boids-style separation from other peons,
+    /// ease the velocity toward the desired velocity, integrate, and pick the
+    /// walk frame. Returns the new position and the walk frame to show.
+    fn locomotion(
+        state: &mut PeonAiState,
+        peon_id: u64,
+        peon_pos: Vec2,
+        target: Option<(Vec2, f32)>,
         peon_centers: &[(u64, Vec2)],
-        walls: &[Rect],
-    ) -> bool {
-        let probe = center + dir * (PEON_RADIUS + FORWARD_PROBE_DIST);
-        peon_centers
-            .iter()
-            .any(|(id, c)| *id != self_id && (*c - probe).length() < PEON_RADIUS * 2.0)
-            || walls.iter().any(|w| {
-                probe.x >= w.x - PEON_RADIUS
-                    && probe.x <= w.x + w.w + PEON_RADIUS
-                    && probe.y >= w.y - PEON_RADIUS
-                    && probe.y <= w.y + w.h + PEON_RADIUS
-            })
+        dt: f32,
+    ) -> (Vec2, usize) {
+        let max_speed = MOVE_SPEED * Self::speed_scale(peon_id);
+
+        let mut desired = Vec2::ZERO;
+        if let Some((point, stop_dist)) = target {
+            let delta = point - peon_pos;
+            let remaining = delta.length() - stop_dist;
+            if remaining > 2.0 {
+                let arrive = (remaining / SLOW_RADIUS).clamp(0.2, 1.0);
+                desired = delta.normalize() * (max_speed * arrive);
+            }
+        }
+
+        let center = vec2(
+            peon_pos.x + PEON_FRAME_SIZE / 2.0,
+            peon_pos.y + PEON_FRAME_SIZE / 2.0,
+        );
+        let mut separation = Vec2::ZERO;
+        for (other_id, other_center) in peon_centers {
+            if *other_id == peon_id {
+                continue;
+            }
+            let diff = center - *other_center;
+            let dist = diff.length();
+            if dist > 0.001 && dist < SEPARATION_RADIUS {
+                separation += diff / dist * (1.0 - dist / SEPARATION_RADIUS);
+            }
+        }
+        desired += separation * SEPARATION_WEIGHT;
+
+        let cap = max_speed * 1.6;
+        if desired.length() > cap {
+            desired = desired.normalize() * cap;
+        }
+
+        state.vel = Self::move_toward(state.vel, desired, ACCEL * dt);
+
+        let mut new_pos = peon_pos + state.vel * dt;
+        new_pos.y = new_pos.y.clamp(Y_BOUND_MIN, Y_BOUND_MAX);
+
+        if state.vel.x > 4.0 {
+            state.facing_right = true;
+        } else if state.vel.x < -4.0 {
+            state.facing_right = false;
+        }
+
+        let frame = if state.vel.length() > WALK_ANIM_MIN_SPEED {
+            state.frame_elapsed += dt;
+            let frame = PEON_WALK_FRAMES[state.walk_step];
+            if state.frame_elapsed >= WALK_FRAME_DURATION {
+                state.frame_elapsed = 0.0;
+                state.walk_step = (state.walk_step + 1) % PEON_WALK_FRAMES.len();
+            }
+            frame
+        } else {
+            PEON_WALK_FRAMES[0]
+        };
+
+        (new_pos, frame)
     }
 
     fn begin_death_fx(&mut self, peon: u64) {
@@ -447,14 +542,26 @@ impl System for PeonSystem {
             })
             .collect();
 
-        let peon_positions: Vec<(u64, Vec2)> = peons
+        let peon_centers: Vec<(u64, Vec2)> = peons
             .iter()
             .filter_map(|(id, anim_ref)| {
                 self.store
                     .get_by_id::<Animation>(anim_ref.id())
-                    .map(|a| (*id, a.position))
+                    .map(|a| {
+                        (
+                            *id,
+                            vec2(
+                                a.position.x + PEON_FRAME_SIZE / 2.0,
+                                a.position.y + PEON_FRAME_SIZE / 2.0,
+                            ),
+                        )
+                    })
             })
             .collect();
+
+        // Stable formation order: slot index = position in the sorted id list.
+        let mut slot_order: Vec<u64> = peons.iter().map(|(id, _)| *id).collect();
+        slot_order.sort_unstable();
 
         let knight_pos: Option<Vec2> = self
             .store
@@ -463,21 +570,6 @@ impl System for PeonSystem {
             .and_then(|knight| self.store.get_child::<Animation>(&knight))
             .map(|anim| anim.position);
         let knight_x = knight_pos.map(|p| p.x);
-
-        let peon_centers: Vec<(u64, Vec2)> = peon_positions
-            .iter()
-            .map(|(id, pos)| {
-                (
-                    *id,
-                    vec2(
-                        pos.x + PEON_FRAME_SIZE / 2.0,
-                        pos.y + PEON_FRAME_SIZE / 2.0,
-                    ),
-                )
-            })
-            .collect();
-
-        let walls: Vec<Rect> = self.store.all::<CollisionRect>().map(|r| r.rect).collect();
 
         let mut anim_writes: Vec<AnimWrite> = Vec::new();
         let mut area_writes: Vec<AttackRectWrite> = Vec::new();
@@ -516,98 +608,29 @@ impl System for PeonSystem {
                         state.frame_elapsed = 0.0;
                         state.attack_step = 0;
                         state.hit_this_attack = false;
-                        state.facing_right = true;
+                        state.vel = Vec2::ZERO;
+                        state.facing_right = nearest_enemy
+                            .map(|(_, p)| p.x >= peon_pos.x)
+                            .unwrap_or(true);
                     } else if peon_pos.x > self.map_w + DESPAWN_MARGIN {
                         self.store.remove(&[*anim_ref]);
                         self.states.remove(peon_id);
                         continue;
                     } else if knight_x.map(|kx| peon_pos.x > kx + MAX_PAST_KNIGHT).unwrap_or(false) {
                         state.state = PeonState::Return;
-                        state.facing_right = false;
-                        state.walk_step = 0;
-                        state.frame_elapsed = 0.0;
-                        anim_writes.push(AnimWrite {
-                            anim_ref: *anim_ref,
-                            frame: PEON_WALK_FRAMES[0],
-                            flip_x: !state.facing_right,
-                            tint: Color::new(1.0, 1.0, 1.0, 1.0),
-                            position: None,
-                        });
                     } else {
-                        let mut separation = Vec2::ZERO;
-                        for (other_id, other_pos) in &peon_positions {
-                            if *other_id == *peon_id {
-                                continue;
-                            }
-                            let diff = peon_pos - *other_pos;
-                            let dist = diff.length();
-                            if dist > 0.0 && dist < SEPARATION_RADIUS {
-                                let falloff = 1.0 - dist / SEPARATION_RADIUS;
-                                separation += diff / dist * falloff;
-                            }
-                        }
-
-                        let separation_force = separation * SEPARATION_WEIGHT;
-
                         let chasing = distance_to_enemy <= CHASE_RANGE;
-
-                        let mut new_pos = peon_pos;
-                        let frame;
-
-                        let move_dir: Option<Vec2> = if chasing {
-                            nearest_enemy.map(|(_, enemy_pos)| {
-                                let delta = *enemy_pos - peon_pos;
-                                if delta.length() > 0.001 {
-                                    delta.normalize()
-                                } else {
-                                    vec2(1.0, 0.0)
-                                }
-                            })
-                        } else if let Some(kpos) = knight_pos {
-                            let rally = vec2(kpos.x + RALLY_X_OFFSET, kpos.y);
-                            let to_rally = rally - peon_pos;
-                            if to_rally.length() > RALLY_STOP_RADIUS {
-                                Some(to_rally.normalize())
-                            } else {
-                                None
-                            }
+                        let slot_index = slot_order.binary_search(peon_id).ok();
+                        let target: Option<(Vec2, f32)> = if chasing {
+                            nearest_enemy.map(|(_, enemy_pos)| (*enemy_pos, ENGAGE_DIST))
                         } else {
-                            None
+                            slot_index
+                                .zip(knight_pos)
+                                .map(|(i, kpos)| (Self::formation_slot(i, kpos), 0.0))
                         };
 
-                        match move_dir {
-                            Some(dir)
-                                if !Self::forward_blocked(
-                                    vec2(
-                                        peon_pos.x + PEON_FRAME_SIZE / 2.0,
-                                        peon_pos.y + PEON_FRAME_SIZE / 2.0,
-                                    ),
-                                    dir,
-                                    *peon_id,
-                                    &peon_centers,
-                                    &walls,
-                                ) =>
-                            {
-                                new_pos += dir * MOVE_SPEED * dt;
-
-                                state.frame_elapsed += dt;
-                                frame = PEON_WALK_FRAMES[state.walk_step];
-                                if state.frame_elapsed >= WALK_FRAME_DURATION {
-                                    state.frame_elapsed = 0.0;
-                                    state.walk_step =
-                                        (state.walk_step + 1) % PEON_WALK_FRAMES.len();
-                                }
-                            }
-                            _ => {
-                                frame = PEON_WALK_FRAMES[0];
-                            }
-                        }
-
-                        let sep_delta = separation_force * dt;
-                        if sep_delta.length() >= SEPARATION_DEADZONE {
-                            new_pos += sep_delta;
-                        }
-                        new_pos.y = new_pos.y.clamp(Y_BOUND_MIN, Y_BOUND_MAX);
+                        let (new_pos, frame) =
+                            Self::locomotion(state, *peon_id, peon_pos, target, &peon_centers, dt);
 
                         anim_writes.push(AnimWrite {
                             anim_ref: *anim_ref,
@@ -619,9 +642,11 @@ impl System for PeonSystem {
                     }
                 }
                 PeonState::Return => {
-                    let target_x = knight_x
-                        .map(|kx| kx + RALLY_X_OFFSET)
-                        .unwrap_or(peon_pos.x);
+                    let slot = slot_order
+                        .binary_search(peon_id)
+                        .ok()
+                        .zip(knight_pos)
+                        .map(|(i, kpos)| Self::formation_slot(i, kpos));
 
                     if distance_to_enemy <= ATTACK_RANGE {
                         state.state = PeonState::AttackHit1;
@@ -629,23 +654,25 @@ impl System for PeonSystem {
                         state.frame_elapsed = 0.0;
                         state.attack_step = 0;
                         state.hit_this_attack = false;
-                        state.facing_right = true;
-                    } else if peon_pos.x <= target_x {
+                        state.vel = Vec2::ZERO;
+                        state.facing_right = nearest_enemy
+                            .map(|(_, p)| p.x >= peon_pos.x)
+                            .unwrap_or(true);
+                    } else if slot
+                        .map(|s| (s - peon_pos).length() < SLOT_ARRIVE_RADIUS)
+                        .unwrap_or(true)
+                    {
                         state.state = PeonState::Walk;
-                        state.facing_right = true;
                         state.walk_step = 0;
                         state.frame_elapsed = 0.0;
-                    } else {
-                        state.frame_elapsed += dt;
-                        let frame = PEON_WALK_FRAMES[state.walk_step];
-                        if state.frame_elapsed >= WALK_FRAME_DURATION {
-                            state.frame_elapsed = 0.0;
-                            state.walk_step = (state.walk_step + 1) % PEON_WALK_FRAMES.len();
-                        }
-
-                        let new_pos = vec2(
-                            peon_pos.x - MOVE_SPEED * dt,
-                            peon_pos.y.clamp(Y_BOUND_MIN, Y_BOUND_MAX),
+                    } else if let Some(slot) = slot {
+                        let (new_pos, frame) = Self::locomotion(
+                            state,
+                            *peon_id,
+                            peon_pos,
+                            Some((slot, 0.0)),
+                            &peon_centers,
+                            dt,
                         );
 
                         anim_writes.push(AnimWrite {

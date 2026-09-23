@@ -8,10 +8,10 @@ use pico_entity_store::prelude::EntityRef;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-// Always-forward walk speed and walk-frame timing (horizontal faster than vertical).
+// Stalk speed and walk-frame timing.
 const MOVE_SPEED: f32 = 60.0;
-const MOVE_SPEED_VERTICAL: f32 = MOVE_SPEED * 0.75;
 const FRAME_DURATION: f32 = 0.14;
+const WALK_ANIM_MIN_SPEED: f32 = 8.0;
 
 // Melee attack: how far ahead the hit strip reaches and its timing.
 const ATTACK_REACH: f32 = 26.0;
@@ -19,27 +19,55 @@ const ATTACK_DURATION: f32 = 0.30;
 const ATTACK_FRAME_DURATION: f32 = 0.06;
 const ATTACK_COOLDOWN: f32 = 0.55;
 
-// Forward-obstacle probe: how far ahead to look and how wide a corridor counts
-// as "blocked"; the sideways speed used to walk around a blocker.
-const PROBE_DIST: f32 = 64.0;
-const OBSTACLE_CLEARANCE: f32 = 32.0;
-const STEER_SPEED: f32 = 60.0;
+// Charge behavior: a ram head stalks until its prey is in range, winds up
+// (telegraphed), then bursts forward in a locked direction the player can
+// sidestep. Contact during the charge (or adjacency while stalking) triggers
+// the melee attack.
+const CHARGE_TRIGGER_RANGE: f32 = 180.0;
+const WINDUP_SECS: f32 = 0.45;
+const CHARGE_SPEED: f32 = 175.0;
+const CHARGE_MAX_SECS: f32 = 0.8;
+const CHARGE_COOLDOWN: f32 = 1.4;
+const RECOVER_SECS: f32 = 0.35;
+
+// Steering: velocity easing and boids-style separation between ram heads.
+const ACCEL: f32 = 420.0;
+const CHARGE_ACCEL: f32 = 1200.0;
+const SEPARATION_RADIUS: f32 = 46.0;
+const SEPARATION_WEIGHT: f32 = 90.0;
 
 // Keep ram heads within the map's vertical bounds.
 const Y_BOUND_MIN: f32 = 40.0;
 const Y_BOUND_MAX: f32 = 360.0;
-const BOUND_MARGIN: f32 = 24.0;
 
-/// Per-ram walk/attack state. An always-forward walk plus a brief melee attack;
-/// no state in which the ram stops moving.
+const NORMAL_TINT: Color = Color::new(1.0, 1.0, 1.0, 1.0);
+const WINDUP_TINT: Color = Color::new(1.0, 0.55, 0.55, 1.0);
+
+/// The ram head's movement mode. It never stands still by design: it stalks,
+/// telegraphs, charges, and recovers.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RamMode {
+    Stalk,
+    Windup,
+    Charge,
+    Recover,
+}
+
+/// Per-ram brain: steering velocity plus the charge mode machine and the
+/// melee attack state.
 #[derive(Clone)]
 struct RamBrain {
-    facing: Vec2, // unit direction the ram walks this frame; defaults to left (-1, 0) when no target is visible
-    walk_step: usize, // index into WALK_FRAMES
+    mode: RamMode,
+    vel: Vec2,          // current smoothed velocity
+    facing: Vec2,       // unit direction the ram faces this frame; defaults to left (-1, 0)
+    charge_dir: Vec2,   // direction locked in when the charge launches
+    mode_timer: f32,    // remaining time in Windup/Charge/Recover
+    charge_cooldown: f32, // seconds until the next charge is allowed
+    walk_step: usize,   // index into WALK_FRAMES
     frame_elapsed: f32, // walk/attack-frame animation accumulator
     attack_cooldown: f32, // seconds until the next attack is allowed
-    attacking: bool, // true while a melee attack is active (opens AttackRect)
-    attack_timer: f32, // remaining time of the active attack; plays ATTACK_FRAMES
+    attacking: bool,    // true while a melee attack is active (opens AttackRect)
+    attack_timer: f32,  // remaining time of the active attack; plays ATTACK_FRAMES
     attack_step: usize, // index into ATTACK_FRAMES
     attack_target: Option<u64>, // entity id of the hero/peon being attacked
 }
@@ -47,7 +75,12 @@ struct RamBrain {
 impl Default for RamBrain {
     fn default() -> Self {
         RamBrain {
+            mode: RamMode::Stalk,
+            vel: Vec2::ZERO,
             facing: vec2(-1.0, 0.0),
+            charge_dir: vec2(-1.0, 0.0),
+            mode_timer: 0.0,
+            charge_cooldown: 0.0,
             walk_step: 0,
             frame_elapsed: 0.0,
             attack_cooldown: 0.0,
@@ -57,13 +90,6 @@ impl Default for RamBrain {
             attack_target: None,
         }
     }
-}
-
-/// Something blocking the ram's forward path that it must walk around.
-#[derive(Clone, Copy)]
-enum Obstacle {
-    Ram(Vec2), // another ram head's position; steer sideways to clear it
-    Boundary,  // top/bottom map boundary; keep moving but stop vertical advance
 }
 
 struct AnimWrite {
@@ -110,6 +136,40 @@ impl RamHeadAiSystem {
         r
     }
 
+    /// Deterministic per-ram pace variance (0.9..1.1) so the horde doesn't
+    /// march in lockstep.
+    fn speed_scale(id: u64) -> f32 {
+        0.9 + (id % 5) as f32 * 0.05
+    }
+
+    /// Ease `current` toward `target`, moving at most `max_delta`.
+    fn move_toward(current: Vec2, target: Vec2, max_delta: f32) -> Vec2 {
+        let delta = target - current;
+        let dist = delta.length();
+        if dist <= max_delta || dist < f32::EPSILON {
+            target
+        } else {
+            current + delta / dist * max_delta
+        }
+    }
+
+    /// Boids-style separation steering away from other ram heads; the
+    /// collision system remains the hard backstop for actual overlaps.
+    fn separation(center: Vec2, self_id: u64, ram_centers: &[(u64, Vec2)]) -> Vec2 {
+        let mut steer = Vec2::ZERO;
+        for (id, other) in ram_centers {
+            if *id == self_id {
+                continue;
+            }
+            let diff = center - *other;
+            let dist = diff.length();
+            if dist > 0.001 && dist < SEPARATION_RADIUS {
+                steer += diff / dist * (1.0 - dist / SEPARATION_RADIUS);
+            }
+        }
+        steer
+    }
+
     pub fn new(store: Rc<EStore>, bus: Rc<EventBus>) -> Self {
         Self {
             store,
@@ -154,77 +214,13 @@ impl RamHeadAiSystem {
             if let Some(anim) = self.store.get_child::<Animation>(&peon) {
                 let rect = anim.rect();
                 let dist = (rect.center() - origin).length();
-                if best.as_ref().map_or(true, |(_, _, d)| dist < *d) {
+                if best.as_ref().is_none_or(|(_, _, d)| dist < *d) {
                     best = Some((peon.entity_ref().id(), rect, dist));
                 }
             }
         }
 
         best.map(|(id, rect, _)| (id, rect))
-    }
-
-    /// Returns the obstacle (another ram head or the vertical map boundary)
-    /// immediately in front of `origin` along `facing`, excluding `self_id`.
-    fn obstacle_ahead(&self, origin: Vec2, facing: Vec2, self_id: u64) -> Option<Obstacle> {
-        let mut closest: Option<(Vec2, f32)> = None;
-
-        for enemy in self.store.all::<RamHead>() {
-            if enemy.entity_ref().id() == self_id {
-                continue;
-            }
-            let Some(anim) = self.store.get_child::<Animation>(&enemy) else {
-                continue;
-            };
-            let center = anim.rect().center();
-            let delta = center - origin;
-            let along = delta.dot(facing);
-            if along <= 0.0 || along > PROBE_DIST {
-                continue;
-            }
-            let lateral = (delta - facing * along).length();
-            if lateral > OBSTACLE_CLEARANCE {
-                continue;
-            }
-            if closest.as_ref().map_or(true, |(_, d)| along < *d) {
-                closest = Some((center, along));
-            }
-        }
-
-        if let Some((pos, _)) = closest {
-            return Some(Obstacle::Ram(pos));
-        }
-
-        if facing.y < -0.01 && origin.y - Y_BOUND_MIN < BOUND_MARGIN {
-            return Some(Obstacle::Boundary);
-        }
-        if facing.y > 0.01 && Y_BOUND_MAX - origin.y < BOUND_MARGIN {
-            return Some(Obstacle::Boundary);
-        }
-
-        None
-    }
-
-    /// Computes this frame's forward walk velocity, steering sideways to clear
-    /// `obstacle` while continuing to advance along `facing`. Speed is
-    /// axis-scaled: `MOVE_SPEED` horizontally, `MOVE_SPEED_VERTICAL` vertically.
-    fn steer(&self, origin: Vec2, facing: Vec2, obstacle: Option<Obstacle>) -> Vec2 {
-        let mut velocity = vec2(facing.x * MOVE_SPEED, facing.y * MOVE_SPEED_VERTICAL);
-        match obstacle {
-            None => {}
-            Some(Obstacle::Boundary) => {
-                velocity.y = 0.0;
-            }
-            Some(Obstacle::Ram(pos)) => {
-                let perp = vec2(-facing.y, facing.x);
-                let side = if perp.dot(pos - origin) > 0.0 {
-                    -1.0
-                } else {
-                    1.0
-                };
-                velocity += perp * side * STEER_SPEED;
-            }
-        }
-        velocity
     }
 
     /// Returns Some(target_id) when `target`'s rect overlaps the ram's forward
@@ -255,6 +251,11 @@ impl System for RamHeadAiSystem {
             })
             .collect();
 
+        let ram_centers: Vec<(u64, Vec2)> = enemies
+            .iter()
+            .map(|(id, _, rect)| (*id, rect.center()))
+            .collect();
+
         let mut anim_writes: Vec<AnimWrite> = Vec::new();
         let mut area_writes: Vec<AttackRectWrite> = Vec::new();
 
@@ -262,6 +263,7 @@ impl System for RamHeadAiSystem {
             let mut brain = self.states.get(enemy_id).cloned().unwrap_or_default();
 
             brain.attack_cooldown = (brain.attack_cooldown - dt).max(0.0);
+            brain.charge_cooldown = (brain.charge_cooldown - dt).max(0.0);
 
             let center = body.center();
 
@@ -300,9 +302,6 @@ impl System for RamHeadAiSystem {
             }
             brain.facing = facing;
 
-            let obstacle = self.obstacle_ahead(center, facing, *enemy_id);
-            let velocity = self.steer(center, facing, obstacle);
-
             // Tick down the active attack, closing it out when it expires.
             let mut attacking = brain.attacking;
             if brain.attack_timer > 0.0 {
@@ -314,9 +313,88 @@ impl System for RamHeadAiSystem {
                 }
             }
 
-            // Start a melee attack when a target is directly in front and the
-            // cooldown has elapsed.
-            if brain.attack_cooldown <= 0.0 && !attacking {
+            // Movement mode machine: pick this frame's desired velocity.
+            let max_speed = MOVE_SPEED * Self::speed_scale(*enemy_id);
+            let mut desired = Vec2::ZERO;
+            let mut accel = ACCEL;
+            let mut tint = NORMAL_TINT;
+
+            match brain.mode {
+                RamMode::Stalk => {
+                    let seek = match &target {
+                        Some((_, rect)) => {
+                            let delta = rect.center() - center;
+                            if delta.length() > 0.001 {
+                                delta.normalize()
+                            } else {
+                                facing
+                            }
+                        }
+                        None => vec2(-1.0, 0.0),
+                    };
+                    desired = seek * max_speed
+                        + Self::separation(center, *enemy_id, &ram_centers) * SEPARATION_WEIGHT;
+                    let cap = max_speed * 1.5;
+                    if desired.length() > cap {
+                        desired = desired.normalize() * cap;
+                    }
+
+                    let in_charge_range = target
+                        .as_ref()
+                        .map(|(_, rect)| (rect.center() - center).length() <= CHARGE_TRIGGER_RANGE)
+                        .unwrap_or(false);
+                    if in_charge_range && brain.charge_cooldown <= 0.0 && !attacking {
+                        brain.mode = RamMode::Windup;
+                        brain.mode_timer = WINDUP_SECS;
+                    }
+                }
+                RamMode::Windup => {
+                    // Telegraph: brake hard and flash red while lining up.
+                    tint = WINDUP_TINT;
+                    brain.mode_timer -= dt;
+                    if brain.mode_timer <= 0.0 {
+                        brain.mode = RamMode::Charge;
+                        brain.mode_timer = CHARGE_MAX_SECS;
+                        brain.charge_dir = match &target {
+                            Some((_, rect)) => {
+                                let delta = rect.center() - center;
+                                if delta.length() > 0.001 {
+                                    delta.normalize()
+                                } else {
+                                    facing
+                                }
+                            }
+                            None => facing,
+                        };
+                    }
+                }
+                RamMode::Charge => {
+                    accel = CHARGE_ACCEL;
+                    desired = brain.charge_dir * CHARGE_SPEED;
+                    facing = brain.charge_dir;
+                    brain.facing = facing;
+                    brain.mode_timer -= dt;
+                    if brain.mode_timer <= 0.0 {
+                        brain.mode = RamMode::Recover;
+                        brain.mode_timer = RECOVER_SECS;
+                        brain.charge_cooldown = CHARGE_COOLDOWN;
+                    }
+                }
+                RamMode::Recover => {
+                    desired = brain.charge_dir * max_speed * 0.3;
+                    brain.mode_timer -= dt;
+                    if brain.mode_timer <= 0.0 {
+                        brain.mode = RamMode::Stalk;
+                    }
+                }
+            }
+
+            // Melee attack: allowed while stalking (adjacent prey) or mid-charge
+            // (the charge connects).
+            let can_attack = matches!(brain.mode, RamMode::Stalk | RamMode::Charge)
+                && brain.attack_cooldown <= 0.0
+                && !attacking;
+            if can_attack {
                 if let Some(target_id) = self.target_in_front(*body, facing, target) {
                     brain.attacking = true;
                     brain.attack_timer = ATTACK_DURATION;
@@ -342,10 +420,22 @@ impl System for RamHeadAiSystem {
                         victim: target_id,
                         attacker: *enemy_id,
                     });
+
+                    if brain.mode == RamMode::Charge {
+                        brain.mode = RamMode::Recover;
+                        brain.mode_timer = RECOVER_SECS;
+                        brain.charge_cooldown = CHARGE_COOLDOWN;
+                    }
                 }
             }
 
-            // Animation frames: attack frames while attacking, else walk frames.
+            // Ease the velocity toward the desired velocity and integrate.
+            brain.vel = Self::move_toward(brain.vel, desired, accel * dt);
+            let mut position = vec2(body.x + brain.vel.x * dt, body.y + brain.vel.y * dt);
+            position.y = position.y.clamp(Y_BOUND_MIN, Y_BOUND_MAX);
+
+            // Animation frames: attack frames while attacking, walk frames
+            // while moving, hold the first walk frame when (nearly) stopped.
             let (frame, flip_x) = if attacking {
                 let frame = ATTACK_FRAMES[brain.attack_step];
                 brain.frame_elapsed += dt;
@@ -354,7 +444,7 @@ impl System for RamHeadAiSystem {
                     brain.attack_step = (brain.attack_step + 1) % ATTACK_FRAMES.len();
                 }
                 (frame, facing.x < 0.0)
-            } else {
+            } else if brain.vel.length() > WALK_ANIM_MIN_SPEED {
                 let frame = WALK_FRAMES[brain.walk_step];
                 brain.frame_elapsed += dt;
                 if brain.frame_elapsed >= FRAME_DURATION {
@@ -362,17 +452,16 @@ impl System for RamHeadAiSystem {
                     brain.walk_step = (brain.walk_step + 1) % WALK_FRAMES.len();
                 }
                 (frame, facing.x < 0.0)
+            } else {
+                (WALK_FRAMES[0], facing.x < 0.0)
             };
-
-            let mut position = vec2(body.x + velocity.x * dt, body.y + velocity.y * dt);
-            position.y = position.y.clamp(Y_BOUND_MIN, Y_BOUND_MAX);
 
             anim_writes.push(AnimWrite {
                 anim_ref: *anim_ref,
                 position,
                 frame,
                 flip_x,
-                tint: Color::new(1.0, 1.0, 1.0, 1.0),
+                tint,
             });
 
             if let Some(area_ref) = self
