@@ -13,11 +13,11 @@ pub struct PeonStats {
 impl PeonStats {
     /// Damage taken from a raw hit after armor mitigation, flooring at 1 so a
     /// successful hit always deals at least 1. When `in_consecration` is true
-    /// the peon's armor is boosted 50% first, so it deducts more from the
-    /// incoming attack.
+    /// the peon's armor is doubled first, so it deducts more from the incoming
+    /// attack.
     pub fn receive_damage(&self, raw: i32, in_consecration: bool) -> i32 {
         let armor = if in_consecration {
-            (self.armor as f32 * 1.5) as i32
+            (self.armor as f32 * 2.0) as i32
         } else {
             self.armor
         };
