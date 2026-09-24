@@ -1,4 +1,5 @@
 use super::sys_orb::Orb;
+use crate::entity::PeonSpawnZone;
 use crate::prelude::*;
 use macroquad::prelude::Vec2;
 use std::rc::Rc;
@@ -29,15 +30,12 @@ impl CameraSystem {
             velocity: Vec2::ZERO,
         }
     }
+}
 
-    fn clamp_axis(&self, value: f32, map_size: f32, view_size: f32) -> f32 {
-        let half = view_size * 0.5;
-        if map_size >= view_size {
-            value.clamp(half, map_size - half)
-        } else {
-            map_size * 0.5
-        }
-    }
+/// Clamps a camera-center value into [min, max], pinning to `max` when
+/// min > max instead of panicking.
+fn clamp_axis(value: f32, min: f32, max: f32) -> f32 {
+    value.clamp(min.min(max), max)
 }
 
 /// Critically damped spring toward `target`. Closed-form, so it is exact and
@@ -68,9 +66,19 @@ impl System for CameraSystem {
             return;
         };
 
+        let half_w = self.view_w * 0.5;
+        let half_h = self.view_h * 0.5;
+
+        let x_min = self
+            .store
+            .first::<PeonSpawnZone>()
+            .map(|z| z.rect.x + z.rect.w + half_w)
+            .unwrap_or(half_w);
+        let x_max = self.map_w - half_w;
+
         let target = Vec2::new(
-            self.clamp_axis(orb.pos.x, self.map_w, self.view_w),
-            self.clamp_axis(orb.pos.y, self.map_h, self.view_h),
+            clamp_axis(orb.pos.x, x_min, x_max),
+            clamp_axis(orb.pos.y, half_h, self.map_h - half_h),
         );
 
         let zone_half = orb.size * 0.5;
@@ -158,5 +166,25 @@ mod tests {
             next.x > pos.x,
             "camera must move toward the target outside the zone"
         );
+    }
+
+    #[test]
+    fn clamp_axis_clamps_to_min() {
+        assert_eq!(clamp_axis(-10.0, 0.0, 100.0), 0.0);
+    }
+
+    #[test]
+    fn clamp_axis_clamps_to_max() {
+        assert_eq!(clamp_axis(200.0, 0.0, 100.0), 100.0);
+    }
+
+    #[test]
+    fn clamp_axis_passes_values_inside_range() {
+        assert_eq!(clamp_axis(42.0, 0.0, 100.0), 42.0);
+    }
+
+    #[test]
+    fn clamp_axis_pins_to_max_when_min_exceeds_max() {
+        assert_eq!(clamp_axis(10.0, 200.0, 100.0), 100.0);
     }
 }

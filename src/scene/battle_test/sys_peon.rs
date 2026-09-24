@@ -4,8 +4,8 @@ use crate::entity::peon::{
     Peon, PeonStats, PEON_ATTACK_HIT1_FRAMES, PEON_ATTACK_HIT2_FRAMES, PEON_WALK_FRAMES,
 };
 use crate::entity::{
-    AreaRect, AttackRect, Consecration, HealthBar, ImpactFrame, Knight, PeonCfg, PeonFactory,
-    PlayerOne,
+    AttackRect, Consecration, HealthBar, ImpactFrame, Knight, PeonCfg, PeonFactory,
+    PeonSpawnZone, PlayerOne,
 };
 use crate::events::{
     AttackEvent, EnemyAttackEvent, EnemyDeathEvent, HealthChangeEvent, HitEvent, PeonDeathEvent,
@@ -50,11 +50,6 @@ const DEATH_PARTICLE_COUNT: usize = 16;
 const DUST_LIGHT: Color = Color::new(0.95, 0.95, 0.9, 1.0);
 const DUST_MID: Color = Color::new(0.7, 0.7, 0.65, 1.0);
 const DUST_DARK: Color = Color::new(0.4, 0.4, 0.38, 1.0);
-
-const SPAWN_AREA_X: f32 = 0.0;
-const SPAWN_AREA_Y: f32 = 125.0;
-const SPAWN_AREA_W: f32 = 50.0;
-const SPAWN_AREA_H: f32 = 200.0;
 
 fn mitigated_damage(raw: i32, armor: i32) -> i32 {
     (raw - armor).max(1)
@@ -171,13 +166,6 @@ impl PeonSystem {
             sq.borrow_mut().push_back(event.clone());
         });
 
-        store.add(
-            AreaRect {
-                rect: Rect::new(SPAWN_AREA_X, SPAWN_AREA_Y, SPAWN_AREA_W, SPAWN_AREA_H),
-            },
-            &[],
-        );
-
         Self {
             store,
             bus,
@@ -195,12 +183,15 @@ impl PeonSystem {
     }
 
     fn spawn_peon(&self) {
+        let Some(rect) = self.store.first::<PeonSpawnZone>().map(|z| z.rect) else {
+            return;
+        };
         let mut parts = PeonFactory::create_peon(PeonCfg {
             body: self.body.clone(),
             impact: self.impact.clone(),
         });
-        let x = SPAWN_AREA_X + gen_range(0.0, SPAWN_AREA_W);
-        let y = SPAWN_AREA_Y + gen_range(0.0, SPAWN_AREA_H);
+        let x = rect.x + gen_range(0.0, rect.w);
+        let y = rect.y + gen_range(0.0, rect.h);
         parts.body.position = vec2(x, y);
         self.store.add(
             parts.marker,

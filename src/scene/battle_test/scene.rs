@@ -259,7 +259,7 @@ impl Scene for BattleTestScene {
 
             self.spawn_player();
 
-            let body = vec2(200.0, 160.0);
+            let body = vec2(480.0, 160.0);
             let anim_ref = {
                 let Some(player) = self.store.first::<PlayerOne>() else {
                     return;
@@ -392,12 +392,12 @@ impl Scene for BattleTestScene {
                 self.store.clone(),
                 self.bus.clone(),
                 schedule,
+                map_w,
             ));
             self.agg.add(RamHeadSpawnerSystem::new(
                 self.store.clone(),
                 self.bus.clone(),
                 &self.assets,
-                map_w,
             ));
             self.agg.add(PeonSystem::new(
                 self.store.clone(),

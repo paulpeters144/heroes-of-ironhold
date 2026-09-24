@@ -1,6 +1,8 @@
-use crate::entity::AreaRect;
+use crate::entity::{AreaRect, PeonSpawnZone, RamHeadSpawnZone};
 use crate::prelude::*;
-use macroquad::prelude::{draw_circle_lines, draw_rectangle_lines, vec2, Color, BLUE, GREEN, YELLOW};
+use macroquad::prelude::{
+    draw_circle_lines, draw_rectangle_lines, vec2, Color, BLUE, GREEN, ORANGE, SKYBLUE, YELLOW,
+};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -29,6 +31,14 @@ impl System for DebugDrawSystem {
                 2.0,
                 GREEN,
             );
+        }
+
+        for zone in self.store.all::<PeonSpawnZone>() {
+            draw_rectangle_lines(zone.rect.x, zone.rect.y, zone.rect.w, zone.rect.h, 2.0, SKYBLUE);
+        }
+
+        for zone in self.store.all::<RamHeadSpawnZone>() {
+            draw_rectangle_lines(zone.rect.x, zone.rect.y, zone.rect.w, zone.rect.h, 2.0, ORANGE);
         }
 
         for area in self.store.all::<AttackRect>() {

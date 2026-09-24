@@ -27,6 +27,7 @@ mod player;
 mod procedural_drawable;
 mod rest_node;
 mod skills;
+mod spawn_zone;
 mod static_image;
 
 // Barrel re-exports — the canonical import path for entity types
@@ -59,4 +60,5 @@ pub use procedural_drawable::{
 };
 pub use rest_node::RestNode;
 pub use skills::{LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
+pub use spawn_zone::{PeonSpawnZone, RamHeadSpawnZone};
 pub use static_image::StaticImage;
