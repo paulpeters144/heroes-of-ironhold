@@ -14,6 +14,8 @@ pub(crate) enum AttackPhase {
     Recovery,
 }
 
+pub const COMBO_WINDOW: f32 = 0.8;
+
 impl AttackKind {
     pub(crate) fn frame(self) -> usize {
         match self {
@@ -24,19 +26,33 @@ impl AttackKind {
 
     pub(crate) fn windup(self) -> f32 {
         match self {
-            AttackKind::Thrust => 0.05,
-            AttackKind::Swipe => 0.05,
+            AttackKind::Thrust => 0.04,
+            AttackKind::Swipe => 0.06,
         }
     }
 
     pub(crate) fn strike(self) -> f32 {
         match self {
-            AttackKind::Thrust => 0.15,
-            AttackKind::Swipe => 0.15,
+            AttackKind::Thrust => 0.12,
+            AttackKind::Swipe => 0.18,
         }
     }
 
     pub(crate) fn recovery(self) -> f32 {
-        0.05
+        match self {
+            AttackKind::Thrust => 0.04,
+            AttackKind::Swipe => 0.08,
+        }
+    }
+}
+
+pub(crate) fn combo_attack(combo_count: usize) -> AttackKind {
+    match combo_count % 5 {
+        0 => AttackKind::Thrust,
+        1 => AttackKind::Swipe,
+        2 => AttackKind::Thrust,
+        3 => AttackKind::Swipe,
+        4 => AttackKind::Thrust,
+        _ => AttackKind::Thrust,
     }
 }

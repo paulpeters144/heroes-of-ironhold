@@ -1,6 +1,6 @@
 use crate::entity::knight::{
-    AttackKind, AttackPhase, Facing, Knight, KnightLock, IDLE_FRAME, MOVE_SPEED,
-    MOVE_SPEED_VERTICAL, REVERSE_MULT, WALK_FRAMES, WALK_FRAME_DURATION,
+    combo_attack, AttackKind, AttackPhase, Facing, Knight, KnightLock, COMBO_WINDOW, IDLE_FRAME,
+    MOVE_SPEED, MOVE_SPEED_VERTICAL, REVERSE_MULT, WALK_FRAMES, WALK_FRAME_DURATION,
 };
 use crate::entity::{Dash, PlayerOne};
 use crate::input::{self, Input};
@@ -23,6 +23,8 @@ pub struct KnightControlSystem {
     combo_reset: bool,
     locked_facing: Option<Facing>,
     lock_timer: f32,
+    combo_count: usize,
+    combo_timer: f32,
 }
 
 impl KnightControlSystem {
@@ -40,11 +42,9 @@ impl KnightControlSystem {
             combo_reset: false,
             locked_facing: None,
             lock_timer: 0.0,
+            combo_count: 0,
+            combo_timer: 0.0,
         }
-    }
-
-    fn last_scheduled(&self) -> Option<AttackKind> {
-        self.buffered.or(self.current_attack)
     }
 
     fn start_next_attack(&mut self) {
@@ -136,6 +136,8 @@ impl System for KnightControlSystem {
             if prev != cur {
                 self.buffered = None;
                 self.combo_reset = true;
+                self.combo_count = 0;
+                self.combo_timer = 0.0;
             }
         }
         self.prev_facing = current_facing;
@@ -150,17 +152,21 @@ impl System for KnightControlSystem {
             0.0
         };
 
+        if self.combo_timer > 0.0 {
+            self.combo_timer -= ctx.dt;
+            if self.combo_timer <= 0.0 {
+                self.combo_count = 0;
+            }
+        }
+
         if input::down_once(Input::Attack) && self.buffered.is_none() {
-            let last = if self.combo_reset {
+            if self.combo_reset {
                 self.combo_reset = false;
-                None
-            } else {
-                self.last_scheduled()
-            };
-            let kind = match last {
-                Some(AttackKind::Thrust) => AttackKind::Swipe,
-                _ => AttackKind::Thrust,
-            };
+                self.combo_count = 0;
+            }
+            let kind = combo_attack(self.combo_count);
+            self.combo_count = (self.combo_count + 1) % 5;
+            self.combo_timer = COMBO_WINDOW;
             self.buffered = Some(kind);
         }
 
