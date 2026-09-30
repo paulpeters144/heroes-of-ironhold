@@ -7,19 +7,19 @@ test:
 	cargo nextest run --workspace
 
 build-desktop:
-	python3 clients/desktop/build.py
+	python clients/desktop/build.py
 
 run-desktop: build-desktop
-	python3 clients/desktop/run.py
+	python clients/desktop/run.py
 
 watch-desktop:
-	python3 clients/desktop/watch.py
+	python clients/desktop/watch.py
 
 run-desktop-release:
-	python3 clients/desktop/run_release.py
+	python clients/desktop/run_release.py
 
 build-web:
-	python3 clients/web/build.py
+	python clients/web/build.py
 
 run-web: build-web
-	python3 clients/web/serve.py
+	python clients/web/serve.py

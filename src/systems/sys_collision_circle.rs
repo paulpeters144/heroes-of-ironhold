@@ -1,4 +1,3 @@
-use crate::entity::CollisionGroup;
 use crate::prelude::*;
 use macroquad::prelude::{vec2, Rect, Vec2};
 use pico_entity_store::entity_ref::EntityRef;
@@ -16,7 +15,6 @@ struct Body {
 struct Collider {
     center: Vec2,
     radius: f32,
-    group: CollisionGroup,
     body: Option<Body>,
     parent_id: Option<u64>,
 }
@@ -25,13 +23,6 @@ fn circles_overlap(center: Vec2, radius: f32, other: &Collider) -> bool {
     let delta = center - other.center;
     let dist = delta.length();
     dist < radius + other.radius
-}
-
-fn groups_interact(a: CollisionGroup, b: CollisionGroup) -> bool {
-    !matches!(
-        (a, b),
-        (CollisionGroup::Hero, CollisionGroup::Peon) | (CollisionGroup::Peon, CollisionGroup::Hero)
-    )
 }
 
 /// Whether a circle overlaps an axis-aligned rectangle (without moving it).
@@ -121,7 +112,6 @@ impl CollisionCircleSystem {
             colliders.push(Collider {
                 center,
                 radius: circle.radius,
-                group: circle.group,
                 body,
                 parent_id,
             });
@@ -159,9 +149,7 @@ impl System for CollisionCircleSystem {
             let prev = self.prev.get(&pid).copied().unwrap_or(target);
 
             let blocked_x = colliders.iter().enumerate().any(|(j, other)| {
-                j != idx
-                    && groups_interact(c.group, other.group)
-                    && circles_overlap(vec2(target.x, prev.y), c.radius, other)
+                j != idx && circles_overlap(vec2(target.x, prev.y), c.radius, other)
             }) || rects
                 .iter()
                 .any(|r| circle_rect_overlap(vec2(target.x, prev.y), c.radius, r));
@@ -171,9 +159,7 @@ impl System for CollisionCircleSystem {
                 .iter()
                 .enumerate()
                 .any(|(j, other)| {
-                    j != idx
-                        && groups_interact(c.group, other.group)
-                        && circles_overlap(vec2(cx, target.y), c.radius, other)
+                    j != idx && circles_overlap(vec2(cx, target.y), c.radius, other)
                 })
                 || rects
                     .iter()
@@ -185,7 +171,7 @@ impl System for CollisionCircleSystem {
             for _ in 0..4 {
                 let mut pushed = false;
                 for (j, other) in colliders.iter().enumerate() {
-                    if j == idx || !groups_interact(c.group, other.group) {
+                    if j == idx {
                         continue;
                     }
                     let delta = center - other.center;

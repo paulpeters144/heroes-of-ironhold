@@ -258,8 +258,8 @@ impl System for KnightControlSystem {
         };
 
         self.store.update::<Animation, _>(&anim_ref, |animation| {
-            animation.position.x = new_pos_x.round();
-            animation.position.y = new_pos_y.round();
+            animation.position.x = new_pos_x;
+            animation.position.y = new_pos_y;
             animation.current_frame = new_frame;
         });
     }

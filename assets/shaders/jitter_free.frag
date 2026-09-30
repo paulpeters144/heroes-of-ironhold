@@ -1,7 +1,4 @@
 #version 100
-#ifdef GL_OES_standard_derivatives
-#extension GL_OES_standard_derivatives : enable
-#endif
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -11,12 +8,12 @@ varying lowp vec4 color;
 
 uniform sampler2D Texture;
 uniform vec2 texture_size;
+uniform float scale;
 
 void main() {
     vec2 texel  = 1.0 / texture_size;
     vec2 p      = uv * texture_size;
-    vec2 ddxy   = max(fwidth(p), vec2(1e-6));
-    vec2 k      = 1.0 / ddxy;
+    vec2 k      = vec2(max(scale, 1e-6));
 
     vec2 m = floor(p + 0.5);
     vec2 d = p - (m - 0.5);

@@ -5,7 +5,6 @@ use macroquad::prelude::Vec2;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CollisionGroup {
     Hero,
-    Peon,
     Enemy,
     Wall,
 }

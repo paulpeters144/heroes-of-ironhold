@@ -1,4 +1,4 @@
-use crate::entity::{EnemyStats, HealthBar, PeonStats, RamHead};
+use crate::entity::{EnemyStats, HealthBar, RamHead};
 use crate::prelude::*;
 use macroquad::prelude::*;
 use std::rc::Rc;
@@ -46,31 +46,6 @@ impl System for HealthBarSystem {
                         anim.z_idx,
                         percent.clamp(0.0, 1.0),
                     )
-                })
-                .or_else(|| {
-                    self.store
-                        .get_by_id::<crate::entity::Peon>(owner.id())
-                        .and_then(|e| {
-                            let anim = self.store.get_child::<Animation>(&e);
-                            let stats = self.store.get_child::<PeonStats>(&e);
-                            match (anim, stats) {
-                                (Some(anim), Some(stats)) => {
-                                    Some((anim, stats.hp as f32 / stats.max_hp.max(1) as f32))
-                                }
-                                (Some(anim), None) => Some((anim, 1.0)),
-                                _ => None,
-                            }
-                        })
-                        .map(|(anim, percent)| {
-                            let r = anim.rect();
-                            (
-                                bar.width,
-                                bar.height,
-                                r,
-                                anim.z_idx,
-                                percent.clamp(0.0, 1.0),
-                            )
-                        })
                 });
 
             let Some((width, height, parent_rect, parent_z, percent)) = parent_info else {

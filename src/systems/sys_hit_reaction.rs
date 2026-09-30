@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use pico_entity_store::prelude::EntityRef;
 
-use crate::entity::{ImpactFrame, Knight, Peon, RamHead};
+use crate::entity::{ImpactFrame, Knight, RamHead};
 use crate::events::HitEvent;
 use crate::prelude::*;
 use macroquad::prelude::*;
@@ -49,7 +49,7 @@ impl HitReactionSystem {
         }
     }
 
-    /// The victim's body anchor `Animation`, whether it's a knight, ram head, or peon.
+    /// The victim's body anchor `Animation`, whether it's a knight or ram head.
     fn victim_anchor(&self, victim: u64) -> Option<EntityRef> {
         self.store
             .get_by_id::<Knight>(victim)
@@ -59,12 +59,6 @@ impl HitReactionSystem {
                 self.store
                     .get_by_id::<RamHead>(victim)
                     .and_then(|ram| self.store.get_child::<Animation>(&ram))
-                    .map(|anim| anim.entity_ref())
-            })
-            .or_else(|| {
-                self.store
-                    .get_by_id::<Peon>(victim)
-                    .and_then(|peon| self.store.get_child::<Animation>(&peon))
                     .map(|anim| anim.entity_ref())
             })
     }
@@ -83,27 +77,18 @@ impl HitReactionSystem {
                     .and_then(|frame| self.store.get_child::<StaticImage>(&frame))
                     .map(|image| image.entity_ref())
             })
-            .or_else(|| {
-                self.store
-                    .get_by_id::<Peon>(victim)
-                    .and_then(|peon| self.store.get_child::<ImpactFrame>(&peon))
-                    .and_then(|frame| self.store.get_child::<StaticImage>(&frame))
-                    .map(|image| image.entity_ref())
-            })
     }
 
     /// The victim's drawable descendants, except the impact image, to hide during a hit.
     fn victim_visuals(&self, victim: u64, impact_id: u64) -> Vec<u64> {
-        let descendants: Vec<EntityRef> =
-            if let Some(knight) = self.store.get_by_id::<Knight>(victim) {
-                self.store.descendants(&knight)
-            } else if let Some(ram) = self.store.get_by_id::<RamHead>(victim) {
-                self.store.descendants(&ram)
-            } else if let Some(peon) = self.store.get_by_id::<Peon>(victim) {
-                self.store.descendants(&peon)
-            } else {
-                return Vec::new();
-            };
+        let descendants: Vec<EntityRef> = if let Some(knight) = self.store.get_by_id::<Knight>(victim)
+        {
+            self.store.descendants(&knight)
+        } else if let Some(ram) = self.store.get_by_id::<RamHead>(victim) {
+            self.store.descendants(&ram)
+        } else {
+            return Vec::new();
+        };
 
         descendants
             .into_iter()

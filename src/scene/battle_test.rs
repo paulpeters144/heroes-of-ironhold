@@ -13,10 +13,10 @@ mod sys_knight_dash;
 mod sys_knight_offsets;
 mod sys_map_draw;
 mod sys_orb;
-mod sys_peon;
 mod sys_ramhead_ai;
 mod sys_ramhead_spawner;
 mod sys_shield_toss;
 mod sys_skill;
+mod sys_wave_director;
 
 pub use scene::BattleTestScene;

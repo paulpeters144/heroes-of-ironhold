@@ -1,13 +1,11 @@
 // Entity sub-modules that expose crate-shared constants stay `pub(crate)`
-// (knight/enemy/peon frame constants and factory size constants are used by scene
+// (knight/enemy frame constants and factory size constants are used by scene
 // systems). Pure-type modules are private; their types are re-exported here.
 
 pub(crate) mod enemy;
 pub(crate) mod factory_enemy;
 pub(crate) mod factory_hero;
-pub(crate) mod factory_peon;
 pub(crate) mod knight;
-pub(crate) mod peon;
 
 mod animation;
 mod area_rect;
@@ -25,7 +23,9 @@ mod hero;
 mod impact_frame;
 mod player;
 mod procedural_drawable;
+mod rest_node;
 mod skills;
+mod spawn_zone;
 mod static_image;
 
 // Barrel re-exports — the canonical import path for entity types
@@ -40,7 +40,6 @@ pub use drawable::Drawable;
 pub use enemy::{EnemyStats, RamHead};
 pub use factory_enemy::{EnemyFactory, RamHeadCfg};
 pub use factory_hero::{HeroFactory, KnightCfg, KnightParts};
-pub use factory_peon::{PeonCfg, PeonFactory, PeonParts};
 pub use factory_skills::{SkillSlotCfg, SkillSlotParts, SkillsFactory, SkillsParts};
 pub use factory_wall::{WallCfg, WallFactory};
 pub use floating_text::FloatingText;
@@ -51,10 +50,11 @@ pub use knight::{
     Consecration, Effect, EffectKind, FrameOffsets, GuardianShield, Knight, KnightLock, Shield,
     Sword,
 };
-pub use peon::{Peon, PeonStats};
 pub use player::{PlayerFactory, PlayerOne, PlayerTwo};
 pub use procedural_drawable::{
     ConsecrationData, ProceduralDrawable, ProceduralEffect, RuneShard, Spark,
 };
+pub use rest_node::RestNode;
 pub use skills::{LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};
+pub use spawn_zone::RamHeadSpawnZone;
 pub use static_image::StaticImage;

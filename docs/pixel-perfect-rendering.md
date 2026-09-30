@@ -87,14 +87,14 @@ nearest-neighbor sampling would produce the crawling moiré described above.
 
 ```glsl
 vec2 texel = 1.0 / texture_size;
-vec2 p     = uv * texture_size;      // position in texel space
-vec2 ddxy  = max(fwidth(p), 1e-6);   // texels per screen pixel
-vec2 k     = 1.0 / ddxy;             // screen pixels per texel
+vec2 p     = uv * texture_size;        // position in texel space
+vec2 k     = vec2(max(scale, 1e-6));   // screen pixels per texel
 // ... blend the 4 surrounding texels with a sub-pixel-wide ramp
 ```
 
 For each screen pixel it computes its footprint in render-target texel space
-(via `fwidth`) and blends only across the sub-pixel boundary band. At integer
+(from `scale`, the fill-the-window factor passed in as a uniform) and blends
+only across the sub-pixel boundary band. At integer
 scales the ramp is a hard edge (crisp); at fractional scales it produces a
 single-screen-pixel anti-aliased transition instead of moiré. This lets the
 image fill the window at *any* size — growing and shrinking with the window —
@@ -102,7 +102,11 @@ without the "lines of waves".
 
 The `texture_size` uniform is set to the full render-target size (1280x720),
 because `draw_texture_ex`'s `source` rect produces UVs in full-texture space.
-The render target keeps `FilterMode::Nearest`; the shader does its own point
+The `scale` uniform is the `view_scale::view_scale()` result — screen pixels
+per virtual pixel, which equals the texel-to-screen-pixel footprint the sampler
+needs. Passing it explicitly avoids `fwidth`, which isn't available under
+`#version 100` on desktop GLES drivers. The render target keeps
+`FilterMode::Nearest`; the shader does its own point
 fetches at texel centers, so no linear filtering is involved. The material is
 loaded in `Manager::new` (failure-tolerant): if the shader sources are missing
 or fail to compile, the blit falls back to plain nearest sampling.

@@ -54,7 +54,10 @@ impl Manager {
             shader::Shader::JitterFreeVert,
             shader::Shader::JitterFreeFrag,
             MaterialParams {
-                uniforms: vec![UniformDesc::new("texture_size", UniformType::Float2)],
+                uniforms: vec![
+                    UniformDesc::new("texture_size", UniformType::Float2),
+                    UniformDesc::new("scale", UniformType::Float1),
+                ],
                 ..Default::default()
             },
         )
@@ -234,6 +237,7 @@ impl Manager {
                 "texture_size",
                 vec2(self.cfg.rt_width(), self.cfg.rt_height()),
             );
+            material.set_uniform("scale", scale);
             gl_use_material(material);
         }
         draw_texture_ex(

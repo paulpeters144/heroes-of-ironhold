@@ -37,11 +37,6 @@ pub struct KnightDeathEvent {
 }
 
 #[derive(Clone, Debug)]
-pub struct PeonDeathEvent {
-    pub peon: u64,
-}
-
-#[derive(Clone, Debug)]
 pub struct SkillCastEvent {
     pub caster: u64,
     pub direction: SkillDirection,
@@ -73,4 +68,11 @@ pub struct SkillActiveEvent {
 #[derive(Clone, Debug)]
 pub struct SkillActiveEndEvent {
     pub kind: SkillIconKind,
+}
+
+/// Fired by the wave director to request a burst of ram head spawns.
+/// Only the ram head spawner subscribes.
+#[derive(Clone, Debug)]
+pub struct SpawnRamHeadEvent {
+    pub count: usize,
 }
