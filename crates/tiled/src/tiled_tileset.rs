@@ -6,6 +6,7 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 
 use crate::error::TiledError;
+use crate::raw_models::ParsedTileset;
 use crate::tiled_map::{get_attr_string, get_attr_u16, get_attr_u32};
 
 #[derive(Debug, Clone)]
@@ -94,18 +95,36 @@ fn parse_tsx(xml: &str) -> Result<TsxInfo, TiledError> {
     })
 }
 
-pub(crate) fn resolve_tileset(
+pub(crate) fn parse_tileset(
     tsx: &str,
     firstgid: u32,
     images: &HashMap<String, Image>,
-) -> Result<(TiledTileset, (u16, u16)), TiledError> {
+) -> Result<ParsedTileset, TiledError> {
     let info = parse_tsx(tsx)?;
     let image = images
         .get(&info.image)
         .cloned()
         .unwrap_or_else(Image::empty);
-    let tile_size = (info.tile_width, info.tile_height);
-    let tileset = TiledTileset::new(firstgid, tile_size.0, tile_size.1, info.columns, image);
 
-    Ok((tileset, tile_size))
+    Ok(ParsedTileset {
+        firstgid,
+        tile_width: info.tile_width,
+        tile_height: info.tile_height,
+        columns: info.columns,
+        image,
+    })
+}
+
+pub(crate) fn resolve_tileset(parsed: &ParsedTileset) -> TiledTileset {
+    let texture = Texture2D::from_image(&parsed.image);
+    texture.set_filter(FilterMode::Nearest);
+
+    TiledTileset {
+        firstgid: parsed.firstgid,
+        tile_width: parsed.tile_width,
+        tile_height: parsed.tile_height,
+        columns: parsed.columns,
+        image: parsed.image.clone(),
+        texture: Some(texture),
+    }
 }

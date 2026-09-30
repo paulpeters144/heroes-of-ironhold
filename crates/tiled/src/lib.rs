@@ -9,8 +9,9 @@ mod tiled_tileset;
 
 pub use collide_static::CollideStatic;
 pub use error::TiledError;
+pub use raw_models::{ParsedLayer, ParsedMap, ParsedSection, ParsedTileset};
 pub use tiled_layer::TiledLayer;
-pub use tiled_map::{TiledMap, TiledMapCfg};
+pub use tiled_map::{TiledMap, TiledMapCfg, parse_config};
 pub use tiled_section::TiledSection;
 pub use tiled_tile::TiledTile;
 pub use tiled_tileset::TiledTileset;

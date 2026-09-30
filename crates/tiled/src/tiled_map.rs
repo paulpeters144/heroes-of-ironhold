@@ -7,10 +7,10 @@ use quick_xml::events::Event;
 
 use crate::collide_static::CollideStatic;
 use crate::error::TiledError;
-use crate::raw_models::RawLayer;
+use crate::raw_models::{ParsedLayer, ParsedMap, ParsedSection, ParsedTileset, RawLayer};
 use crate::tiled_layer::{TiledLayer, resolve_layer};
 use crate::tiled_section::{TiledSection, build_sections};
-use crate::tiled_tileset::{TiledTileset, resolve_tileset};
+use crate::tiled_tileset::{TiledTileset, parse_tileset, resolve_tileset};
 
 pub struct TiledMapCfg<'a> {
     pub tile_map: String,
@@ -56,132 +56,187 @@ fn rects_overlap(a: &Rect, b: &Rect) -> bool {
 
 impl TiledMap {
     pub fn from_config(cfg: TiledMapCfg<'_>) -> Result<Self, TiledError> {
-        let mut reader = Reader::from_str(&cfg.tile_map);
+        let parsed = parse_config(&cfg)?;
+        parsed.build()
+    }
+}
 
-        let mut tile_w: u16 = 0;
-        let mut tile_h: u16 = 0;
-        let mut map_w: u32 = 0;
-        let mut map_h: u32 = 0;
-        let mut tileset_srcs: Vec<(u32, String)> = Vec::new();
-        let mut raw_layers: Vec<RawLayer> = Vec::new();
-        let mut collide_statics: Vec<CollideStatic> = Vec::new();
-        let mut patrol_points: Vec<Vec2> = Vec::new();
-        let mut in_collide_group = false;
-        let mut in_patrol_group = false;
+pub fn parse_config(cfg: &TiledMapCfg<'_>) -> Result<ParsedMap, TiledError> {
+    let mut reader = Reader::from_str(&cfg.tile_map);
 
-        let mut in_data = false;
-        let mut csv_buf = String::new();
-        let mut current_layer_name = String::new();
-        let mut current_layer_w: u32 = 0;
-        let mut current_layer_h: u32 = 0;
+    let mut tile_w: u16 = 0;
+    let mut tile_h: u16 = 0;
+    let mut map_w: u32 = 0;
+    let mut map_h: u32 = 0;
+    let mut tileset_srcs: Vec<(u32, String)> = Vec::new();
+    let mut raw_layers: Vec<RawLayer> = Vec::new();
+    let mut collide_statics: Vec<CollideStatic> = Vec::new();
+    let mut patrol_points: Vec<Vec2> = Vec::new();
+    let mut in_collide_group = false;
+    let mut in_patrol_group = false;
 
-        loop {
-            match reader
-                .read_event()
-                .map_err(|e| TiledError::Xml(e.to_string()))?
-            {
-                Event::Eof => break,
-                Event::Start(e) | Event::Empty(e) => match e.name().as_ref() {
-                    b"map" => {
-                        tile_w = get_attr_u16(&e, b"tilewidth").unwrap_or(0);
-                        tile_h = get_attr_u16(&e, b"tileheight").unwrap_or(0);
-                        map_w = get_attr_u32(&e, b"width").unwrap_or(0);
-                        map_h = get_attr_u32(&e, b"height").unwrap_or(0);
-                    }
-                    b"tileset" => {
-                        let firstgid = get_attr_u32(&e, b"firstgid").unwrap_or(1);
-                        let source = get_attr_string(&e, b"source").unwrap_or_default();
-                        tileset_srcs.push((firstgid, source));
-                    }
-                    b"layer" => {
-                        current_layer_name = get_attr_string(&e, b"name").unwrap_or_default();
-                        current_layer_w = get_attr_u32(&e, b"width").unwrap_or(0);
-                        current_layer_h = get_attr_u32(&e, b"height").unwrap_or(0);
-                    }
-                    b"data" => {
-                        let encoding = get_attr_string(&e, b"encoding").unwrap_or_default();
-                        if encoding == "csv" {
-                            in_data = true;
-                            csv_buf.clear();
-                        }
-                    }
-                    b"objectgroup" => {
-                        let name = get_attr_string(&e, b"name").unwrap_or_default();
-                        in_collide_group = name == "collide" || name == "collisions";
-                        in_patrol_group = name == "patrol";
-                    }
-                    b"object" if in_collide_group => {
-                        let x = get_attr_f32(&e, b"x").unwrap_or(0.0);
-                        let y = get_attr_f32(&e, b"y").unwrap_or(0.0);
-                        if let (Some(width), Some(height)) =
-                            (get_attr_f32(&e, b"width"), get_attr_f32(&e, b"height"))
-                        {
-                            collide_statics.push(CollideStatic(Rect::new(x, y, width, height)));
-                        }
-                    }
-                    b"object" if in_patrol_group => {
-                        let x = get_attr_f32(&e, b"x").unwrap_or(0.0);
-                        let y = get_attr_f32(&e, b"y").unwrap_or(0.0);
-                        patrol_points.push(Vec2::new(x, y));
-                    }
-                    b"object" => {}
-                    _ => {}
-                },
-                Event::Text(e) if in_data => {
-                    if let Ok(text) = e.decode() {
-                        csv_buf.push_str(&text);
+    let mut in_data = false;
+    let mut csv_buf = String::new();
+    let mut current_layer_name = String::new();
+    let mut current_layer_w: u32 = 0;
+    let mut current_layer_h: u32 = 0;
+
+    loop {
+        match reader
+            .read_event()
+            .map_err(|e| TiledError::Xml(e.to_string()))?
+        {
+            Event::Eof => break,
+            Event::Start(e) | Event::Empty(e) => match e.name().as_ref() {
+                b"map" => {
+                    tile_w = get_attr_u16(&e, b"tilewidth").unwrap_or(0);
+                    tile_h = get_attr_u16(&e, b"tileheight").unwrap_or(0);
+                    map_w = get_attr_u32(&e, b"width").unwrap_or(0);
+                    map_h = get_attr_u32(&e, b"height").unwrap_or(0);
+                }
+                b"tileset" => {
+                    let firstgid = get_attr_u32(&e, b"firstgid").unwrap_or(1);
+                    let source = get_attr_string(&e, b"source").unwrap_or_default();
+                    tileset_srcs.push((firstgid, source));
+                }
+                b"layer" => {
+                    current_layer_name = get_attr_string(&e, b"name").unwrap_or_default();
+                    current_layer_w = get_attr_u32(&e, b"width").unwrap_or(0);
+                    current_layer_h = get_attr_u32(&e, b"height").unwrap_or(0);
+                }
+                b"data" => {
+                    let encoding = get_attr_string(&e, b"encoding").unwrap_or_default();
+                    if encoding == "csv" {
+                        in_data = true;
+                        csv_buf.clear();
                     }
                 }
-                Event::End(e) if e.name().as_ref() == b"data" && in_data => {
-                    in_data = false;
-                    let tiles: Vec<u32> = csv_buf
-                        .split(',')
-                        .map(|s| s.trim())
-                        .filter(|s| !s.is_empty())
-                        .filter_map(|s| s.parse().ok())
-                        .collect();
-
-                    let sections = build_sections(
-                        &tiles,
-                        current_layer_w,
-                        current_layer_h,
-                        tile_w as u32,
-                        tile_h as u32,
-                        cfg.section_size,
-                    );
-
-                    raw_layers.push(RawLayer {
-                        name: current_layer_name.clone(),
-                        sections,
-                    });
+                b"objectgroup" => {
+                    let name = get_attr_string(&e, b"name").unwrap_or_default();
+                    in_collide_group = name == "collide" || name == "collisions";
+                    in_patrol_group = name == "patrol";
                 }
-                Event::End(e) if e.name().as_ref() == b"objectgroup" => {
-                    in_collide_group = false;
-                    in_patrol_group = false;
+                b"object" if in_collide_group => {
+                    let x = get_attr_f32(&e, b"x").unwrap_or(0.0);
+                    let y = get_attr_f32(&e, b"y").unwrap_or(0.0);
+                    if let (Some(width), Some(height)) =
+                        (get_attr_f32(&e, b"width"), get_attr_f32(&e, b"height"))
+                    {
+                        collide_statics.push(CollideStatic(Rect::new(x, y, width, height)));
+                    }
                 }
+                b"object" if in_patrol_group => {
+                    let x = get_attr_f32(&e, b"x").unwrap_or(0.0);
+                    let y = get_attr_f32(&e, b"y").unwrap_or(0.0);
+                    patrol_points.push(Vec2::new(x, y));
+                }
+                b"object" => {}
                 _ => {}
+            },
+            Event::Text(e) if in_data => {
+                if let Ok(text) = e.decode() {
+                    csv_buf.push_str(&text);
+                }
             }
+            Event::End(e) if e.name().as_ref() == b"data" && in_data => {
+                in_data = false;
+                let tiles: Vec<u32> = csv_buf
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .filter_map(|s| s.parse().ok())
+                    .collect();
+
+                let sections = build_sections(
+                    &tiles,
+                    current_layer_w,
+                    current_layer_h,
+                    tile_w as u32,
+                    tile_h as u32,
+                    cfg.section_size,
+                );
+
+                raw_layers.push(RawLayer {
+                    name: current_layer_name.clone(),
+                    sections,
+                });
+            }
+            Event::End(e) if e.name().as_ref() == b"objectgroup" => {
+                in_collide_group = false;
+                in_patrol_group = false;
+            }
+            _ => {}
+        }
+    }
+
+    let mut parsed_tilesets: Vec<ParsedTileset> = Vec::new();
+    for (firstgid, src) in &tileset_srcs {
+        let tsx = cfg
+            .tile_sets
+            .get(src)
+            .map(|s| s.as_str())
+            .unwrap_or_default();
+        let parsed_tileset = parse_tileset(tsx, *firstgid, cfg.images)?;
+
+        if tile_w == 0 && parsed_tileset.tile_width > 0 {
+            tile_w = parsed_tileset.tile_width;
+            tile_h = parsed_tileset.tile_height;
         }
 
-        // Build per-tileset metadata; fall back to TSX tile size if TMX didn't set it.
+        parsed_tilesets.push(parsed_tileset);
+    }
+
+    let layers: Vec<ParsedLayer> = raw_layers
+        .into_iter()
+        .map(|layer| ParsedLayer {
+            name: layer.name,
+            sections: layer
+                .sections
+                .into_iter()
+                .map(|s| ParsedSection {
+                    grid_pos: s.grid_pos,
+                    bounds: s.bounds,
+                    tiles: s.tiles,
+                })
+                .collect(),
+        })
+        .collect();
+
+    Ok(ParsedMap {
+        tilesets: parsed_tilesets,
+        tile_size: (tile_w, tile_h),
+        map_size: (map_w, map_h),
+        section_size: cfg.section_size,
+        layers,
+        collide_statics,
+        patrol_points,
+    })
+}
+
+impl ParsedMap {
+    pub fn build(self) -> Result<TiledMap, TiledError> {
         let mut tilesets: Vec<TiledTileset> = Vec::new();
-        for (firstgid, src) in &tileset_srcs {
-            let tsx = cfg
-                .tile_sets
-                .get(src)
-                .map(|s| s.as_str())
-                .unwrap_or_default();
-            let (tileset, tile_size) = resolve_tileset(tsx, *firstgid, cfg.images)?;
-
-            if tile_w == 0 && tile_size.0 > 0 {
-                tile_w = tile_size.0;
-                tile_h = tile_size.1;
-            }
-
-            tilesets.push(tileset);
+        for parsed_ts in &self.tilesets {
+            tilesets.push(resolve_tileset(parsed_ts));
         }
 
-        // Resolve raw GIDs into drawable tiles now that tilesets (with textures) exist.
+        let raw_layers: Vec<RawLayer> = self
+            .layers
+            .into_iter()
+            .map(|layer| RawLayer {
+                name: layer.name,
+                sections: layer
+                    .sections
+                    .into_iter()
+                    .map(|s| crate::raw_models::RawSection {
+                        grid_pos: s.grid_pos,
+                        bounds: s.bounds,
+                        tiles: s.tiles,
+                    })
+                    .collect(),
+            })
+            .collect();
+
         let layers: Vec<TiledLayer> = raw_layers
             .into_iter()
             .map(|layer| resolve_layer(layer, &tilesets))
@@ -189,15 +244,25 @@ impl TiledMap {
 
         Ok(TiledMap {
             tilesets,
-            tile_size: (tile_w, tile_h),
-            map_size: (map_w, map_h),
-            section_size: cfg.section_size,
+            tile_size: self.tile_size,
+            map_size: self.map_size,
+            section_size: self.section_size,
             layers,
-            collide_statics,
-            patrol_points,
+            collide_statics: self.collide_statics,
+            patrol_points: self.patrol_points,
         })
     }
 
+    pub fn get_sections(&self, view: Rect) -> Vec<&ParsedSection> {
+        self.layers
+            .iter()
+            .flat_map(|layer| layer.sections.iter())
+            .filter(|section| rects_overlap(&section.bounds, &view))
+            .collect()
+    }
+}
+
+impl TiledMap {
     pub fn get_sections(&self, view: Rect) -> Vec<&TiledSection> {
         self.layers
             .iter()
