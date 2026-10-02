@@ -13,6 +13,7 @@ use super::sys_knight_offsets::KnightOffsetUpdateSystem;
 use super::sys_map_draw::MapDrawSystem;
 use super::sys_orb::CameraOrbSystem;
 use super::sys_ramhead_ai::RamHeadAiSystem;
+use super::sys_ramhead_splat::RamHeadSplatSystem;
 use super::sys_ramhead_spawner::RamHeadSpawnerSystem;
 use super::sys_shield_toss::ShieldTossSystem;
 use super::sys_skill::SkillSystem;
@@ -380,6 +381,10 @@ impl Scene for BattleTestScene {
             self.agg.add(HealthBarSystem::new(self.store.clone()));
             self.agg
                 .add(RamHeadAiSystem::new(self.store.clone(), self.bus.clone()));
+            self.agg.add(RamHeadSplatSystem::new(
+                self.store.clone(),
+                self.bus.clone(),
+            ));
             self.agg.add(WaveDirectorSystem::new(
                 self.store.clone(),
                 self.bus.clone(),

@@ -1,7 +1,7 @@
 use crate::entity::enemy::{EnemyStats, RamHead, ATTACK_FRAMES, WALK_FRAMES};
 use crate::entity::knight::Knight;
 use crate::entity::{HeroStats, PlayerOne};
-use crate::events::{EnemyAttackEvent, HitEvent};
+use crate::events::{EnemyAttackEvent, HitEvent, RamHeadSplatEvent};
 use crate::prelude::*;
 use macroquad::prelude::{vec2, Color, Rect, Vec2};
 use pico_entity_store::prelude::EntityRef;
@@ -13,10 +13,11 @@ const MOVE_SPEED: f32 = 60.0;
 const FRAME_DURATION: f32 = 0.14;
 const WALK_ANIM_MIN_SPEED: f32 = 8.0;
 
-// Melee attack: how far ahead the hit strip reaches and its timing.
+// Melee attack: how far ahead the hit strip reaches and its timing. The swing
+// plays each attack frame exactly once, evenly spaced across ATTACK_DURATION.
 const ATTACK_REACH: f32 = 26.0;
 const ATTACK_DURATION: f32 = 0.30;
-const ATTACK_FRAME_DURATION: f32 = 0.06;
+const ATTACK_FRAME_DURATION: f32 = ATTACK_DURATION / ATTACK_FRAMES.len() as f32;
 const ATTACK_COOLDOWN: f32 = 0.55;
 
 // Charge behavior: a ram head stalks until its prey is in range, winds up
@@ -398,6 +399,18 @@ impl System for RamHeadAiSystem {
                         attacker: *enemy_id,
                     });
 
+                    // Impact burst at the contact point: where the bite strip
+                    // meets the victim's body.
+                    let hit_zone = Self::forward_rect(*body, facing);
+                    let contact = target
+                        .and_then(|(_, rect)| hit_zone.intersect(rect))
+                        .map(|overlap| overlap.center())
+                        .unwrap_or(hit_zone.center());
+                    self.bus.fire(&RamHeadSplatEvent {
+                        position: contact,
+                        target: target_id,
+                    });
+
                     if brain.mode == RamMode::Charge {
                         brain.mode = RamMode::Recover;
                         brain.mode_timer = RECOVER_SECS;
@@ -418,7 +431,8 @@ impl System for RamHeadAiSystem {
                 brain.frame_elapsed += dt;
                 if brain.frame_elapsed >= ATTACK_FRAME_DURATION {
                     brain.frame_elapsed = 0.0;
-                    brain.attack_step = (brain.attack_step + 1) % ATTACK_FRAMES.len();
+                    // One-shot swing: clamp on the last frame, never wrap.
+                    brain.attack_step = (brain.attack_step + 1).min(ATTACK_FRAMES.len() - 1);
                 }
                 (frame, facing.x < 0.0)
             } else if brain.vel.length() > WALK_ANIM_MIN_SPEED {

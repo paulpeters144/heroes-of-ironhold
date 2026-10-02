@@ -298,10 +298,11 @@ impl ConsecrationSystem {
             return;
         };
         self.store.update::<ProceduralDrawable, _>(ground_ref, |d| {
-            let ProceduralEffect::Consecration(ref mut data) = d.effect;
-            data.area_life = self.area_life;
-            data.sparks = self.sparks.clone();
-            data.shards = self.shards.clone();
+            if let ProceduralEffect::Consecration(ref mut data) = d.effect {
+                data.area_life = self.area_life;
+                data.sparks = self.sparks.clone();
+                data.shards = self.shards.clone();
+            }
         });
     }
 }

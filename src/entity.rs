@@ -52,7 +52,7 @@ pub use knight::{
 };
 pub use player::{PlayerFactory, PlayerOne, PlayerTwo};
 pub use procedural_drawable::{
-    ConsecrationData, ProceduralDrawable, ProceduralEffect, RuneShard, Spark,
+    ConsecrationData, ImpactBurst, ProceduralDrawable, ProceduralEffect, RuneShard, Spark,
 };
 pub use rest_node::RestNode;
 pub use skills::{LastUsedSkill, Skill, SkillDirection, SkillIcon, SkillIconKind, SkillsWidget};

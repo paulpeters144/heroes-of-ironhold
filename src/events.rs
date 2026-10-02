@@ -1,5 +1,5 @@
 use crate::entity::{SkillDirection, SkillIconKind};
-use macroquad::prelude::Rect;
+use macroquad::prelude::{Rect, Vec2};
 
 #[derive(Clone, Debug)]
 pub struct AttackEvent {
@@ -75,4 +75,10 @@ pub struct SkillActiveEndEvent {
 #[derive(Clone, Debug)]
 pub struct SpawnRamHeadEvent {
     pub count: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct RamHeadSplatEvent {
+    pub position: Vec2,
+    pub target: u64,
 }

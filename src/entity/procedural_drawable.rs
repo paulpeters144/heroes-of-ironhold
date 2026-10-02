@@ -1,5 +1,6 @@
 use super::Drawable;
 use macroquad::prelude::*;
+use macroquad::rand::gen_range;
 
 const AREA_WIDTH: f32 = 245.0;
 
@@ -11,6 +12,15 @@ const APPEAR_SECS: f32 = 0.5;
 const FADE_OUT_SECS: f32 = 0.5;
 const RUNE_ROT_SPEED: f32 = 0.4;
 const RUNE_ROT_SPEED_REVERSE: f32 = -0.25;
+
+const BURST_FADE_IN: f32 = 0.015;
+const BURST_FADE_OUT: f32 = 0.05;
+const BURST_SPIKES: usize = 9;
+const BURST_OUTER: f32 = 11.0;
+const BURST_INNER: f32 = 4.5;
+const BURST_ACTION_LINES: usize = 5;
+const BURST_MAX_TILT: f32 = 0.18;
+const BURST_WHITE: Color = Color::new(1.0, 1.0, 1.0, 1.0);
 
 #[derive(Clone, Debug)]
 pub struct Spark {
@@ -41,8 +51,93 @@ pub struct ConsecrationData {
 }
 
 #[derive(Clone, Debug)]
+pub struct ImpactBurst {
+    pub pos: Vec2,
+    pub age: f32,
+    pub duration: f32,
+    pub radii: Vec<f32>,
+    pub rotation: f32,
+    pub action_angles: Vec<f32>,
+}
+
+impl ImpactBurst {
+    pub fn new(pos: Vec2, duration: f32) -> Self {
+        let mut radii = Vec::with_capacity(BURST_SPIKES * 2);
+        for i in 0..BURST_SPIKES * 2 {
+            let base = if i % 2 == 0 {
+                BURST_OUTER
+            } else {
+                BURST_INNER
+            };
+            radii.push(base * gen_range(0.92, 1.08));
+        }
+
+        let mut action_angles = Vec::with_capacity(BURST_ACTION_LINES);
+        for i in 0..BURST_ACTION_LINES {
+            let spread = i as f32 / BURST_ACTION_LINES as f32 * std::f32::consts::TAU;
+            action_angles.push(spread + gen_range(-0.3, 0.3));
+        }
+
+        ImpactBurst {
+            pos,
+            age: 0.0,
+            duration,
+            radii,
+            rotation: gen_range(-BURST_MAX_TILT, BURST_MAX_TILT),
+            action_angles,
+        }
+    }
+
+    fn alpha(&self) -> f32 {
+        let fade_in = (self.age / BURST_FADE_IN).min(1.0);
+        let fade_out =
+            ((self.age - (self.duration - BURST_FADE_OUT)) / BURST_FADE_OUT).clamp(0.0, 1.0);
+        fade_in * (1.0 - fade_out)
+    }
+
+    fn star_points(&self, scale: f32) -> Vec<Vec2> {
+        self.radii
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                let angle =
+                    self.rotation + i as f32 * std::f32::consts::PI / BURST_SPIKES as f32;
+                self.pos + vec2(angle.cos() * r * scale, angle.sin() * r * scale)
+            })
+            .collect()
+    }
+
+    fn draw(&self) {
+        let alpha = self.alpha();
+        if alpha <= 0.0 {
+            return;
+        }
+        let color = Color::new(BURST_WHITE.r, BURST_WHITE.g, BURST_WHITE.b, alpha);
+
+        for angle in self.action_angles.iter() {
+            let dir = vec2(angle.cos(), angle.sin());
+            let from = self.pos + dir * BURST_OUTER * 0.9;
+            let to = self.pos + dir * (BURST_OUTER + 5.0);
+            draw_line(from.x, from.y, to.x, to.y, 1.5, color);
+        }
+
+        let halo = self.star_points(1.6);
+        let halo_color = Color::new(BURST_WHITE.r, BURST_WHITE.g, BURST_WHITE.b, alpha * 0.35);
+        for i in 0..halo.len() {
+            draw_triangle(self.pos, halo[i], halo[(i + 1) % halo.len()], halo_color);
+        }
+
+        let points = self.star_points(1.0);
+        for i in 0..points.len() {
+            draw_triangle(self.pos, points[i], points[(i + 1) % points.len()], color);
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum ProceduralEffect {
     Consecration(ConsecrationData),
+    ImpactBurst(ImpactBurst),
 }
 
 #[derive(Clone, Debug)]
@@ -254,6 +349,7 @@ impl ProceduralEffect {
     fn draw(&self) {
         match self {
             ProceduralEffect::Consecration(data) => data.draw(),
+            ProceduralEffect::ImpactBurst(data) => data.draw(),
         }
     }
 }
