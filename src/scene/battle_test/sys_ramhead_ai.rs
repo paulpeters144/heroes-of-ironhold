@@ -2,7 +2,7 @@ use crate::entity::enemy::{EnemyStats, RamHead, ATTACK_FRAMES, WALK_FRAMES};
 use crate::entity::knight::Knight;
 use crate::entity::{
     AttackRect, EnemyFactory, HealthBar, HeroStats, ImpactBurst, ImpactFrame, PlayerOne,
-    ProceduralDrawable, ProceduralEffect, RamHeadCfg, RamHeadSpawnZone,
+    ProceduralDrawable, ProceduralEffect, RamHeadCfg, RamHeadSpawnZone, StaticImage,
 };
 use crate::events::{EnemyAttackEvent, HitEvent, RamHeadSplatEvent, SpawnRamHeadEvent};
 use crate::prelude::*;
@@ -37,6 +37,7 @@ const CHARGE_SPEED: f32 = 175.0;
 const CHARGE_MAX_SECS: f32 = 0.8;
 const CHARGE_COOLDOWN: f32 = 1.4;
 const RECOVER_SECS: f32 = 0.35;
+const STUN_SECS: f32 = 0.25;
 
 // Steering: velocity easing and boids-style separation between ram heads.
 const ACCEL: f32 = 420.0;
@@ -63,6 +64,7 @@ enum RamMode {
     Windup,
     Charge,
     Recover,
+    Stun,
 }
 
 /// Per-ram brain: steering velocity plus the charge mode machine and the
@@ -110,6 +112,14 @@ struct AnimWrite {
     frame: usize,
     flip_x: bool,
     tint: Color,
+    visible: bool,
+}
+
+struct ImpactWrite {
+    image_ref: EntityRef,
+    position: Vec2,
+    flip_x: bool,
+    visible: bool,
 }
 
 struct AttackRectWrite {
@@ -126,6 +136,7 @@ pub struct RamHeadAiSystem {
     impact: Texture2D,
     spawn_queue: Rc<RefCell<VecDeque<SpawnRamHeadEvent>>>,
     splat_queue: Rc<RefCell<Vec<RamHeadSplatEvent>>>,
+    hit_queue: Rc<RefCell<VecDeque<HitEvent>>>,
     _subs: Rc<SubCollection>,
 }
 
@@ -193,6 +204,7 @@ impl RamHeadAiSystem {
 
         let spawn_queue = Rc::new(RefCell::new(VecDeque::new()));
         let splat_queue = Rc::new(RefCell::new(Vec::new()));
+        let hit_queue = Rc::new(RefCell::new(VecDeque::new()));
         let subs = Rc::new(SubCollection::new());
 
         let spawn_queue_for_handler = spawn_queue.clone();
@@ -207,6 +219,11 @@ impl RamHeadAiSystem {
             splat_queue_for_handler.borrow_mut().push(event.clone());
         });
 
+        let hit_queue_for_handler = hit_queue.clone();
+        subs.on::<HitEvent>(&bus, move |event: &HitEvent| {
+            hit_queue_for_handler.borrow_mut().push_back(event.clone());
+        });
+
         Self {
             store,
             bus,
@@ -215,6 +232,7 @@ impl RamHeadAiSystem {
             impact,
             spawn_queue,
             splat_queue,
+            hit_queue,
             _subs: subs,
         }
     }
@@ -320,6 +338,16 @@ impl System for RamHeadAiSystem {
     fn update(&mut self, ctx: &mut Context) {
         let dt = ctx.dt;
 
+        while let Some(event) = self.hit_queue.borrow_mut().pop_front() {
+            if let Some(brain) = self.states.get_mut(&event.victim) {
+                brain.mode = RamMode::Stun;
+                brain.mode_timer = STUN_SECS;
+                brain.attacking = false;
+                brain.attack_timer = 0.0;
+                brain.attack_target = None;
+            }
+        }
+
         let enemies: Vec<(u64, EntityRef, Rect)> = self
             .store
             .all::<RamHead>()
@@ -337,6 +365,7 @@ impl System for RamHeadAiSystem {
             .collect();
 
         let mut anim_writes: Vec<AnimWrite> = Vec::new();
+        let mut impact_writes: Vec<ImpactWrite> = Vec::new();
         let mut area_writes: Vec<AttackRectWrite> = Vec::new();
 
         for (enemy_id, anim_ref, body) in &enemies {
@@ -462,6 +491,14 @@ impl System for RamHeadAiSystem {
                         brain.mode = RamMode::Stalk;
                     }
                 }
+                RamMode::Stun => {
+                    desired = Vec2::ZERO;
+                    brain.vel = Vec2::ZERO;
+                    brain.mode_timer -= dt;
+                    if brain.mode_timer <= 0.0 {
+                        brain.mode = RamMode::Stalk;
+                    }
+                }
             }
 
             // Melee attack: allowed while stalking (adjacent prey) or mid-charge
@@ -544,13 +581,31 @@ impl System for RamHeadAiSystem {
                 (WALK_FRAMES[0], facing.x < 0.0)
             };
 
+            let stunned = brain.mode == RamMode::Stun;
+
             anim_writes.push(AnimWrite {
                 anim_ref: *anim_ref,
                 position,
                 frame,
                 flip_x,
                 tint,
+                visible: !stunned,
             });
+
+            if let Some(image_ref) = self
+                .store
+                .get_by_id::<RamHead>(*enemy_id)
+                .and_then(|enemy| self.store.get_child::<ImpactFrame>(&enemy))
+                .and_then(|frame| self.store.get_child::<StaticImage>(&frame))
+                .map(|image| image.entity_ref())
+            {
+                impact_writes.push(ImpactWrite {
+                    image_ref,
+                    position,
+                    flip_x,
+                    visible: stunned,
+                });
+            }
 
             if let Some(area_ref) = self
                 .store
@@ -580,12 +635,28 @@ impl System for RamHeadAiSystem {
                 frame,
                 flip_x,
                 tint,
+                visible,
             } = w;
             self.store.update::<Animation, _>(&anim_ref, |a| {
                 a.position = position;
                 a.current_frame = frame;
                 a.flip_x = flip_x;
                 a.tint = tint;
+                a.visible = visible;
+            });
+        }
+
+        for w in impact_writes {
+            let ImpactWrite {
+                image_ref,
+                position,
+                flip_x,
+                visible,
+            } = w;
+            self.store.update::<StaticImage, _>(&image_ref, |image| {
+                image.position = position;
+                image.flip_x = flip_x;
+                image.visible = visible;
             });
         }
 
