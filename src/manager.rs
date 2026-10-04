@@ -97,10 +97,11 @@ impl Manager {
         let mut assets = Assets::new();
         assets.preload(&[&vert, &frag]).await;
 
-        let (Some(vertex), Some(fragment)) = (
-            assets.shaders.get(&vert.path()),
-            assets.shaders.get(&frag.path()),
-        ) else {
+        let Some(vertex) = assets.shaders.get(&vert.path()) else {
+            warn!("shader sources missing; material disabled");
+            return None;
+        };
+        let Some(fragment) = assets.shaders.get(&frag.path()) else {
             warn!("shader sources missing; material disabled");
             return None;
         };

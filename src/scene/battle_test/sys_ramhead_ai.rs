@@ -1,11 +1,18 @@
 use crate::entity::enemy::{EnemyStats, RamHead, ATTACK_FRAMES, WALK_FRAMES};
 use crate::entity::knight::Knight;
-use crate::entity::{HeroStats, PlayerOne};
-use crate::events::{EnemyAttackEvent, HitEvent, RamHeadSplatEvent};
+use crate::entity::{
+    AttackRect, EnemyFactory, HealthBar, HeroStats, ImpactBurst, ImpactFrame, PlayerOne,
+    ProceduralDrawable, ProceduralEffect, RamHeadCfg, RamHeadSpawnZone,
+};
+use crate::events::{EnemyAttackEvent, HitEvent, RamHeadSplatEvent, SpawnRamHeadEvent};
 use crate::prelude::*;
-use macroquad::prelude::{vec2, Color, Rect, Vec2};
+use crate::{images, Assets};
+use macroquad::prelude::{vec2, Color, Rect, Texture2D, Vec2};
+use macroquad::rand::gen_range;
 use pico_entity_store::prelude::EntityRef;
-use std::collections::HashMap;
+use pico_entity_store::store::IntoChild;
+use std::cell::RefCell;
+use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
 // Stalk speed and walk-frame timing.
@@ -40,6 +47,10 @@ const SEPARATION_WEIGHT: f32 = 90.0;
 // Keep ram heads within the map's vertical bounds.
 const Y_BOUND_MIN: f32 = 40.0;
 const Y_BOUND_MAX: f32 = 360.0;
+
+// Impact burst spawned at the contact point when a bite lands.
+const BURST_DURATION: f32 = 0.18;
+const SPLAT_Z_OFFSET: f32 = 5.005;
 
 const NORMAL_TINT: Color = Color::new(1.0, 1.0, 1.0, 1.0);
 const WINDUP_TINT: Color = Color::new(1.0, 0.55, 0.55, 1.0);
@@ -111,6 +122,11 @@ pub struct RamHeadAiSystem {
     store: Rc<EStore>,
     bus: Rc<EventBus>,
     states: HashMap<u64, RamBrain>,
+    body: Texture2D,
+    impact: Texture2D,
+    spawn_queue: Rc<RefCell<VecDeque<SpawnRamHeadEvent>>>,
+    splat_queue: Rc<RefCell<Vec<RamHeadSplatEvent>>>,
+    _subs: Rc<SubCollection>,
 }
 
 impl RamHeadAiSystem {
@@ -171,11 +187,33 @@ impl RamHeadAiSystem {
         steer
     }
 
-    pub fn new(store: Rc<EStore>, bus: Rc<EventBus>) -> Self {
+    pub fn new(store: Rc<EStore>, bus: Rc<EventBus>, assets: &Assets) -> Self {
+        let body = assets.texture(images::Enemy::RamHead);
+        let impact = assets.texture(images::Enemy::RamHeadHit);
+
+        let spawn_queue = Rc::new(RefCell::new(VecDeque::new()));
+        let splat_queue = Rc::new(RefCell::new(Vec::new()));
+        let subs = Rc::new(SubCollection::new());
+
+        let spawn_queue_for_handler = spawn_queue.clone();
+        subs.on::<SpawnRamHeadEvent>(&bus, move |event: &SpawnRamHeadEvent| {
+            spawn_queue_for_handler.borrow_mut().push_back(event.clone());
+        });
+
+        let splat_queue_for_handler = splat_queue.clone();
+        subs.on::<RamHeadSplatEvent>(&bus, move |event: &RamHeadSplatEvent| {
+            splat_queue_for_handler.borrow_mut().push(event.clone());
+        });
+
         Self {
             store,
             bus,
             states: HashMap::new(),
+            body,
+            impact,
+            spawn_queue,
+            splat_queue,
+            _subs: subs,
         }
     }
 
@@ -216,6 +254,58 @@ impl RamHeadAiSystem {
         } else {
             None
         }
+    }
+
+    fn spawn_ram_head(&self) {
+        let Some(rect) = self.store.first::<RamHeadSpawnZone>().map(|z| z.rect) else {
+            return;
+        };
+        let mut parts = EnemyFactory::create_ram_head(RamHeadCfg {
+            body: self.body.clone(),
+            impact: self.impact.clone(),
+        });
+        let x = rect.x + gen_range(0.0, rect.w);
+        let y = rect.y + gen_range(0.0, rect.h);
+        parts.body.position = vec2(x, y);
+        self.store.add(
+            parts.marker,
+            &[
+                parts.body.into_child(),
+                parts.collision_circle.into_child(),
+                HealthBar::default().into_child(),
+                EnemyStats::default().into_child(),
+                parts.impact_frame.into_child(),
+                AttackRect {
+                    rects: Vec::new(),
+                    visible: false,
+                }
+                .into_child(),
+            ],
+        );
+
+        let enemy_id = self
+            .store
+            .all::<RamHead>()
+            .map(|e| e.entity_ref().id())
+            .last()
+            .expect("ram head just added");
+
+        if let Some(impact_frame) = self
+            .store
+            .get_by_id::<RamHead>(enemy_id)
+            .and_then(|e| self.store.get_child::<ImpactFrame>(&e))
+        {
+            self.store
+                .add(impact_frame, &[parts.impact_image.into_child()]);
+        }
+    }
+
+    fn hit_entity_z(&self, target: u64) -> f32 {
+        self.store
+            .get_by_id::<Knight>(target)
+            .and_then(|k| self.store.get_child::<Animation>(&k))
+            .map(|a| a.z_idx)
+            .unwrap_or(0.0)
     }
 }
 
@@ -502,6 +592,40 @@ impl System for RamHeadAiSystem {
                 area.rects = rects;
                 area.visible = visible;
             });
+        }
+
+        // Impact bursts: spawn any requested this frame, then age and remove
+        // expired ones.
+        let events: Vec<RamHeadSplatEvent> = self.splat_queue.borrow_mut().drain(..).collect();
+        for event in events {
+            let hit_z = self.hit_entity_z(event.target);
+            let burst = ImpactBurst::new(event.position, BURST_DURATION);
+            let drawable = ProceduralDrawable {
+                effect: ProceduralEffect::ImpactBurst(burst),
+                z_idx: hit_z + SPLAT_Z_OFFSET,
+                visible: true,
+            };
+            self.store.add(drawable, &[]);
+        }
+
+        let mut expired: Vec<EntityRef> = Vec::new();
+        for mut burst in self.store.all_mut::<ProceduralDrawable>() {
+            if let ProceduralEffect::ImpactBurst(ref mut data) = burst.effect {
+                data.age += ctx.dt;
+                if data.age >= data.duration {
+                    expired.push(burst.entity_ref());
+                }
+            }
+        }
+        if !expired.is_empty() {
+            self.store.remove(&expired);
+        }
+
+        // Spawn any ram heads requested this frame.
+        while let Some(event) = self.spawn_queue.borrow_mut().pop_front() {
+            for _ in 0..event.count {
+                self.spawn_ram_head();
+            }
         }
     }
 }
