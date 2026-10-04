@@ -39,6 +39,14 @@ const CHARGE_COOLDOWN: f32 = 1.4;
 const RECOVER_SECS: f32 = 0.35;
 const STUN_SECS: f32 = 0.25;
 
+// Hit reaction: on a hit the ram waits a random 0..STAGGER_MAX_SECS, then
+// stuns and eases back KNOCKBACK units over KNOCKBACK_SECS. The stagger
+// window is wider than the knockback itself so a multi-target hit visibly
+// scatters the horde instead of throwing every ram back in lockstep.
+const STAGGER_MAX_SECS: f32 = 0.1;
+const KNOCKBACK: f32 = 20.0;
+const KNOCKBACK_SECS: f32 = 0.12;
+
 // Steering: velocity easing and boids-style separation between ram heads.
 const ACCEL: f32 = 420.0;
 const CHARGE_ACCEL: f32 = 1200.0;
@@ -84,6 +92,9 @@ struct RamBrain {
     attack_timer: f32,          // remaining time of the active attack; plays ATTACK_FRAMES
     attack_step: usize,         // index into ATTACK_FRAMES
     attack_target: Option<u64>, // entity id of the hero being attacked
+    stun_delay: f32,            // remaining seconds before a pending hit reaction fires
+    knockback_dir: Vec2,        // unit direction the current knockback throws the ram
+    knockback: f32,             // remaining seconds of the knockback ease-out
 }
 
 impl Default for RamBrain {
@@ -102,6 +113,9 @@ impl Default for RamBrain {
             attack_timer: 0.0,
             attack_step: 0,
             attack_target: None,
+            stun_delay: 0.0,
+            knockback_dir: Vec2::ZERO,
+            knockback: 0.0,
         }
     }
 }
@@ -332,20 +346,55 @@ impl RamHeadAiSystem {
             .map(|a| a.z_idx)
             .unwrap_or(0.0)
     }
+
+    /// Knockback direction: from the attacker toward the ram.
+    fn knockback_direction(&self, attacker: u64, victim: u64) -> Vec2 {
+        let victim_center = self
+            .store
+            .get_by_id::<RamHead>(victim)
+            .and_then(|ram| self.store.get_child::<Animation>(&ram))
+            .map(|anim| anim.rect().center());
+        let attacker_center = self
+            .store
+            .get_by_id::<Knight>(attacker)
+            .and_then(|knight| self.store.get_child::<Animation>(&knight))
+            .map(|anim| anim.rect().center())
+            .or_else(|| {
+                self.store
+                    .get_by_id::<RamHead>(attacker)
+                    .and_then(|ram| self.store.get_child::<Animation>(&ram))
+                    .map(|anim| anim.rect().center())
+            });
+
+        match (victim_center, attacker_center) {
+            (Some(victim), Some(attacker)) => {
+                let delta = victim - attacker;
+                if delta.length_squared() > 0.0 {
+                    delta.normalize()
+                } else {
+                    Vec2::ZERO
+                }
+            }
+            _ => Vec2::ZERO,
+        }
+    }
 }
 
 impl System for RamHeadAiSystem {
     fn update(&mut self, ctx: &mut Context) {
         let dt = ctx.dt;
 
+        // Record each hit on the victim's brain: a random stagger before the
+        // stun and knockback fire. The knockback direction is fixed now, at
+        // the moment of impact.
         while let Some(event) = self.hit_queue.borrow_mut().pop_front() {
-            if let Some(brain) = self.states.get_mut(&event.victim) {
-                brain.mode = RamMode::Stun;
-                brain.mode_timer = STUN_SECS;
-                brain.attacking = false;
-                brain.attack_timer = 0.0;
-                brain.attack_target = None;
+            if self.store.get_by_id::<RamHead>(event.victim).is_none() {
+                continue;
             }
+            let knockback_dir = self.knockback_direction(event.attacker, event.victim);
+            let brain = self.states.entry(event.victim).or_default();
+            brain.stun_delay = gen_range(0.0, STAGGER_MAX_SECS);
+            brain.knockback_dir = knockback_dir;
         }
 
         let enemies: Vec<(u64, EntityRef, Rect)> = self
@@ -373,6 +422,20 @@ impl System for RamHeadAiSystem {
 
             brain.attack_cooldown = (brain.attack_cooldown - dt).max(0.0);
             brain.charge_cooldown = (brain.charge_cooldown - dt).max(0.0);
+
+            // A pending hit reaction counts down, then throws the ram into
+            // Stun and kicks off the knockback.
+            if brain.stun_delay > 0.0 {
+                brain.stun_delay -= dt;
+                if brain.stun_delay <= 0.0 {
+                    brain.mode = RamMode::Stun;
+                    brain.mode_timer = STUN_SECS;
+                    brain.attacking = false;
+                    brain.attack_timer = 0.0;
+                    brain.attack_target = None;
+                    brain.knockback = KNOCKBACK_SECS;
+                }
+            }
 
             let center = body.center();
 
@@ -556,6 +619,18 @@ impl System for RamHeadAiSystem {
             // Ease the velocity toward the desired velocity and integrate.
             brain.vel = Self::move_toward(brain.vel, desired, accel * dt);
             let mut position = vec2(body.x + brain.vel.x * dt, body.y + brain.vel.y * dt);
+
+            // Knockback eases out on top of the movement: s(u) =
+            // KNOCKBACK * (2u - u²) over KNOCKBACK_SECS, back to rest.
+            if brain.knockback > 0.0 {
+                let rem0 = brain.knockback;
+                brain.knockback = (brain.knockback - dt).max(0.0);
+                let rem1 = brain.knockback;
+                let u0 = ((KNOCKBACK_SECS - rem0) / KNOCKBACK_SECS).clamp(0.0, 1.0);
+                let u1 = ((KNOCKBACK_SECS - rem1) / KNOCKBACK_SECS).clamp(0.0, 1.0);
+                let step = KNOCKBACK * ((2.0 * u1 - u1 * u1) - (2.0 * u0 - u0 * u0));
+                position += brain.knockback_dir * step;
+            }
             position.y = position.y.clamp(Y_BOUND_MIN, Y_BOUND_MAX);
 
             // Animation frames: attack frames while attacking, walk frames
@@ -581,7 +656,9 @@ impl System for RamHeadAiSystem {
                 (WALK_FRAMES[0], facing.x < 0.0)
             };
 
-            let stunned = brain.mode == RamMode::Stun;
+            // The hit pose shows from the moment the hit lands (so a killing
+            // blow snapshots the knockback frame) through the end of the stun.
+            let reacting = brain.stun_delay > 0.0 || brain.mode == RamMode::Stun;
 
             anim_writes.push(AnimWrite {
                 anim_ref: *anim_ref,
@@ -589,7 +666,7 @@ impl System for RamHeadAiSystem {
                 frame,
                 flip_x,
                 tint,
-                visible: !stunned,
+                visible: !reacting,
             });
 
             if let Some(image_ref) = self
@@ -603,7 +680,7 @@ impl System for RamHeadAiSystem {
                     image_ref,
                     position,
                     flip_x,
-                    visible: stunned,
+                    visible: reacting,
                 });
             }
 

@@ -246,6 +246,12 @@ impl HitReactionSystem {
 impl System for HitReactionSystem {
     fn update(&mut self, ctx: &mut Context) {
         while let Some(event) = self.queue.borrow_mut().pop_front() {
+            // Ram heads own their hit reaction in RamHeadAiSystem (staggered
+            // stun and knockback); reacting here too would double it.
+            if self.store.get_by_id::<RamHead>(event.victim).is_some() {
+                continue;
+            }
+
             let anchor = self.victim_anchor(event.victim);
             let impact = self.victim_impact(event.victim);
             let (Some(anchor), Some(impact)) = (anchor, impact) else {
