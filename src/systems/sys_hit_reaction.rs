@@ -10,7 +10,7 @@ use crate::prelude::*;
 use macroquad::prelude::*;
 
 /// Peak knockback displacement; drawn at `knockback * t²`.
-pub const KNOCKBACK: f32 = 20.0;
+pub const KNOCKBACK: f32 = 10.0;
 
 /// Reaction length in seconds.
 pub const DURATION: f32 = 0.12;

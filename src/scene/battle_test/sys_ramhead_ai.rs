@@ -44,7 +44,7 @@ const STUN_SECS: f32 = 0.25;
 // window is wider than the knockback itself so a multi-target hit visibly
 // scatters the horde instead of throwing every ram back in lockstep.
 const STAGGER_MAX_SECS: f32 = 0.1;
-const KNOCKBACK: f32 = 20.0;
+const KNOCKBACK: f32 = 10.0;
 const KNOCKBACK_SECS: f32 = 0.12;
 
 // Steering: velocity easing and boids-style separation between ram heads.
