@@ -64,11 +64,7 @@ impl ImpactBurst {
     pub fn new(pos: Vec2, duration: f32) -> Self {
         let mut radii = Vec::with_capacity(BURST_SPIKES * 2);
         for i in 0..BURST_SPIKES * 2 {
-            let base = if i % 2 == 0 {
-                BURST_OUTER
-            } else {
-                BURST_INNER
-            };
+            let base = if i % 2 == 0 { BURST_OUTER } else { BURST_INNER };
             radii.push(base * gen_range(0.92, 1.08));
         }
 
@@ -100,8 +96,7 @@ impl ImpactBurst {
             .iter()
             .enumerate()
             .map(|(i, r)| {
-                let angle =
-                    self.rotation + i as f32 * std::f32::consts::PI / BURST_SPIKES as f32;
+                let angle = self.rotation + i as f32 * std::f32::consts::PI / BURST_SPIKES as f32;
                 self.pos + vec2(angle.cos() * r * scale, angle.sin() * r * scale)
             })
             .collect()

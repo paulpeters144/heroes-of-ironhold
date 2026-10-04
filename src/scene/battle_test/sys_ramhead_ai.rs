@@ -70,17 +70,17 @@ enum RamMode {
 #[derive(Clone)]
 struct RamBrain {
     mode: RamMode,
-    vel: Vec2,          // current smoothed velocity
-    facing: Vec2,       // unit direction the ram faces this frame; defaults to left (-1, 0)
-    charge_dir: Vec2,   // direction locked in when the charge launches
-    mode_timer: f32,    // remaining time in Windup/Charge/Recover
-    charge_cooldown: f32, // seconds until the next charge is allowed
-    walk_step: usize,   // index into WALK_FRAMES
-    frame_elapsed: f32, // walk/attack-frame animation accumulator
-    attack_cooldown: f32, // seconds until the next attack is allowed
-    attacking: bool,    // true while a melee attack is active (opens AttackRect)
-    attack_timer: f32,  // remaining time of the active attack; plays ATTACK_FRAMES
-    attack_step: usize, // index into ATTACK_FRAMES
+    vel: Vec2,                  // current smoothed velocity
+    facing: Vec2,               // unit direction the ram faces this frame; defaults to left (-1, 0)
+    charge_dir: Vec2,           // direction locked in when the charge launches
+    mode_timer: f32,            // remaining time in Windup/Charge/Recover
+    charge_cooldown: f32,       // seconds until the next charge is allowed
+    walk_step: usize,           // index into WALK_FRAMES
+    frame_elapsed: f32,         // walk/attack-frame animation accumulator
+    attack_cooldown: f32,       // seconds until the next attack is allowed
+    attacking: bool,            // true while a melee attack is active (opens AttackRect)
+    attack_timer: f32,          // remaining time of the active attack; plays ATTACK_FRAMES
+    attack_step: usize,         // index into ATTACK_FRAMES
     attack_target: Option<u64>, // entity id of the hero being attacked
 }
 
@@ -197,7 +197,9 @@ impl RamHeadAiSystem {
 
         let spawn_queue_for_handler = spawn_queue.clone();
         subs.on::<SpawnRamHeadEvent>(&bus, move |event: &SpawnRamHeadEvent| {
-            spawn_queue_for_handler.borrow_mut().push_back(event.clone());
+            spawn_queue_for_handler
+                .borrow_mut()
+                .push_back(event.clone());
         });
 
         let splat_queue_for_handler = splat_queue.clone();
@@ -246,7 +248,12 @@ impl RamHeadAiSystem {
 
     /// Returns Some(target_id) when `target`'s rect overlaps the ram's forward
     /// attack rect (simple rect overlap, no pixel sampling); None otherwise.
-    fn target_in_front(&self, body: Rect, facing: Vec2, target: Option<(u64, Rect)>) -> Option<u64> {
+    fn target_in_front(
+        &self,
+        body: Rect,
+        facing: Vec2,
+        target: Option<(u64, Rect)>,
+    ) -> Option<u64> {
         let (id, rect) = target?;
         let forward = Self::forward_rect(body, facing);
         if forward.overlaps(&rect) {

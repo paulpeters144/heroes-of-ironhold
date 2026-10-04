@@ -8,8 +8,8 @@ use std::rc::Rc;
 const SPAWN_ZONE_Y: f32 = 125.0; // top of the spawn zone
 const SPAWN_ZONE_W: f32 = 50.0; // width of the spawn zone
 const SPAWN_ZONE_H: f32 = 200.0; // height of the spawn zone
-// The zone is measured from the knight's current x so it lands beyond the
-// view's right edge (the view is 640 wide; ram heads are 64 wide).
+                                 // The zone is measured from the knight's current x so it lands beyond the
+                                 // view's right edge (the view is 640 wide; ram heads are 64 wide).
 const RAM_ZONE_AHEAD: f32 = 480.0; // ram zone distance ahead of the knight
 
 /// A single burst of ram head spawns plus the quiet gap that follows.

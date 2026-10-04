@@ -173,7 +173,9 @@ impl System for KnightCombatSystem {
                 .unwrap_or(false);
 
             if was_alive && is_dead {
-                self.bus.fire(&KnightDeathEvent { knight: event.target });
+                self.bus.fire(&KnightDeathEvent {
+                    knight: event.target,
+                });
             }
 
             self.bus.fire(&HealthChangeEvent {

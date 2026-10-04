@@ -155,13 +155,10 @@ impl System for CollisionCircleSystem {
                 .any(|r| circle_rect_overlap(vec2(target.x, prev.y), c.radius, r));
             let cx = if blocked_x { prev.x } else { target.x };
 
-            let blocked_y = colliders
-                .iter()
-                .enumerate()
-                .any(|(j, other)| {
+            let blocked_y =
+                colliders.iter().enumerate().any(|(j, other)| {
                     j != idx && circles_overlap(vec2(cx, target.y), c.radius, other)
-                })
-                || rects
+                }) || rects
                     .iter()
                     .any(|r| circle_rect_overlap(vec2(cx, target.y), c.radius, r));
             let cy = if blocked_y { prev.y } else { target.y };

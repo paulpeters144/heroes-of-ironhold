@@ -34,7 +34,14 @@ impl System for DebugDrawSystem {
         }
 
         for zone in self.store.all::<RamHeadSpawnZone>() {
-            draw_rectangle_lines(zone.rect.x, zone.rect.y, zone.rect.w, zone.rect.h, 2.0, ORANGE);
+            draw_rectangle_lines(
+                zone.rect.x,
+                zone.rect.y,
+                zone.rect.w,
+                zone.rect.h,
+                2.0,
+                ORANGE,
+            );
         }
 
         for area in self.store.all::<AttackRect>() {
@@ -69,7 +76,14 @@ impl System for DebugDrawSystem {
         }
 
         for rect in self.store.all::<CollisionRect>() {
-            draw_rectangle_lines(rect.rect.x, rect.rect.y, rect.rect.w, rect.rect.h, 2.0, BLUE);
+            draw_rectangle_lines(
+                rect.rect.x,
+                rect.rect.y,
+                rect.rect.w,
+                rect.rect.h,
+                2.0,
+                BLUE,
+            );
         }
     }
 }
