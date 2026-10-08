@@ -18,7 +18,7 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 
 /// How long the knight is held in the thrust pose for a Blade Barrage cast (seconds).
-const LOCK_SECS: f32 = 0.5;
+const LOCK_SECS: f32 = 0.35;
 /// Minimum time between Blade Barrage casts (seconds).
 const COOLDOWN_SECS: f32 = 1.0;
 /// How far a sword travels from its spawn x before despawning (world units).
