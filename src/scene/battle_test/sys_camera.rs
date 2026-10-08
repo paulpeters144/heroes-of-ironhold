@@ -88,7 +88,7 @@ impl System for CameraSystem {
             self.velocity = vel;
         }
 
-        ctx.cam_target = self.smooth;
+        ctx.cam_target = self.smooth.round();
     }
 }
 
